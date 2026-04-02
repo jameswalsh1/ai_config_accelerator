@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  /*
+   * Version 1 brand colours
+   * Teal #00c6c2 replaces the default indigo scale so every indigo-* class
+   * in the app automatically uses the Version 1 palette — no component
+   * changes needed.
+   */
+  --color-indigo-50:  #e6faf9;
+  --color-indigo-100: #c0f0ef;
+  --color-indigo-200: #99ebe8;
+  --color-indigo-300: #5cdbd8;
+  --color-indigo-400: #2ecfcc;
+  --color-indigo-500: #17d0cc;
+  --color-indigo-600: #00c6c2;   /* primary CTA / brand teal */
+  --color-indigo-700: #009b97;   /* hover / active state */
+  --color-indigo-800: #007270;
+  --color-indigo-900: #005250;
+
+  /* Version 1 neutral overrides */
+  --color-gray-50:  #f3f4f4;   /* page background */
+  --color-gray-900: #052831;   /* headings / body text — V1 navy */
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: "area-normal", system-ui, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "halyard-display", "area-normal", system-ui, 'Segoe UI', sans-serif;
+  }
+}
