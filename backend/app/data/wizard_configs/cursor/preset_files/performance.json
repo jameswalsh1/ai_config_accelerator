@@ -1,0 +1,9 @@
+[
+  {
+    "label": "Performance & operations",
+    "description": "Operational guidance for performance, logs, and monitoring.",
+    "value": "## Performance & Operations\n\n- Identify and fix N+1 queries in database access.\n- Use explicit caching and invalidate it carefully.\n- Log with structured context (request IDs, correlation IDs) not string concatenation.\n- Instrument critical paths with metrics and health checks.\n- Exclude generated assets from indexing and avoid bloated search contexts.",
+    "mode": "append",
+    "tags": ["cursor", "performance"]
+  }
+]

@@ -15,5 +15,6 @@ dist/
 # Misc
 *.env
 .DS_Store
-
+/example configuration/
+/example_configuration/
 *.mypy_cache

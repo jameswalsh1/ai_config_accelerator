@@ -1,0 +1,16 @@
+[
+  {
+    "label": "Python PEP 8 & type hints",
+    "description": "Python coding standards for backend services.",
+    "value": "## Python Coding Standards (PEP 8)\n\n- Use `black` for formatting (default settings, 88-char line limit).\n- Use `ruff` or `flake8` for linting — fix all warnings, not just errors.\n- Add type hints to all public functions. Run `mypy` in strict mode.\n- Imports: order as stdlib, third-party, then local. Use `isort` for consistency.\n- Use `snake_case` for functions/variables, `PascalCase` for classes, `UPPER_SNAKE_CASE` for constants.\n- Use f-strings for interpolation: `f\"Hello, {name}\"` — not `.format()` or `%`.\n- Handle errors explicitly: catch specific exceptions, never bare `except:` or `except Exception:`.\n- Use async/await for I/O operations (database, HTTP, file). Use `await`, not `.result()` or `.wait()`.\n- Use Pydantic models for validation, not plain dicts.",
+    "mode": "append",
+    "tags": ["cursor", "python"]
+  },
+  {
+    "label": "Python service patterns",
+    "description": "Backend service conventions for Python APIs.",
+    "value": "## Python Service Patterns\n\n- Validate request payloads using Pydantic models at the boundary.\n- Keep business logic separate from request handlers.\n- Use `async def` for I/O and await calls consistently.\n- Return consistent error shapes like `{ detail: \"message\" }`.\n- Avoid global mutable state; inject dependencies explicitly.",
+    "mode": "append",
+    "tags": ["cursor", "python"]
+  }
+]

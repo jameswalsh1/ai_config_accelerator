@@ -15,6 +15,7 @@ class FieldType(StrEnum):
     multi_select = "multi_select"
     checkbox = "checkbox"
     agent_list = "agent_list"  # one-or-more agent definitions; generates one file per agent
+    repeatable_group = "repeatable_group"  # one-or-more grouped entries, e.g. multiple rule files
 
 
 class OutputFormat(StrEnum):

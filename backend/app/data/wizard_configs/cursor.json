@@ -1,83 +1,191 @@
 {
   "id": "cursor",
   "title": "Cursor Configuration",
-  "description": "Generate rule files, ignore patterns, and indexing config for Cursor.",
+  "description": "Generate rule files, ignore patterns, and indexing config for Cursor AI editor.",
   "target": "cursor",
+  "schema_version": "1.0",
+  "target_version_constraints": {
+    "cursor": "latest"
+  },
+  "output_preview_targets": [
+    {
+      "target": "rule_files",
+      "label": ".cursor/rules/*.mdc"
+    },
+    {
+      "target": "agents_md",
+      "label": "AGENTS.md"
+    },
+    {
+      "target": "cursor_ignore",
+      "label": ".cursorignore"
+    },
+    {
+      "target": "cursor_indexing_ignore",
+      "label": ".cursorindexingignore"
+    },
+    {
+      "target": "ignore_verification",
+      "label": ".cursor/ignore-verification.md"
+    }
+  ],
   "steps": [
     {
-      "id": "project_rules",
-      "title": "Project Rules (.cursor/rules/project.mdc)",
-      "description": "Configure .cursor/rules/project.mdc — AI guidance applied to this repository in Cursor.",
-      "hint": "Rule files support YAML frontmatter with description (what the rule covers), globs (which files it applies to), and alwaysApply (inject regardless of active file). Commit rule files to share team standards.",
-      "output_file": ".cursor/rules/project.mdc",
+      "id": "rule_files",
+      "title": "Cursor Rule Files (.cursor/rules/)",
+      "description": "Configure multiple .mdc rule files under .cursor/rules/. Use focused files for security, testing, language/framework guidance, and manual workflows.",
+      "hint": "Cursor rules are committed to version control and used to shape context and behavior. Keep each rule file narrow and precise to reduce prompt bloat and improve relevance.",
+      "output_file": ".cursor/rules/",
       "output_format": "markdown_frontmatter",
       "fields": [
         {
-          "id": "description",
-          "type": "text",
-          "label": "Rule Description",
-          "description": "A short description of what this rule set covers (used by Cursor to decide when to apply it).",
-          "placeholder": "TypeScript standards for this repository",
-          "frontmatter": true,
-          "frontmatter_key": "description",
-          "presets": [
-            { "label": "TypeScript standards", "value": "TypeScript coding standards for this repository", "mode": "replace" },
-            { "label": "React component rules", "value": "React component patterns and conventions", "mode": "replace" },
-            { "label": "General project rules", "value": "Project-wide coding and style conventions", "mode": "replace" },
-            { "label": "API development rules", "value": "API design and implementation standards", "mode": "replace" }
-          ]
-        },
-        {
-          "id": "globs",
-          "type": "text",
-          "label": "Applies To (Glob Patterns)",
-          "description": "Comma-separated glob patterns. Leave blank to apply to all files.",
-          "placeholder": "**/*.ts,**/*.tsx",
-          "frontmatter": true,
-          "frontmatter_key": "globs",
-          "presets": [
-            { "label": "All TypeScript", "value": "**/*.ts,**/*.tsx", "mode": "replace" },
-            { "label": "React components only", "value": "src/components/**/*.tsx", "mode": "replace" },
-            { "label": "Python files", "value": "**/*.py", "mode": "replace" },
-            { "label": "All files", "value": "**/*", "mode": "replace" }
-          ]
-        },
-        {
-          "id": "always_apply",
-          "type": "checkbox",
-          "label": "Always Apply",
-          "description": "Inject this rule into every Cursor context regardless of the active file.",
-          "default": false,
-          "frontmatter": true,
-          "frontmatter_key": "alwaysApply"
-        },
-        {
-          "id": "rules_content",
-          "type": "textarea",
-          "label": "Rule Instructions",
-          "description": "The guidance for Cursor — coding standards, patterns, and conventions to follow.",
-          "placeholder": "Add project-specific rules here...",
+          "id": "rules",
+          "type": "repeatable_group",
+          "label": "Cursor Rules",
+          "description": "Define one or more Cursor rule files, each with its own filename, metadata, and instructions.",
           "required": true,
-          "screen_hint": "The best-practice defaults below are always included. Add project-specific rules on top of them.",
-          "locked_value": "- Validate all external input at system boundaries. Never trust data from users, APIs, or files.\n- Never hardcode credentials, API keys, tokens, or secrets in source code.\n- Handle errors explicitly. Never silently swallow exceptions.\n- Keep changes small and targeted to the stated task. Do not refactor code outside the scope of the request.\n- Prefer existing patterns over introducing new abstractions.\n- Run lint and tests before finalising any change.",
-          "presets": [
-            { "label": "Prettier + ESLint", "description": "Standard formatter and linter rules", "value": "- Use Prettier formatting. Run `prettier --write` before committing.\n- Run `eslint --fix` before final output. Address all warnings.", "mode": "append" },
-            { "label": "TypeScript strict", "description": "Strict TypeScript patterns", "value": "- Use TypeScript strict mode patterns.\n- Prefer explicit types at all public API boundaries.\n- Avoid type assertions (`as`) unless unavoidable.", "mode": "append" },
-            { "label": "React hooks", "description": "React component patterns", "value": "- Use functional components and hooks exclusively. Never use class components.\n- Keep components focused on a single concern.\n- Extract complex logic into custom hooks.", "mode": "append" },
-            { "label": "No console.log", "description": "Clean up debug output", "value": "- Remove all console.log and console.debug statements before finalising changes.", "mode": "append" },
-            { "label": "Test coverage", "description": "Require tests for new code", "value": "- Add unit tests for all new functions.\n- Run the test suite before marking a task complete.", "mode": "append" },
-            { "label": "Import ordering", "description": "Consistent import structure", "value": "- Organise imports: external packages first, then internal modules, then relative imports.\n- Do not mix type and value imports in the same import statement.", "mode": "append" },
-            { "label": "Error handling", "description": "Explicit error handling", "value": "- Handle errors explicitly. Never silently swallow exceptions.\n- Use Result types or throw with descriptive error messages.", "mode": "append" },
-            { "label": "FastAPI conventions", "description": "Python FastAPI patterns", "value": "- Validate all request inputs using Pydantic models.\n- Use async def for all route handlers.\n- Return consistent error shapes: { detail: string }.", "mode": "append" }
+          "fields": [
+            {
+              "id": "rule_file_name",
+              "type": "text",
+              "label": "Rule file name",
+              "description": "Filename relative to .cursor/rules/, for example security.mdc or python.mdc.",
+              "placeholder": "security.mdc",
+              "required": true,
+              "render": false
+            },
+            {
+              "id": "rule_type",
+              "type": "select",
+              "label": "Rule type",
+              "description": "Label the rule by its primary concern so the generated rules directory stays maintainable.",
+              "default": "core",
+              "frontmatter": true,
+              "frontmatter_key": "ruleType",
+              "options": [
+                { "value": "core", "label": "Core" },
+                { "value": "language", "label": "Language" },
+                { "value": "framework", "label": "Framework" },
+                { "value": "workflow", "label": "Workflow" },
+                { "value": "manual", "label": "Manual" }
+              ]
+            },
+            {
+              "id": "rule_activation",
+              "type": "select",
+              "label": "Activation mode",
+              "description": "Specify how Cursor should activate this rule.",
+              "default": "file_matched",
+              "frontmatter": true,
+              "frontmatter_key": "activation",
+              "options": [
+                { "value": "always_on", "label": "Always-on rule" },
+                { "value": "file_matched", "label": "File-matched rule" },
+                { "value": "semantic_manual", "label": "Semantic/manual rule" },
+                { "value": "manual_only", "label": "Manual-only rule" }
+              ],
+              "screen_hint": "Choose Always-on only for truly universal rules. Use manual-only for heavyweight guidance that should only be invoked explicitly.",
+              "validation": {
+                "frontmatter_combinations": true,
+                "explain_mode": true
+              }
+            },
+            {
+              "id": "description",
+              "type": "text",
+              "label": "Rule description",
+              "description": "Short frontmatter description for this rule. Useful for semantic/manual rules and for Cursor's rule chooser.",
+              "placeholder": "Security best practices for backend services",
+              "frontmatter": true,
+              "frontmatter_key": "description"
+            },
+            {
+              "id": "globs",
+              "type": "text",
+              "label": "Applies To (Glob Patterns)",
+              "description": "Comma-separated glob patterns. Required for file-matched rules; optional otherwise.",
+              "placeholder": "**/*.py",
+              "frontmatter": true,
+              "frontmatter_key": "globs",
+              "presets": [
+                { "label": "All Python", "value": "**/*.py", "mode": "replace" },
+                { "label": "All TypeScript/React", "value": "**/*.ts,**/*.tsx", "mode": "replace" },
+                { "label": "All C#/.NET", "value": "**/*.cs", "mode": "replace" },
+                { "label": "All Java", "value": "**/*.java", "mode": "replace" },
+                { "label": "All JavaScript", "value": "**/*.js,**/*.jsx", "mode": "replace" },
+                { "label": "API routes only", "value": "src/routes/**,src/api/**,src/controllers/**", "mode": "replace" },
+                { "label": "All files", "value": "**/*", "mode": "replace" }
+              ],
+              "validation": {
+                "glob_syntax": true,
+                "duplicate_patterns": true
+              }
+            },
+            {
+              "id": "always_apply",
+              "type": "checkbox",
+              "label": "Always Apply",
+              "description": "Inject this rule into every Cursor context regardless of the active file. Use only for universal rules.",
+              "default": false,
+              "frontmatter": true,
+              "frontmatter_key": "alwaysApply"
+            },
+            {
+              "id": "rules_content",
+              "type": "textarea",
+              "label": "Rule Instructions",
+              "description": "The guidance for this specific rule file. Keep content narrow and avoid mixing concerns across security, testing, and workflow guidance.",
+              "placeholder": "Add focused rules for this file...",
+              "rows": 20,
+              "required": true,
+              "screen_hint": "Use separate files for security, tests, language/framework guidance, and manual workflows. Narrow rules improve relevance and reduce context bloat.",
+              "preset_files": [
+                "shared/preset_files/llm.json",
+                "cursor/preset_files/python.json",
+                "cursor/preset_files/react_typescript.json",
+                "cursor/preset_files/dotnet.json",
+                "cursor/preset_files/java.json",
+                "cursor/preset_files/api.json",
+                "cursor/preset_files/monorepo.json"
+              ]
+            }
           ]
+        }
+      ]
+    },
+    {
+      "id": "agents_md",
+      "title": "Agent Instructions (AGENTS.md)",
+      "description": "Configure AGENTS.md for Cursor agent guidance and cross-tool workflow documentation.",
+      "hint": "Cursor supports both Rules and AGENTS.md. Use AGENTS.md for broader agent workflow guidance, review processes, and reusable agent behavior expectations.",
+      "output_file": "AGENTS.md",
+      "output_format": "markdown",
+      "fields": [
+        {
+          "id": "heading",
+          "type": "text",
+          "label": "File Heading",
+          "description": "Top-level heading for AGENTS.md.",
+          "placeholder": "Agent Instructions",
+          "required": true,
+          "default": "Agent Instructions"
+        },
+        {
+          "id": "agent_guidance",
+          "type": "textarea",
+          "label": "Agent Guidance",
+          "description": "Rules and expectations for agentic workflows, review processes, and cross-tool behavior.",
+          "placeholder": "# Agent guidance\n- Use the security reviewer for security-critical changes.\n- Use the testing agent for new or changed code needing coverage.",
+          "rows": 18,
+          "screen_hint": "Keep AGENTS.md focused on agent behavior and workflow guidance rather than general coding standards."
         }
       ]
     },
     {
       "id": "cursor_ignore",
       "title": "Cursor Ignore File (.cursorignore)",
-      "description": "Control which files Cursor can access and use for AI features and context.",
-      "hint": "Use .cursorignore for extra exclusions beyond .gitignore. Committed entries apply to all team members. This is Cursor's primary privacy boundary — always add .env files, private keys, and secrets directories here.",
+      "description": "Control which files Cursor can access and use for AI features and context. This is a primary repo-level exclusion control, not an absolute enforcement boundary.",
+      "hint": "Committed .cursorignore patterns are shared with all team members. Add secrets, private keys, and sensitive artifacts here. Note that indexing behavior may also be affected by .gitignore.",
       "output_file": ".cursorignore",
       "output_format": "verbatim",
       "fields": [
@@ -85,16 +193,19 @@
           "id": "content",
           "type": "textarea",
           "label": "Ignore Patterns",
-          "description": "One pattern per line. Supports gitignore-style syntax including ! for re-includes.",
-          "rows": 10,
-          "screen_hint": "The security-critical patterns below are always included. Add project-specific paths on top of them.",
-          "locked_value": "# Secrets and credentials — always excluded\n.env\n.env.*\nsecrets/\n*.pem\n*.key\n*.p12\n*.pfx\n.aws/\n.ssh/",
-          "default": "# Build outputs\ndist/\nbuild/\n.next/\n__pycache__/\n\n# Dependencies\nnode_modules/\n.venv/",
+          "description": "One pattern per line. Matches gitignore syntax. Use ! to re-include.",
+          "rows": 15,
+          "screen_hint": "Security-critical patterns (secrets, credentials) are always included. Add additional paths relevant to your project.",
+          "locked_value": "# Secrets and credentials — primary exclusions\n.env\n.env.*\nsecrets/\n*.pem\n*.key\n*.p12\n*.pfx\n*.jks\n.aws/\n.ssh/\n.docker/config.json",
+          "default": "# Build outputs\ndist/\nbuild/\n.next/\n__pycache__/\nbin/\nobj/\n\n# Dependencies\nnode_modules/\n.venv/\nvenv/\n.cargo/\n\n# IDE\n.idea/\n.vscode/settings.json\n*.swp",
           "presets": [
-            { "label": "Secrets & credentials", "value": "# Secrets and credentials\n.env\n.env.*\nsecrets/\n*.pem\n*.key\n*.p12\n*.pfx", "mode": "append" },
-            { "label": "Build outputs", "value": "# Build outputs\ndist/\nbuild/\n.next/\n__pycache__/\n*.pyc", "mode": "append" },
-            { "label": "Dependencies", "value": "# Dependencies\nnode_modules/\n.venv/\nvenv/", "mode": "append" },
-            { "label": "Editor & OS files", "value": "# Editor and OS\n.DS_Store\n*.swp\n.idea/\n.vscode/settings.json", "mode": "append" }
+            { "label": "Python build dirs", "description": "Common Python generated directories", "value": "__pycache__/\n*.pyc\n*.pyo\n.pytest_cache/\n.mypy_cache/\n.tox/\ndist/\nbuild/\n*.egg-info/", "mode": "append" },
+            { "label": "Node.js build dirs", "description": "Common Node.js generated directories", "value": "node_modules/\ndist/\nbuild/\n.next/\n.turbo/\n.vercel/\n.parcel-cache/", "mode": "append" },
+            { "label": ".NET build dirs", "description": "Common .NET generated directories", "value": "bin/\nobj/\n.vs/", "mode": "append" },
+            { "label": "Java build dirs", "description": "Common Java generated directories", "value": "target/\n.m2/\nbuild/\n.gradle/", "mode": "append" },
+            { "label": "Data & uploads", "description": "Large data files and uploads", "value": "uploads/\n*.sqlite\n*.db\ndumps/\ndata/\nlogs/", "mode": "append" },
+            { "label": "Generated code", "description": "Generated source artifacts", "value": "generated/\n.generated/\n*.generated.ts\n*.g.cs", "mode": "append" },
+            { "label": "Editor & OS", "description": "Editor and OS temp files", "value": ".DS_Store\n*.swp\n*~\n.vscode/settings.json\n.idea/\nThumbs.db", "mode": "append" }
           ]
         }
       ]
@@ -102,25 +213,59 @@
     {
       "id": "cursor_indexing_ignore",
       "title": "Cursor Indexing Ignore (.cursorindexingignore)",
-      "description": "Control which files are indexed by Cursor for AI context and search.",
-      "hint": "Use this to reduce indexing size and improve performance and relevance. This controls search/context indexing scope only. For full access blocking, also add entries to .cursorignore.",
+      "description": "Control which files Cursor indexes for AI context and search. Excluded files remain accessible but are not included in automatic indexing.",
+      "hint": "Large dependency directories and build output significantly impact indexing speed and relevance. Select an indexing strategy that matches your repository's tradeoffs. Note that .gitignore interaction can also affect indexing.",
       "output_file": ".cursorindexingignore",
       "output_format": "verbatim",
       "fields": [
         {
+          "id": "indexing_strategy",
+          "type": "select",
+          "label": "Indexing strategy",
+          "description": "Choose how aggressively Cursor should exclude files from indexing.",
+          "default": "balanced",
+          "options": [
+            { "value": "balanced", "label": "Balanced" },
+            { "value": "aggressive", "label": "Aggressive exclusions" },
+            { "value": "broad", "label": "Broad indexing for discovery" }
+          ],
+          "screen_hint": "Balanced is recommended for most repos. Aggressive exclusions are useful only when indexing noise is a severe problem. Broad indexing is useful when test and generated files are important context."
+        },
+        {
           "id": "content",
           "type": "textarea",
           "label": "Indexing Ignore Patterns",
-          "description": "One pattern per line. Supports gitignore-style syntax.",
-          "rows": 10,
-          "screen_hint": "Large directories like node_modules or build output significantly slow down Cursor's indexing and dilute AI context quality. Click a preset to add common patterns.",
-          "default": "# Large directories that slow indexing\nnode_modules/\n.next/\ndist/\nbuild/\n__pycache__/\n.venv/\n\n# Log and cache files\n*.log\n.cache/\ncoverage/",
+          "description": "One pattern per line. Gitignore syntax. Matching files won't be indexed but remain accessible.",
+          "rows": 15,
+          "screen_hint": "Do not exclude tests by default — tests are often valuable context. Use test-specific exclusions only as an advanced opt-in.",
+          "default": "# Large directories that slow indexing\nnode_modules/\n.next/\ndist/\nbuild/\n__pycache__/\n.venv/\n\n# Logs\n*.log\nlogs/",
           "presets": [
-            { "label": "Node.js large dirs", "value": "node_modules/\n.next/\ndist/\nbuild/\n.turbo/\n.vercel/", "mode": "append" },
-            { "label": "Python large dirs", "value": "__pycache__/\n.venv/\nvenv/\n*.egg-info/\n.mypy_cache/\n.pytest_cache/", "mode": "append" },
-            { "label": "Logs & coverage", "value": "*.log\nlogs/\ncoverage/\n.nyc_output/\n.cache/", "mode": "append" },
-            { "label": "Generated assets", "value": "public/assets/\nstatic/\n*.min.js\n*.min.css", "mode": "append" }
+            { "label": "Node.js directories", "description": "Common Node.js indexing exclusions", "value": "node_modules/\n.next/\n.turbo/\n.vercel/\n.parcel-cache/\n.yarn/\ndist/\nbuild/", "mode": "append" },
+            { "label": "Python directories", "description": "Common Python indexing exclusions", "value": "__pycache__/\n.venv/\nvenv/\n*.egg-info/\n.mypy_cache/\n.pytest_cache/\n.tox/\nbuild/\ndist/", "mode": "append" },
+            { "label": ".NET directories", "description": "Common .NET indexing exclusions", "value": "bin/\nobj/\n.vs/\nbuild/\n.vscode/", "mode": "append" },
+            { "label": "Java directories", "description": "Common Java indexing exclusions", "value": "target/\n.gradle/\n.m2/\nbuild/\nout/", "mode": "append" },
+            { "label": "Logs & caches", "description": "Log and cache files", "value": "*.log\nlogs/\n.cache/\n.eslintcache\n.stylelintcache", "mode": "append" },
+            { "label": "Generated & compiled", "description": "Generated assets and build output", "value": "*.min.js\n*.min.css\npublic/\nstatic/\n.generated/\n*.generated.ts", "mode": "append" },
+            { "label": "Tests & coverage (advanced opt-in)", "description": "Test files are valuable context; use only if you need aggressive exclusions.", "value": "coverage/\n.nyc_output/\n*.lcov", "mode": "append" }
           ]
+        }
+      ]
+    },
+    {
+      "id": "ignore_verification",
+      "title": "Ignore Verification Checklist",
+      "description": "Generate a short checklist to help verify ignore-file effectiveness and indexing behavior.",
+      "hint": "Cursor ignore files are a primary exclusion control, but actual indexing behavior can depend on .gitignore and project settings. Validate by checking indexing counts and sample file visibility.",
+      "output_file": ".cursor/ignore-verification.md",
+      "output_format": "markdown",
+      "fields": [
+        {
+          "id": "checklist",
+          "type": "textarea",
+          "label": "Verification Checklist",
+          "description": "A short set of verification steps to confirm ignore and indexing behavior.",
+          "rows": 12,
+          "default": "- Confirm .cursorignore contains secrets, private keys, and sensitive artifacts.\n- Confirm .cursorindexingignore excludes large build and dependency directories.\n- Verify .gitignore interaction for files that should not be indexed.\n- Check Cursor indexing counts or workspace reports after updating ignore files.\n- Open a known excluded file and confirm it is not included in automatic AI context.\n- For manual-only rules, verify that they can be invoked explicitly by name."
         }
       ]
     }

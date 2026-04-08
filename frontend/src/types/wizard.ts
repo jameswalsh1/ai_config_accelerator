@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'textarea' | 'select' | 'multi_select' | 'checkbox' | 'agent_list'
+export type FieldType = 'text' | 'textarea' | 'select' | 'multi_select' | 'checkbox' | 'agent_list' | 'repeatable_group'
 
 export type OutputFormat = 'text' | 'markdown' | 'markdown_frontmatter' | 'verbatim'
 
@@ -9,6 +9,12 @@ export interface Preset {
   description?: string
   value: unknown
   mode?: PresetMode
+  tags?: string[]
+}
+
+export interface PreviewTarget {
+  target: string
+  label: string
 }
 
 export interface AgentEntry {
@@ -47,6 +53,11 @@ export interface WizardField {
   frontmatter_key?: string | null
   screen_hint?: string
   presets?: Preset[]
+  preset_files?: string[]
+  tag_source?: boolean
+  validation?: Record<string, unknown>
+  render?: boolean
+  fields?: WizardField[]
   locked_value?: string
   agent_config?: AgentFieldConfig
 }
@@ -59,6 +70,7 @@ export interface WizardStep {
   fields: WizardField[]
   output_file: string
   output_format?: OutputFormat
+  supported_surfaces?: string[]
 }
 
 export interface WizardConfigSummary {
@@ -69,6 +81,9 @@ export interface WizardConfigSummary {
 }
 
 export interface WizardConfig extends WizardConfigSummary {
+  schema_version?: string
+  target_version_constraints?: Record<string, string>
+  output_preview_targets?: PreviewTarget[]
   steps: WizardStep[]
 }
 

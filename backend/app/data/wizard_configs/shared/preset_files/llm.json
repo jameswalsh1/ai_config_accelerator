@@ -1,0 +1,23 @@
+[
+  {
+    "label": "Security-first guidance",
+    "description": "Applicable to all LLMs for secure engineering practices.",
+    "value": "## Security-first Guidance\n\n- Validate all external input at boundaries. Never trust data from users, APIs, or files.\n- Never hardcode credentials, API keys, or secrets.\n- Prefer safe defaults and explicit permission checks.\n- Escalate unknown or ambiguous security issues instead of guessing.",
+    "mode": "append",
+    "tags": ["copilot", "claude", "cursor"]
+  },
+  {
+    "label": "Small focused changes",
+    "description": "Use small, incremental updates across all AI configurations.",
+    "value": "## Small Focused Changes\n\n- Keep each change narrow and self-contained.\n- Avoid large refactors unless explicitly requested.\n- Prefer incremental improvements that are easier to review and test.",
+    "mode": "append",
+    "tags": ["copilot", "claude", "cursor"]
+  },
+  {
+    "label": "Shared language conventions",
+    "description": "Apply shared coding conventions across different language-specific configs.",
+    "value": "## Shared Language Conventions\n\n- Follow the existing project conventions for naming, style, and architecture.\n- Prefer consistency with adjacent code rather than introducing new idioms.\n- Document deviations clearly in comments or README when they are necessary.",
+    "mode": "append",
+    "tags": ["copilot", "claude", "cursor"]
+  }
+]

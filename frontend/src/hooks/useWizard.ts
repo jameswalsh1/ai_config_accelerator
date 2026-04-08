@@ -32,6 +32,28 @@ function validateField(field: WizardField, value: unknown): string | null {
     return null
   }
 
+  if (field.type === 'repeatable_group') {
+    const entries = value as Record<string, unknown>[] | undefined
+    if (!entries || entries.length === 0) return `${field.label} requires at least one entry`
+
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]
+      for (const nestedField of field.fields ?? []) {
+        if (!nestedField.required || nestedField.render === false) continue
+        const nestedValue = entry[nestedField.id] ?? nestedField.default
+        const isEmpty =
+          nestedValue === undefined ||
+          nestedValue === null ||
+          nestedValue === '' ||
+          (Array.isArray(nestedValue) && nestedValue.length === 0)
+        if (isEmpty) {
+          return `${nestedField.label} is required for rule ${i + 1}`
+        }
+      }
+    }
+    return null
+  }
+
   const isEmpty =
     value === undefined ||
     value === null ||
@@ -45,6 +67,7 @@ export interface UseWizardReturn {
   currentScreenIndex: number
   currentScreen: Screen
   answers: WizardAnswers
+  activeTags: string[]
   fieldError: string | null
   isFirstScreen: boolean
   isLastScreen: boolean
@@ -59,6 +82,26 @@ export function useWizard(config: WizardConfig): UseWizardReturn {
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0)
   const [answers, setAnswers] = useState<WizardAnswers>({})
   const [fieldError, setFieldError] = useState<string | null>(null)
+
+  const activeTags = useMemo(() => {
+    const tags = new Set<string>()
+    for (const step of config.steps) {
+      for (const field of step.fields) {
+        if (!field.tag_source) continue
+        const value = answers[step.id]?.[field.id] ?? field.default
+        if (Array.isArray(value)) {
+          value.forEach(item => {
+            if (typeof item === 'string' && item.trim()) {
+              tags.add(item.trim())
+            }
+          })
+        } else if (typeof value === 'string' && value.trim()) {
+          tags.add(value.trim())
+        }
+      }
+    }
+    return Array.from(tags)
+  }, [config.steps, answers])
 
   const setFieldValue = useCallback((stepId: string, fieldId: string, value: unknown) => {
     setAnswers(prev => ({ ...prev, [stepId]: { ...prev[stepId], [fieldId]: value } }))
@@ -97,6 +140,7 @@ export function useWizard(config: WizardConfig): UseWizardReturn {
     currentScreenIndex,
     currentScreen: screens[currentScreenIndex],
     answers,
+    activeTags,
     fieldError,
     isFirstScreen: currentScreenIndex === 0,
     isLastScreen: currentScreenIndex === screens.length - 1,

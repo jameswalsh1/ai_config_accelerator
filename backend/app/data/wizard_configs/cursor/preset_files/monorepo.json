@@ -1,0 +1,9 @@
+[
+  {
+    "label": "Monorepo standards",
+    "description": "Guidance for repositories with multiple language stacks.",
+    "value": "## Monorepo Standards\n\n- Keep frontend, backend, and shared code clearly separated.\n- Each service should have its own build config and dependency manifest.\n- Use typed contracts (OpenAPI, gRPC) between services where possible.\n- Run language-specific linting and tests in CI for each package.\n- Document setup steps for each workspace in the top-level README.",
+    "mode": "append",
+    "tags": ["cursor", "monorepo"]
+  }
+]

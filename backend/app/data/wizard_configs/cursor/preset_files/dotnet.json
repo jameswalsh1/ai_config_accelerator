@@ -1,0 +1,9 @@
+[
+  {
+    "label": ".NET / C# conventions",
+    "description": ".NET architecture and safe async patterns.",
+    "value": "## .NET / C# Coding Standards\n\n- Use async/await throughout and avoid `.Result` / `.Wait()`.\n- Enable nullable reference types in `.csproj`: `<Nullable>enable</Nullable>`.\n- Prefer constructor injection and avoid service locator patterns.\n- Keep controllers thin: validation, dispatch, response mapping.\n- Use EF Core async methods and avoid raw SQL string concatenation.\n- Turn on warnings as errors for analyzers and code style.",
+    "mode": "append",
+    "tags": ["cursor", "dotnet"]
+  }
+]

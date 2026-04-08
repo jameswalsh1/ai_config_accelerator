@@ -1,0 +1,9 @@
+[
+  {
+    "label": "API design standards",
+    "description": "API design guidance for REST services.",
+    "value": "## API Design Standards\n\n- Use meaningful HTTP methods: GET, POST, PUT/PATCH, DELETE.\n- Consistent status codes: 200/201, 400, 401, 403, 404, 500.\n- Keep error responses consistent with a JSON error schema.\n- Validate inputs at the API boundary, not downstream.\n- Use pagination for large collections and return total counts when helpful.\n- Version APIs explicitly in the path or headers.",
+    "mode": "append",
+    "tags": ["cursor", "api"]
+  }
+]

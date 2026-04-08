@@ -5,6 +5,7 @@ import { PresetBar } from './PresetBar'
 import { AgentListField } from './fields/AgentListField'
 import { CheckboxField } from './fields/CheckboxField'
 import { MultiSelectField } from './fields/MultiSelectField'
+import { RepeatableGroupField } from './fields/RepeatableGroupField'
 import { SelectField } from './fields/SelectField'
 import { TextAreaField } from './fields/TextAreaField'
 import { TextField } from './fields/TextField'
@@ -12,11 +13,13 @@ import { TextField } from './fields/TextField'
 interface WizardFieldScreenProps {
   screen: Screen
   answers: WizardAnswers
+  activeTags: string[]
+  targetTag: string
   fieldError: string | null
   onFieldChange: (fieldId: string, value: unknown) => void
 }
 
-export function WizardFieldScreen({ screen, answers, fieldError, onFieldChange }: WizardFieldScreenProps) {
+export function WizardFieldScreen({ screen, answers, activeTags, targetTag, fieldError, onFieldChange }: WizardFieldScreenProps) {
   const { step, field, isFirstFieldOfStep, stepIndex } = screen
   const stepAnswers = answers[step.id] ?? {}
 
@@ -37,6 +40,7 @@ export function WizardFieldScreen({ screen, answers, fieldError, onFieldChange }
     switch (field.type) {
       case 'multi_select': return getArr()
       case 'agent_list': return getAgents()
+      case 'repeatable_group': return stepAnswers[field.id] as Record<string, unknown>[] | undefined ?? []
       case 'checkbox': return getBool()
       default: return getStr()
     }
@@ -53,6 +57,8 @@ export function WizardFieldScreen({ screen, answers, fieldError, onFieldChange }
         return <SelectField field={field} value={getStr((field.default as string | undefined) ?? '')} error={error} onChange={v => onFieldChange(field.id, v)} />
       case 'multi_select':
         return <MultiSelectField field={field} value={getArr()} error={error} onChange={v => onFieldChange(field.id, v)} />
+      case 'repeatable_group':
+        return <RepeatableGroupField field={field} value={stepAnswers[field.id] as Record<string, unknown>[] | undefined ?? []} error={error} onChange={v => onFieldChange(field.id, v)} />
       case 'checkbox':
         return <CheckboxField field={field} value={getBool((field.default as boolean | undefined) ?? false)} error={error} onChange={v => onFieldChange(field.id, v)} />
       case 'agent_list':
@@ -114,6 +120,8 @@ export function WizardFieldScreen({ screen, answers, fieldError, onFieldChange }
             presets={field.presets}
             fieldType={field.type}
             currentValue={currentValue()}
+            activeTags={activeTags}
+            targetTag={targetTag}
             onChange={v => onFieldChange(field.id, v)}
           />
         )}

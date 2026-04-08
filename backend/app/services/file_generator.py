@@ -1,9 +1,8 @@
 from typing import Any
 
 from app.enums import FieldType, OutputFormat
-from app.models.wizard import WizardConfig, WizardStep
+from app.models.wizard import WizardConfig, WizardField, WizardStep
 
-# Answers shape: { step_id: { field_id: value } }
 type Answers = dict[str, dict[str, Any]]
 
 
@@ -12,16 +11,18 @@ def _get(step_answers: dict[str, Any], field_id: str, default: Any = None) -> An
     return v if v is not None else default
 
 
-# ---------------------------------------------------------------------------
-# Format renderers
-# ---------------------------------------------------------------------------
+def _get_field_value(field, step_answers: dict[str, Any]) -> Any:
+    value = _get(step_answers, field.id, field.default)
+    return value if value is not None else field.locked_value
 
 
 def _render_text(step: WizardStep, step_answers: dict[str, Any]) -> str:
     """Generic key: value text rendering — original behaviour, kept for demo/fallback."""
     lines: list[str] = [f"# {step.title}", ""]
     for field in step.fields:
-        value = _get(step_answers, field.id, field.default)
+        if field.render is False:
+            continue
+        value = _get_field_value(field, step_answers)
         if value is None:
             continue
         if isinstance(value, list):
@@ -41,21 +42,22 @@ def _render_markdown(step: WizardStep, step_answers: dict[str, Any]) -> str:
     lines: list[str] = [f"# {heading}", ""]
 
     for field in step.fields:
-        if field.id == "heading":
+        if field.render is False or field.id == "heading":
             continue
-        value = _get(step_answers, field.id, field.default)
-        has_content = bool(value) or isinstance(value, bool) or bool(field.locked_value)
+        value = _get_field_value(field, step_answers)
+        has_content = bool(value) or isinstance(value, bool)
         if not has_content:
             continue
 
         if field.type == FieldType.textarea:
             locked = (field.locked_value or "").strip()
-            user = str(value).strip() if value else ""
+            user = str(_get(step_answers, field.id, field.default)).strip() if _get(step_answers, field.id, field.default) else ""
             text = "\n".join(filter(None, [locked, user]))
             if text:
                 lines += [f"## {field.label}", "", text, ""]
         elif field.type in (FieldType.text, FieldType.select):
-            lines += [f"**{field.label}:** {value}", ""]
+            value_text = str(value).strip()
+            lines += [f"**{field.label}:** {value_text}", ""]
         elif field.type == FieldType.multi_select:
             items = value if isinstance(value, list) else [value]
             if items:
@@ -67,15 +69,21 @@ def _render_markdown(step: WizardStep, step_answers: dict[str, Any]) -> str:
 
 
 def _render_markdown_frontmatter(step: WizardStep, step_answers: dict[str, Any]) -> str:
-    """Fields with frontmatter=True → YAML block; remaining fields → Markdown body."""
+    """Fields with frontmatter=True → YAML block; remaining fields → Markdown body.
+    
+    Note: select/multi_select fields without frontmatter=True are treated as UI-only
+    control fields and are not rendered to the output.
+    """
     fm_lines: list[str] = []
     body_lines: list[str] = []
 
     for field in step.fields:
-        value = _get(step_answers, field.id, field.default)
+        if field.render is False:
+            continue
+        value = _get_field_value(field, step_answers)
         # Allow through if there is a user value OR a locked_value to emit
         user_empty = value is None or (value == "" and not isinstance(value, bool))
-        if user_empty and not field.locked_value:
+        if user_empty:
             continue
 
         key = field.frontmatter_key or field.id
@@ -89,18 +97,20 @@ def _render_markdown_frontmatter(step: WizardStep, step_answers: dict[str, Any])
             else:
                 fm_lines.append(f'{key}: "{str(value).strip()}"')
         else:
+            # Skip select/multi_select fields that aren't marked for frontmatter
+            # (these are UI control fields, not output fields)
+            if field.type in (FieldType.select, FieldType.multi_select):
+                continue
+            
             if field.type == FieldType.textarea:
                 locked = (field.locked_value or "").strip()
-                user = str(value).strip() if value else ""
+                user = str(_get(step_answers, field.id, field.default)).strip() if _get(step_answers, field.id, field.default) else ""
                 text = "\n".join(filter(None, [locked, user]))
                 if text:
                     body_lines += [text, ""]
-            elif field.type in (FieldType.text, FieldType.select):
-                body_lines += [f"**{field.label}:** {value}", ""]
-            elif field.type == FieldType.multi_select:
-                items = value if isinstance(value, list) else [value]
-                if items:
-                    body_lines += [f"## {field.label}", ""] + [f"- {i}" for i in items] + [""]
+            elif field.type == FieldType.text:
+                text_value = str(value).strip()
+                body_lines += [f"**{field.label}:** {text_value}", ""]
 
     parts: list[str] = []
     if fm_lines:
@@ -113,6 +123,8 @@ def _render_markdown_frontmatter(step: WizardStep, step_answers: dict[str, Any])
 def _render_verbatim(step: WizardStep, step_answers: dict[str, Any]) -> str:
     """Return the 'content' field verbatim; falls back to the first non-empty textarea."""
     for field in step.fields:
+        if field.render is False:
+            continue
         if field.id == "content" or field.type == FieldType.textarea:
             value = _get(step_answers, field.id, field.default)
             locked = (field.locked_value or "").strip()
@@ -147,9 +159,83 @@ def _render_agent(agent: dict[str, Any]) -> str:
     return "\n".join(parts).rstrip() + "\n"
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+def _render_group_entry(fields: list[dict[str, Any]], entry: dict[str, Any], title: str, output_format: OutputFormat) -> str:
+    class TempStep:
+        pass
+
+    temp_step = TempStep()
+    temp_step.title = title
+    temp_step.fields = fields
+    temp_step.output_format = output_format
+
+    if output_format == OutputFormat.markdown:
+        return _render_markdown(temp_step, entry)
+    if output_format == OutputFormat.markdown_frontmatter:
+        return _render_markdown_frontmatter(temp_step, entry)
+    if output_format == OutputFormat.verbatim:
+        return _render_verbatim(temp_step, entry)
+    return _render_text(temp_step, entry)
+
+
+def _resolve_directory_output(step: WizardStep, step_answers: dict[str, Any]) -> str | None:
+    if not step.output_file.endswith("/"):
+        return None
+
+    candidate_keys = [
+        "rule_file_name",
+        "file_name",
+        "filename",
+        "prompt_file_name",
+        "instruction_file_name",
+    ]
+
+    for key in candidate_keys:
+        value = step_answers.get(key)
+        if isinstance(value, str) and value.strip():
+            return f"{step.output_file}{value.strip()}"
+
+    for field in step.fields:
+        if field.id in candidate_keys:
+            value = step_answers.get(field.id)
+            if isinstance(value, str) and value.strip():
+                return f"{step.output_file}{value.strip()}"
+
+    default_file_name = step.id.replace("_", "-")
+    if step.id == "path_instructions":
+        default_file_name = "copilot-instructions"
+    elif step.id == "prompt_files":
+        default_file_name = "copilot-prompts"
+    elif step.id == "agent_skills":
+        default_file_name = "copilot-skills"
+
+    suffix = {
+        OutputFormat.markdown_frontmatter: ".md",
+        OutputFormat.markdown: ".md",
+        OutputFormat.verbatim: ".txt",
+        OutputFormat.text: ".txt",
+    }.get(step.output_format, ".txt")
+
+    return f"{step.output_file}{default_file_name}{suffix}"
+
+
+def _resolve_directory_output_for_entry(step: WizardStep, entry: dict[str, Any]) -> str | None:
+    if not step.output_file.endswith("/"):
+        return None
+
+    candidate_keys = [
+        "rule_file_name",
+        "file_name",
+        "filename",
+        "prompt_file_name",
+        "instruction_file_name",
+    ]
+
+    for key in candidate_keys:
+        value = entry.get(key)
+        if isinstance(value, str) and value.strip():
+            return f"{step.output_file}{value.strip()}"
+
+    return None
 
 
 def generate_files(config: WizardConfig, answers: Answers) -> dict[str, str]:
@@ -178,8 +264,34 @@ def generate_files(config: WizardConfig, answers: Answers) -> dict[str, str]:
                 )
                 files[filename] = [_render_agent(agent_data)]
 
-        # skip normal rendering if every field in this step is an agent_list field
-        if all(f.type == FieldType.agent_list for f in step.fields):
+        repeatable_fields = [f for f in step.fields if f.type == FieldType.repeatable_group]
+        for field in repeatable_fields:
+            entries = step_answers.get(field.id)
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                entry_filename = _resolve_directory_output_for_entry(step, entry)
+                if not entry_filename:
+                    continue
+                block = _render_group_entry(field.fields or [], entry, step.title, step.output_format)
+                if block.strip():
+                    files[entry_filename] = [block]
+
+        if all(f.type in (FieldType.agent_list, FieldType.repeatable_group) for f in step.fields):
+            continue
+
+        if dir_output := _resolve_directory_output(step, step_answers):
+            block = _render_verbatim(step, step_answers) if step.output_format == OutputFormat.verbatim else (
+                _render_markdown(step, step_answers)
+                if step.output_format == OutputFormat.markdown
+                else _render_markdown_frontmatter(step, step_answers)
+                if step.output_format == OutputFormat.markdown_frontmatter
+                else _render_text(step, step_answers)
+            )
+            if block.strip():
+                files[dir_output] = [block]
             continue
 
         match step.output_format:
@@ -200,5 +312,5 @@ def generate_files(config: WizardConfig, answers: Answers) -> dict[str, str]:
     return {
         filename: "\n\n".join(non_empty) if len(non_empty) > 1 else non_empty[0]
         for filename, blocks in files.items()
-        if (non_empty := [b for b in blocks if b])
+        if (non_empty := [b for b in blocks if b.strip()])
     }

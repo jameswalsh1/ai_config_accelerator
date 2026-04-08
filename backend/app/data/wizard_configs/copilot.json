@@ -1,14 +1,49 @@
 {
   "id": "copilot",
   "title": "GitHub Copilot Configuration",
-  "description": "Generate repository-wide instructions, path-specific rules, agent guidance, and settings for GitHub Copilot.",
+  "description": "Generate repository-wide custom instructions, path-specific custom instructions, agent skills, prompt files, custom agents, and repository settings for GitHub Copilot.",
   "target": "copilot",
+  "schema_version": "1.0",
+  "target_version_constraints": {
+    "copilot": "enterprise-cloud-latest"
+  },
+  "output_preview_targets": [
+    {
+      "target": "repo_instructions",
+      "label": ".github/copilot-instructions.md"
+    },
+    {
+      "target": "path_instructions",
+      "label": ".github/instructions/*.instructions.md"
+    },
+    {
+      "target": "agent_skills",
+      "label": ".github/skills/*"
+    },
+    {
+      "target": "prompt_files",
+      "label": ".github/prompts/*"
+    },
+    {
+      "target": "agent_instruction_files",
+      "label": "AGENTS.md (root or nested)"
+    },
+    {
+      "target": "custom_agents",
+      "label": ".github/agents/*"
+    },
+    {
+      "target": "repo_settings",
+      "label": ".github/copilot/settings.json"
+    }
+  ],
   "steps": [
     {
       "id": "repo_instructions",
-      "title": "Repository-Wide Instructions",
-      "description": "Configure .github/copilot-instructions.md — applied automatically to every Copilot interaction in this repository.",
-      "hint": "This is the most impactful Copilot config file. It is loaded automatically into all supported Copilot surfaces (Chat, completions, agents). Include coding standards, your stack, build/test commands, and conventions you always want enforced. Whitespace between instructions is ignored.",
+      "title": "Repository-Wide Custom Instructions",
+      "description": "Configure .github/copilot-instructions.md — applied automatically to all supported Copilot surfaces in this repository.",
+      "supported_surfaces": ["chat", "completions", "code_review", "cloud_agent", "agents"],
+      "hint": "Repository-wide instructions are best used for stable project context: coding standards, stack details, build/test commands, and durable conventions. Avoid editor-specific UI shortcuts or transient guidance in this file.",
       "output_file": ".github/copilot-instructions.md",
       "output_format": "markdown",
       "fields": [
@@ -25,10 +60,11 @@
           "id": "coding_standards",
           "type": "textarea",
           "label": "Coding Standards & Conventions",
-          "description": "Style rules, naming conventions, and patterns Copilot should consistently follow.",
+          "description": "Stable style rules, naming conventions, and patterns Copilot should consistently follow.",
           "placeholder": "Add project-specific coding standards here...",
-          "screen_hint": "The best-practice defaults below are always included. Use this field to add project-specific conventions on top of them.",
-          "locked_value": "- Validate all external input at system boundaries. Never trust data from users, APIs, or files.\n- Never hardcode credentials, API keys, tokens, or secrets in source code.\n- Handle errors explicitly. Never silently swallow exceptions.\n- Prefer existing patterns over introducing new abstractions — consistency over novelty.\n- Keep changes small and targeted to the stated task.\n- Each unit of code should have a single, clear responsibility.\n- Use descriptive, intention-revealing names for variables, functions, and types.",
+          "screen_hint": "These durable principles are always included. Add stack-specific conventions on top. Click presets to add common developer standards.",
+          "preset_files": ["shared/preset_files/llm.json"],
+          "locked_value": "- Validate all external input at system boundaries. Never trust data from users, APIs, or files without validation.\n- Never hardcode credentials, API keys, tokens, or secrets. Use environment variables or secure vaults.\n- Handle all errors explicitly. Never silently swallow exceptions or return undefined.\n- Write descriptive, intention-revealing names for variables, functions, classes, and types.\n- Use type annotations wherever they improve clarity and catch errors early.\n- Keep functions small and focused. Each should do one thing well.\n- Prefer existing project patterns over introducing new abstractions. Consistency beats novelty.\n- Review every suggestion critically; do not accept something you cannot explain.\n- Always run tests before committing. Never skip the test suite.",
           "presets": [
             { "label": "TypeScript strict mode", "description": "Enforce strict type checking", "value": "- Use TypeScript strict mode. Prefer explicit types at all public API boundaries.", "mode": "append" },
             { "label": "No `any` types", "description": "Use `unknown` and narrow with type guards", "value": "- Never use `any` — use `unknown` and narrow with type guards.", "mode": "append" },
@@ -41,18 +77,53 @@
           ]
         },
         {
-          "id": "build_test_commands",
-          "type": "textarea",
-          "label": "Build & Test Commands",
-          "description": "The exact commands Copilot should suggest or run to build, test, and lint the project.",
-          "placeholder": "- Install: npm install\n- Build: npm run build\n- Test: npm test\n- Lint: npm run lint\n- Type check: npm run typecheck",
-          "screen_hint": "Include every command needed to go from a fresh clone to a passing test run. Click a preset to load a common stack.",
-          "presets": [
-            { "label": "npm / TypeScript", "description": "Standard Node.js + TypeScript", "value": "- Install: npm install\n- Build: npm run build\n- Test: npm test\n- Lint: npm run lint\n- Type check: npm run typecheck", "mode": "replace" },
-            { "label": "pnpm / TypeScript", "description": "pnpm-based workspace", "value": "- Install: pnpm install\n- Build: pnpm build\n- Test: pnpm test\n- Lint: pnpm lint", "mode": "replace" },
-            { "label": "Python / FastAPI", "description": "Python backend with FastAPI", "value": "- Install: pip install -r requirements.txt\n- Run: python3 -m uvicorn app.main:app --reload\n- Test: python3 -m pytest\n- Type check: python3 -m mypy .", "mode": "replace" },
-            { "label": "FastAPI + React (monorepo)", "description": "Full-stack monorepo with Makefile", "value": "- Both: make dev\n- Backend only: make backend\n- Frontend only: make frontend\n- Install all: make install", "mode": "replace" }
-          ]
+          "id": "install",
+          "type": "text",
+          "label": "Install command",
+          "description": "Command to install project dependencies.",
+          "placeholder": "npm install"
+        },
+        {
+          "id": "dev",
+          "type": "text",
+          "label": "Dev command",
+          "description": "Command to start the development environment.",
+          "placeholder": "npm run dev"
+        },
+        {
+          "id": "build",
+          "type": "text",
+          "label": "Build command",
+          "description": "Command to build the project.",
+          "placeholder": "npm run build"
+        },
+        {
+          "id": "test",
+          "type": "text",
+          "label": "Test command",
+          "description": "Command to run the project test suite.",
+          "placeholder": "npm test"
+        },
+        {
+          "id": "lint",
+          "type": "text",
+          "label": "Lint command",
+          "description": "Command to run static linting.",
+          "placeholder": "npm run lint"
+        },
+        {
+          "id": "typecheck",
+          "type": "text",
+          "label": "Typecheck command",
+          "description": "Command to run type checking.",
+          "placeholder": "npm run typecheck"
+        },
+        {
+          "id": "ci",
+          "type": "text",
+          "label": "CI command",
+          "description": "Command that mirrors the project's CI pipeline.",
+          "placeholder": "npm run ci"
         },
         {
           "id": "architecture_notes",
@@ -68,157 +139,161 @@
           ]
         },
         {
-          "id": "additional_instructions",
+          "id": "security_baseline",
           "type": "textarea",
-          "label": "Additional Instructions",
-          "description": "Any other preferences, constraints, or context for Copilot to follow across this repository.",
-          "placeholder": "- Prefer small, focused changes over large refactors.\n- Always add JSDoc to exported functions.\n- Do not introduce new dependencies without discussion."
+          "label": "Security Baseline",
+          "description": "Stable security expectations that apply across all repository interactions.",
+          "placeholder": "- Do not commit secrets...",
+          "locked_value": "- Never commit secrets, API keys, tokens, or credentials to source control.\n- Validate all external inputs before use.\n- Follow the principle of least privilege for access and permissions.\n- Prefer safe defaults over convenience in security-sensitive code.",
+          "presets": [
+            { "label": "Dependency security", "description": "Basic dependency hygiene", "value": "- Prefer well-maintained libraries with active security patching.\n- Pin dependency versions for reproducible builds.\n- Check for known vulnerabilities before adding any package.", "mode": "append" },
+            { "label": "Sensitive data handling", "description": "Protect sensitive data", "value": "- Never log secrets or PII.\n- Mask or redact sensitive values in telemetry and logs.\n- Use encrypted storage for credentials and keys.", "mode": "append" }
+          ]
+        },
+        {
+          "id": "protected_paths",
+          "type": "textarea",
+          "label": "Protected Paths",
+          "description": "Repository paths and files that should generally not be modified by automated tools.",
+          "placeholder": "- Do not modify generated code or vendor directories.",
+          "locked_value": "- Do not modify generated, vendored, or third-party files.\n- Do not edit lock files (package-lock.json, yarn.lock, Pipfile.lock, go.sum) by hand.\n- Treat deployment manifests and binary artifacts as protected unless the task explicitly requires it.",
+          "presets": [
+            { "label": "Common generated files", "description": "Protect build artifacts and lockfiles", "value": "- Do not modify files under dist/, build/, or .next/.\n- Do not edit package-lock.json or yarn.lock directly.\n- Do not modify __pycache__/ or *.pyc files.", "mode": "append" }
+          ]
+        },
+        {
+          "id": "dependency_policy",
+          "type": "textarea",
+          "label": "Dependency & Package Policy",
+          "description": "Rules for adding, updating, or removing dependencies.",
+          "placeholder": "- Prefer stable, well-maintained packages.\n- Avoid unnecessary new dependencies.",
+          "presets": [
+            { "label": "Conservative dependency additions", "description": "Avoid dependency bloat", "value": "- Do not introduce new dependencies without explicit approval.\n- Prefer built-in libraries and existing dependencies over new ones.", "mode": "append" }
+          ]
+        },
+        {
+          "id": "workflow_guidance",
+          "type": "textarea",
+          "label": "Stable Workflow Guidance",
+          "description": "General workflow expectations that are durable and apply across Copilot surfaces.",
+          "placeholder": "- Review suggestions critically.\n- Keep code changes small and incremental.\n- Validate security-sensitive code and tests before committing.",
+          "default": "- Review suggestions critically and refuse anything that does not match project conventions.\n- Keep changes small and incremental; prefer focused pull requests.\n- Use tests to verify behavior before accepting changes.\n- Validate security-sensitive code carefully, including auth, input validation, and secrets handling.",
+          "screen_hint": "This field is for stable workflow guidance, not editor-specific shortcuts or transient UI commands. Use it to define engineering habits that apply across surfaces."
         }
       ]
     },
     {
       "id": "path_instructions",
-      "title": "Path-Specific Instructions",
-      "description": "Configure .github/instructions/code.instructions.md — rules applied when Copilot works in files matching a glob pattern.",
-      "hint": "Path-specific files use an applyTo frontmatter field with comma-separated glob patterns. They are combined with the repo-wide instructions when both match.",
-      "output_file": ".github/instructions/code.instructions.md",
+      "title": "Path-Specific Custom Instructions",
+      "description": "Configure one or more .instructions.md files under .github/instructions/ for path-based Copilot guidance.",
+      "supported_surfaces": ["chat", "code_review", "cloud_agent"],
+      "hint": "Path-specific instruction files are supported in Copilot Chat, code review, and cloud agent surfaces on supported platforms. Use applyTo frontmatter to target files, and keep these files focused on path-specific conventions.",
+      "output_file": ".github/instructions/",
       "output_format": "markdown_frontmatter",
       "fields": [
         {
-          "id": "apply_to",
-          "type": "text",
-          "label": "Apply To (Glob Patterns)",
-          "description": "Comma-separated glob patterns. These instructions activate when Copilot is editing matching files.",
-          "placeholder": "**/*.ts,**/*.tsx",
-          "required": true,
-          "default": "**/*.ts,**/*.tsx",
-          "frontmatter": true,
-          "frontmatter_key": "applyTo",
-          "presets": [
-            { "label": "All TypeScript", "value": "**/*.ts,**/*.tsx", "mode": "replace" },
-            { "label": "React components only", "value": "**/*.tsx", "mode": "replace" },
-            { "label": "Python files", "value": "**/*.py", "mode": "replace" },
-            { "label": "Tests only", "value": "**/*.test.ts,**/*.spec.ts,**/*.test.tsx", "mode": "replace" },
-            { "label": "API routes", "value": "src/app/api/**,backend/**", "mode": "replace" }
-          ]
-        },
-        {
-          "id": "instructions",
+          "id": "instruction_files",
           "type": "textarea",
-          "label": "File-Type Instructions",
-          "description": "Specific guidance that applies when working in files matching the glob patterns above.",
-          "placeholder": "- Use TypeScript strict mode patterns.\n- Prefer explicit types at all public API boundaries.\n- Use `readonly` for parameters that should not be mutated.\n- Avoid type assertions (`as`) unless absolutely necessary.",
-          "required": true,
-          "screen_hint": "These instructions are only injected when Copilot is editing files matching your glob pattern. Keep them concise and file-type-specific.",
-          "presets": [
-            { "label": "TypeScript strict", "value": "- Use TypeScript strict mode patterns.\n- Prefer explicit types at all public API boundaries.\n- Use `readonly` for function parameters that should not be mutated.\n- Avoid type assertions (`as`) unless unavoidable.", "mode": "append" },
-            { "label": "React components", "value": "- Use functional components and hooks exclusively. Never use class components.\n- Keep components focused on a single concern.\n- Extract complex logic into custom hooks.", "mode": "append" },
-            { "label": "FastAPI routes", "value": "- Validate all request inputs using Pydantic models.\n- Return consistent error shapes: { detail: string }.\n- Use async def for all route handlers.", "mode": "append" },
-            { "label": "Test files", "value": "- Use Arrange / Act / Assert structure.\n- Test at the behaviour level, not the implementation level.\n- Mock external I/O (HTTP, database, filesystem).", "mode": "append" }
-          ]
+          "label": "Path-Specific Instruction Files",
+          "description": "Define one or more path-specific .instructions.md files using applyTo frontmatter blocks.",
+          "placeholder": "---\napplyTo: '**/*.test.ts'\n---\n# Test guidance\n- Use Arrange / Act / Assert structure.\n\n---\napplyTo: 'src/backend/**'\n---\n# Backend guidance\n- Validate all request inputs with Pydantic models.",
+          "screen_hint": "This field supports multiple files in a single editor block. The generator should validate frontmatter, comma-separated glob syntax, overlapping rules, and duplicate patterns before writing files.",
+          "validation": {
+            "frontmatter": true,
+            "glob_patterns": true,
+            "duplicate_matches": true,
+            "overlap_detection": true
+          }
         }
       ]
     },
     {
-      "id": "agents_md",
-      "title": "Agent Instructions (AGENTS.md)",
-      "description": "Configure AGENTS.md — guidance for Copilot coding agents and agentic workflows in this repository.",
-      "hint": "AGENTS.md is read by Copilot coding agents when executing automated tasks. The nearest AGENTS.md in the directory tree takes precedence. Keep content concise and action-oriented.",
+      "id": "agent_skills",
+      "title": "Agent Skills",
+      "description": "Define reusable Copilot agent skills for task-specific workflows like debug CI, review a PR, or write a migration.",
+      "supported_surfaces": ["agents", "chat", "cloud_agent"],
+      "hint": "Agent skills are a better home for reusable workflows than broad repository instructions or AGENTS.md. Skills should be narrow, task-focused, and reusable.",
+      "output_file": ".github/skills/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "skills",
+          "type": "textarea",
+          "label": "Agent Skills",
+          "description": "Describe one or more reusable skills, their intent, expected inputs, outputs, and restrictions.",
+          "placeholder": "- Name: debug-ci\n  Description: Diagnose and fix failing CI jobs.\n  Tools: Read, Bash\n  Output: root cause and remediation steps\n\n- Name: review-pr\n  Description: Review a pull request for correctness, style, and tests.\n  Tools: Read, Search\n  Output: concise findings and suggested fixes",
+          "screen_hint": "Use skills for reusable task-specific workflows rather than broad project context. Keep each skill focused and narrow."
+        }
+      ]
+    },
+    {
+      "id": "prompt_files",
+      "title": "Prompt Files",
+      "description": "Create reusable prompt files for one-off tasks and standardized prompts.",
+      "hint": "Prompt files sit between broad instructions and fully custom agents. Use them for repeatable task prompts that are too specific for repository instructions but too lightweight for a full agent profile.",
+      "output_file": ".github/prompts/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "prompt_files",
+          "type": "textarea",
+          "label": "Prompt Files",
+          "description": "Define prompt files and their intended use cases.",
+          "placeholder": "- Name: release-note-draft\n  Description: Draft release notes from PR descriptions and changelog entries.\n  Prompt: Summarize merged changes into release notes for the next version.",
+          "screen_hint": "Prompt files should describe a narrow reusable prompt, not broad repository conventions."
+        }
+      ]
+    },
+    {
+      "id": "agent_instruction_files",
+      "title": "Agent Instruction Files",
+      "description": "Configure AGENTS.md guidance for agentic workflows. Root AGENTS.md can combine with .github/copilot-instructions.md, and nested AGENTS.md files take precedence in subtrees.",
+      "hint": "AGENTS.md is specifically relevant to agentic scenarios. Use nested AGENTS.md files for /frontend, /backend, or /infra directories when you need subtree-specific agent guidance.",
       "output_file": "AGENTS.md",
       "output_format": "markdown",
       "fields": [
         {
-          "id": "heading",
-          "type": "text",
-          "label": "File Heading",
-          "placeholder": "Agent Instructions",
-          "required": true,
-          "default": "Agent Instructions"
+          "id": "generate_agent_instructions",
+          "type": "checkbox",
+          "label": "Generate AGENTS.md instruction files",
+          "description": "Enable root and subtree AGENTS.md guidance files when custom agents or agentic workflows are required.",
+          "default": false
         },
         {
-          "id": "build_commands",
+          "id": "instruction_files",
           "type": "textarea",
-          "label": "Build & Test Commands",
-          "description": "The exact commands the agent must use to build, test, and validate this project.",
-          "placeholder": "- Install: npm install\n- Build: npm run build\n- Test: npm test\n- Lint: npm run lint",
-          "presets": [
-            { "label": "npm / TypeScript", "value": "- Install: npm install\n- Build: npm run build\n- Test: npm test\n- Lint: npm run lint", "mode": "replace" },
-            { "label": "Python / FastAPI", "value": "- Install: pip install -r requirements.txt\n- Test: python3 -m pytest\n- Lint: python3 -m ruff check .", "mode": "replace" },
-            { "label": "Makefile monorepo", "value": "- Install all: make install\n- Run both: make dev\n- Build frontend: make build", "mode": "replace" }
-          ]
-        },
-        {
-          "id": "naming_patterns",
-          "type": "textarea",
-          "label": "Naming & Pattern Conventions",
-          "description": "File naming conventions, directory structure, and code patterns the agent should follow.",
-          "placeholder": "- React components: PascalCase files in src/components/.\n- Utility functions: camelCase.\n- Test files co-located with source: *.test.ts",
-          "presets": [
-            { "label": "React project", "value": "- Components: PascalCase in src/components/.\n- Hooks: camelCase prefixed with `use` in src/hooks/.\n- Utilities: camelCase in src/utils/.\n- Tests: co-located *.test.ts files.", "mode": "append" },
-            { "label": "FastAPI project", "value": "- Routers in app/routers/, models in app/models/, services in app/services/.\n- Pydantic models: PascalCase.\n- Route functions: snake_case.", "mode": "append" }
-          ]
-        },
-        {
-          "id": "do_not_modify",
-          "type": "textarea",
-          "label": "Do Not Modify",
-          "description": "Files or directories the agent must never touch.",
-          "placeholder": "Add project-specific protected paths here...",
-          "locked_value": "- Do not modify generated, vendored, or third-party files.\n- Do not edit lock files (package-lock.json, yarn.lock, Pipfile.lock, go.sum) by hand.\n- Never commit secrets, API keys, or credentials to source control.",
-          "presets": [
-            { "label": "Common generated files", "value": "- Do not modify files under dist/, build/, or .next/.\n- Do not edit package-lock.json or yarn.lock directly.\n- Do not modify __pycache__/ or *.pyc files.", "mode": "replace" }
-          ]
-        },
-        {
-          "id": "agent_preferences",
-          "type": "textarea",
-          "label": "Additional Agent Guidance",
-          "description": "Any other constraints, workflows, or preferences the agent should follow.",
-          "placeholder": "Add project-specific agent guidance here...",
-          "locked_value": "- Run the full test suite after making changes. Fix all failures before marking a task complete.\n- Review every change for security implications before committing.\n- Return meaningful error messages. Never expose stack traces or internal paths to end users.\n- Commit changes in logical, atomic units with clear commit messages.",
-          "presets": [
-            { "label": "Safety first", "value": "- Always run tests after making changes and fix any failures before marking a task done.\n- Commit changes in logical, atomic units.\n- Never push to main directly.", "mode": "append" }
-          ]
+          "label": "AGENTS.md Content",
+          "description": "Write root AGENTS.md content and optionally describe nested subtree overrides for AGENTS.md files.",
+          "placeholder": "# Agent instructions\n- Use the security reviewer for security-related changes.\n- Use the test writer for new or changed code that needs coverage.",
+          "screen_hint": "AGENTS.md is an instruction file, not an agent profile. Keep it concise and focused on agent behavior expectations. If you need reusable agents, use the Custom Agents step instead."
         }
       ]
     },
     {
-      "id": "repo_settings",
-      "title": "Repository Settings (.github/copilot/settings.json)",
-      "description": "Configure repository-level Copilot CLI settings committed for your whole team.",
-      "hint": "Commit settings.json for team-wide Copilot CLI defaults. The companyAnnouncements key injects a reminder message into all Copilot contexts for this repository.",
-      "output_file": ".github/copilot/settings.json",
-      "output_format": "verbatim",
-      "fields": [
-        {
-          "id": "content",
-          "type": "textarea",
-          "label": "Settings JSON",
-          "description": "Edit the JSON for .github/copilot/settings.json.",
-          "rows": 10,
-          "screen_hint": "The companyAnnouncements array injects a short message into all Copilot Chat sessions for this repo — useful for linking to CONTRIBUTING.md or reminding contributors to run tests.",
-          "default": "{\n  \"companyAnnouncements\": [\"Follow CONTRIBUTING.md and run tests before committing.\"]\n}",
-          "presets": [
-            { "label": "Require tests before commit", "value": "{\n  \"companyAnnouncements\": [\"Always run the test suite and fix failures before committing.\"]\n}", "mode": "replace" },
-            { "label": "Link to CONTRIBUTING.md", "value": "{\n  \"companyAnnouncements\": [\"Read CONTRIBUTING.md before making changes. Run tests with `npm test`.\"]\n}", "mode": "replace" }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "agent_definitions",
-      "title": "Custom Agent Definitions",
-      "description": "Define custom Copilot agents with specific roles, tool access, and instructions for agentic workflows.",
-      "hint": "Custom agent profiles give Copilot a specific persona, tool set, and system prompt for a particular workflow. They are stored as .agent.md files in .github/agents/ and can be invoked by name in Copilot Chat or used by the coding agent on GitHub.com. Repo agents are shared via version control; user agents live in ~/.copilot/agents/.",
+      "id": "custom_agents",
+      "title": "Custom Agents",
+      "description": "Define custom Copilot agents with specific roles, tool access, optional MCP server config, and scope.",
+      "hint": "Custom agents are specialist profiles. Use repository-scoped agents for shared team workflows, or user-scoped agents for personal specialist profiles.",
       "output_file": ".github/agents/",
       "output_format": "text",
       "fields": [
         {
+          "id": "agent_scope",
+          "type": "select",
+          "label": "Agent Scope",
+          "description": "Choose whether these agents are shared in the repository or intended for personal user scope.",
+          "default": "project",
+          "options": [
+            { "value": "project", "label": "Repository-scoped agents (.github/agents/)" },
+            { "value": "user", "label": "User-scoped agents (~/.copilot/agents/)" }
+          ]
+        },
+        {
           "id": "agents",
           "type": "agent_list",
           "label": "Copilot Agents",
-          "description": "Define one or more custom agents. Each becomes a .agent.md file inside .github/agents/.",
-          "screen_hint": "Each agent gets a dedicated system prompt and a restricted set of tools. Narrow the tool list to the minimum needed for the agent's role — this makes agents safer and more focused. The name field becomes the filename and the @-mention handle in Copilot Chat.",
+          "description": "Define one or more custom agents. Each becomes a separate agent profile file.",
+          "screen_hint": "Each agent gets a system prompt that defines its role and boundary. Restrict tools to only what the agent needs — narrower permissions make agents safer, more reliable, and faster.",
           "presets": [
             {
               "label": "Security Reviewer",
@@ -227,17 +302,20 @@
                 "name": "security-reviewer",
                 "description": "Reviews code changes for security vulnerabilities and suggests actionable fixes",
                 "tools": ["read", "search"],
+                "model": "gpt-4.1",
+                "mcp_servers": ["github"],
                 "system_prompt": "Review the provided code changes for security vulnerabilities including injection flaws, broken authentication, sensitive data exposure, missing authorisation checks, and insecure dependencies.\n\nFor each issue: state the severity, describe the problem, and provide a concrete fix. Focus only on security — not style or architecture."
               },
               "mode": "append"
             },
             {
               "label": "PR Reviewer",
-              "description": "Reviews pull requests for quality and correctness",
+              "description": "Reviews pull requests for correctness and maintainability",
               "value": {
                 "name": "pr-reviewer",
                 "description": "Reviews pull requests for correctness, consistency, and maintainability",
                 "tools": ["read", "search"],
+                "model": "gpt-4.1",
                 "system_prompt": "Perform a thorough code review of the provided changes as a senior engineer. Cover: correctness, logic errors, edge cases, consistency with existing patterns, missing error handling, and performance red flags. Be constructive — for each issue explain why it matters and how to fix it."
               },
               "mode": "append"
@@ -249,28 +327,94 @@
                 "name": "test-writer",
                 "description": "Writes unit and integration tests for new or changed code using the project's existing test framework",
                 "tools": ["read", "write", "search", "run_command"],
+                "model": "gpt-4.1-mini",
                 "system_prompt": "Write tests for the code you are given. Use the testing framework already present in the project. Cover happy paths, edge cases, and error conditions. Keep each test focused on one behaviour. Run the tests after writing them and fix any failures."
               },
               "mode": "append"
             },
             {
               "label": "Documentation Writer",
-              "description": "Writes inline docs and README sections",
+              "description": "Writes inline docs and README content",
               "value": {
                 "name": "documentation-writer",
                 "description": "Writes and updates inline documentation and README content following project conventions",
                 "tools": ["read", "write", "search"],
+                "model": "claude-haiku-3-5",
                 "system_prompt": "Write and update documentation for the provided code. Match the documentation style already used in the project. Document all public APIs with a summary, parameters, return values, and usage examples where helpful. Do not modify source logic."
               },
               "mode": "append"
             }
+          ]
+        }
+      ],
+      "agent_config": {
+        "output_dir": ".github/agents/",
+        "file_suffix": ".agent.md",
+        "available_tools": ["read", "write", "edit", "search", "run_command", "browser"],
+        "available_models": ["gpt-4.1", "gpt-4.1-mini", "o3", "o4-mini", "claude-sonnet-4-5"],
+        "mcp_servers": ["github", "sentry", "playwright", "fetch"]
+      }
+    },
+    {
+      "id": "repo_settings",
+      "title": "Repository Settings (.github/copilot/settings.json)",
+      "description": "Configure repository-level Copilot settings committed for your whole team.",
+      "hint": "Commit settings.json for team-wide Copilot CLI defaults. Validate allowedTools and defaultModel against the documented format. Prefer auto selection unless you need a fixed model.",
+      "output_file": ".github/copilot/settings.json",
+      "output_format": "verbatim",
+      "fields": [
+        {
+          "id": "company_announcements",
+          "type": "textarea",
+          "label": "Company Announcements",
+          "description": "A short announcement shown in all Copilot contexts for this repo.",
+          "placeholder": "Always run tests before committing.",
+          "default": "Always run tests before committing. Review suggestions critically and validate changes against project conventions."
+        },
+        {
+          "id": "allowed_tools",
+          "type": "multi_select",
+          "label": "Allowed Tools",
+          "description": "The tools this repository permits in Copilot contexts.",
+          "options": [
+            { "value": "shell", "label": "shell" },
+            { "value": "filesystem", "label": "filesystem" },
+            { "value": "search", "label": "search" },
+            { "value": "browser", "label": "browser" },
+            { "value": "edit", "label": "edit" },
+            { "value": "write", "label": "write" },
+            { "value": "read", "label": "read" },
+            { "value": "run_command", "label": "run_command" }
           ],
-          "agent_config": {
-            "output_dir": ".github/agents/",
-            "file_suffix": ".agent.md",
-            "available_tools": ["read", "write", "edit", "search", "run_command", "browser"],
-            "available_models": ["gpt-4.1", "gpt-4.1-mini", "o3", "o4-mini", "claude-sonnet-4-5"]
-          }
+          "screen_hint": "Use only tool names that are valid in GitHub Copilot settings. Invalid values may make the settings file invalid."
+        },
+        {
+          "id": "default_model",
+          "type": "select",
+          "label": "Default Model",
+          "description": "The repo-level default model for Copilot. Use auto for GitHub-managed model selection unless you need a fixed model.",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "auto (recommended)" },
+            { "value": "gpt-4.1", "label": "gpt-4.1" },
+            { "value": "gpt-4.1-mini", "label": "gpt-4.1-mini" },
+            { "value": "claude-sonnet-4-5", "label": "claude-sonnet-4-5" }
+          ]
+        },
+        {
+          "id": "allow_per_agent_overrides",
+          "type": "checkbox",
+          "label": "Allow per-agent model overrides",
+          "description": "Permit custom agents to choose a different model than the repository default.",
+          "default": true
+        },
+        {
+          "id": "settings_json",
+          "type": "textarea",
+          "label": "Raw Settings JSON",
+          "description": "Optional fallback raw JSON for settings keys not covered by the structured fields.",
+          "rows": 8,
+          "screen_hint": "Use this only for settings that are not represented by the structured fields above. Keep the file valid JSON and avoid unsupported keys."
         }
       ]
     }

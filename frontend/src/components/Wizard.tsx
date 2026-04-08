@@ -18,6 +18,7 @@ export function Wizard({ config, onBack }: WizardProps) {
     currentScreenIndex,
     currentScreen,
     answers,
+    activeTags,
     fieldError,
     isFirstScreen,
     isLastScreen,
@@ -91,6 +92,8 @@ export function Wizard({ config, onBack }: WizardProps) {
             <WizardFieldScreen
               screen={currentScreen}
               answers={answers}
+              activeTags={activeTags}
+              targetTag={config.target}
               fieldError={fieldError}
               onFieldChange={(fieldId, value) =>
                 setFieldValue(currentScreen.step.id, fieldId, value)

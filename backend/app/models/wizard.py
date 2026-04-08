@@ -16,6 +16,12 @@ class Preset(BaseModel):
     description: str | None = None
     value: Any
     mode: PresetMode = PresetMode.append
+    tags: list[str] | None = None
+
+
+class PreviewTarget(BaseModel):
+    target: str
+    label: str
 
 
 class AgentFieldConfig(BaseModel):
@@ -42,6 +48,11 @@ class WizardField(BaseModel):
     frontmatter_key: str | None = None  # YAML key name; defaults to field id if frontmatter=True
     screen_hint: str | None = None  # verbose per-field instructional text shown on its own screen
     presets: list[Preset] | None = None  # quick-fill options shown as chips below the field
+    preset_files: list[str] | None = None  # load extra presets from external JSON files
+    tag_source: bool = False  # values from this field are used as active tag filters for presets
+    validation: dict[str, Any] | None = None
+    render: bool = True  # if false, field is used for metadata/control but not emitted in output
+    fields: list["WizardField"] | None = None
     locked_value: str | None = (
         None  # read-only best-practice content always prepended to generated output
     )
@@ -56,6 +67,7 @@ class WizardStep(BaseModel):
     fields: list[WizardField]
     output_file: str
     output_format: OutputFormat = OutputFormat.text
+    supported_surfaces: list[str] | None = None
 
 
 class WizardConfigSummary(BaseModel):
@@ -66,4 +78,7 @@ class WizardConfigSummary(BaseModel):
 
 
 class WizardConfig(WizardConfigSummary):
+    schema_version: str | None = None
+    target_version_constraints: dict[str, str] | None = None
+    output_preview_targets: list[PreviewTarget] | None = None
     steps: list[WizardStep]

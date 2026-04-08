@@ -72,3 +72,11 @@ class TestGetConfig:
             assert full.id == summary.id
             assert full.title == summary.title
             assert full.target == summary.target
+
+    def test_config_loads_schema_metadata(self):
+        cfg = get_config("cursor")
+        assert cfg is not None
+        assert cfg.schema_version is not None
+        assert isinstance(cfg.schema_version, str)
+        assert cfg.target_version_constraints is None or isinstance(cfg.target_version_constraints, dict)
+        assert cfg.output_preview_targets is None or isinstance(cfg.output_preview_targets, list)

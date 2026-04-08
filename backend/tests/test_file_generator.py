@@ -238,6 +238,26 @@ class TestRenderAgent:
         assert not any(k.startswith(".agents/") for k in files)
 
 
+class TestDirectoryOutputResolver:
+    def test_directory_output_with_file_name_field_writes_named_file(self):
+        step = _make_step(
+            "s",
+            ".cursor/rules/",
+            OutputFormat.verbatim,
+            [
+                _textfield("rule_file_name", default="my-rule.mdc"),
+                _textarea("content", default="rule content"),
+            ],
+        )
+        files = generate_files(
+            _make_config([step]),
+            {"s": {"rule_file_name": "my-rule.mdc", "content": "rule content"}},
+        )
+
+        assert ".cursor/rules/my-rule.mdc" in files
+        assert files[".cursor/rules/my-rule.mdc"] == "rule content"
+
+
 # ---------------------------------------------------------------------------
 # Integration — real configs
 # ---------------------------------------------------------------------------
@@ -259,9 +279,9 @@ class TestGenerateFilesIntegration:
         assert config is not None
         files = generate_files(config, {})
         md = files["CLAUDE.md"]
-        assert "Never trust data from users" in md
+        assert "Do not modify generated, vendored, or third-party files unless the task explicitly requires it." in md
         assert "Run lint and tests" in md
-        assert "Never commit secrets" in md
+        assert "Review every change for security implications" in md
 
     def test_claude_settings_locked_value_always_in_output(self):
         from app.services.config_loader import get_config
@@ -280,7 +300,7 @@ class TestGenerateFilesIntegration:
         answers = {"claude_md": {"coding_conventions": "- Project-specific rule."}}
         files = generate_files(config, answers)
         md = files["CLAUDE.md"]
-        assert "Never trust data from users" in md
+        assert "Do not modify generated, vendored, or third-party files unless the task explicitly requires it." in md
         assert "- Project-specific rule." in md
 
     def test_copilot_config_generates_instructions_file(self):
@@ -288,8 +308,13 @@ class TestGenerateFilesIntegration:
 
         config = get_config("copilot")
         assert config is not None
-        files = generate_files(config, {})
-        assert ".github/copilot-instructions.md" in files
+        answers = {
+            "path_instructions": {
+                "instruction_files": "---\napplyTo: '**/*.test.ts'\n---\n# Test guidance\n- Use Arrange / Act / Assert structure.\n"
+            }
+        }
+        files = generate_files(config, answers)
+        assert ".github/instructions/copilot-instructions.md" in files
 
     def test_cursor_config_generates_cursorignore(self):
         from app.services.config_loader import get_config
