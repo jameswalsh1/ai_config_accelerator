@@ -46,6 +46,12 @@ export function WizardFieldScreen({ screen, answers, activeTags, targetTag, fiel
     }
   }
 
+  const includeKey = (id: string) => `${id}__include`
+
+  const isIncluded = (id: string) => {
+    return Boolean(stepAnswers[includeKey(id)])
+  }
+
   const renderField = () => {
     const error = fieldError ?? undefined
     switch (field.type) {
@@ -109,6 +115,20 @@ export function WizardFieldScreen({ screen, answers, activeTags, targetTag, fiel
               <span className="text-xs font-medium text-gray-500">Best-practice defaults (always included)</span>
             </div>
             <pre className="whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-500 select-none">{field.locked_value}</pre>
+          </div>
+        )}
+
+        {/* If a field is marked render:false in the config, surface it but make inclusion explicit */}
+        {field.render === false && (
+          <div className="flex items-center gap-3">
+            <input
+              id={`${field.id}-include`}
+              type="checkbox"
+              checked={isIncluded(field.id)}
+              onChange={e => onFieldChange(includeKey(field.id), e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor={`${field.id}-include`} className="text-sm text-gray-600">Include this optional field in the generated output</label>
           </div>
         )}
 

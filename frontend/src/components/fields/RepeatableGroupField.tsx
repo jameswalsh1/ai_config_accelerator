@@ -28,6 +28,10 @@ function makeDefaultEntry(field: WizardField): Record<string, unknown> {
     } else {
       entry[nested.id] = ''
     }
+    // If the nested field is marked render:false, add an explicit include flag defaulting to false
+    if (nested.render === false) {
+      entry[`${nested.id}__include`] = false
+    }
   }
 
   return entry
@@ -48,48 +52,113 @@ function renderNestedField(
   switch (nestedField.type) {
     case 'text':
       return (
-        <TextField
-          {...commonProps}
-          key={nestedField.id}
-          value={String(value ?? '')}
-          onChange={v => onUpdate({ [nestedField.id]: v })}
-        />
+        <div key={nestedField.id}>
+          {nestedField.render === false && (
+            <div className="flex items-center gap-3 mb-2">
+              <input
+                id={`${nestedField.id}-include`}
+                type="checkbox"
+                checked={Boolean(entry[`${nestedField.id}__include`])}
+                onChange={e => onUpdate({ [`${nestedField.id}__include`]: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <label htmlFor={`${nestedField.id}-include`} className="text-xs text-gray-600">Include this optional field</label>
+            </div>
+          )}
+          <TextField
+            {...commonProps}
+            value={String(value ?? '')}
+            onChange={v => onUpdate({ [nestedField.id]: v })}
+          />
+        </div>
       )
     case 'textarea':
       return (
-        <TextAreaField
-          {...commonProps}
-          key={nestedField.id}
-          value={String(value ?? '')}
-          onChange={v => onUpdate({ [nestedField.id]: v })}
-        />
+        <div key={nestedField.id}>
+          {nestedField.render === false && (
+            <div className="flex items-center gap-3 mb-2">
+              <input
+                id={`${nestedField.id}-include`}
+                type="checkbox"
+                checked={Boolean(entry[`${nestedField.id}__include`])}
+                onChange={e => onUpdate({ [`${nestedField.id}__include`]: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <label htmlFor={`${nestedField.id}-include`} className="text-xs text-gray-600">Include this optional field</label>
+            </div>
+          )}
+          <TextAreaField
+            {...commonProps}
+            value={String(value ?? '')}
+            onChange={v => onUpdate({ [nestedField.id]: v })}
+          />
+        </div>
       )
     case 'select':
       return (
-        <SelectField
-          {...commonProps}
-          key={nestedField.id}
-          value={String(value ?? '')}
-          onChange={v => onUpdate({ [nestedField.id]: v })}
-        />
+        <div key={nestedField.id}>
+          {nestedField.render === false && (
+            <div className="flex items-center gap-3 mb-2">
+              <input
+                id={`${nestedField.id}-include`}
+                type="checkbox"
+                checked={Boolean(entry[`${nestedField.id}__include`])}
+                onChange={e => onUpdate({ [`${nestedField.id}__include`]: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <label htmlFor={`${nestedField.id}-include`} className="text-xs text-gray-600">Include this optional field</label>
+            </div>
+          )}
+          <SelectField
+            {...commonProps}
+            value={String(value ?? '')}
+            onChange={v => onUpdate({ [nestedField.id]: v })}
+          />
+        </div>
       )
     case 'multi_select':
       return (
-        <MultiSelectField
-          {...commonProps}
-          key={nestedField.id}
-          value={(Array.isArray(value) ? value : []) as string[]}
-          onChange={v => onUpdate({ [nestedField.id]: v })}
-        />
+        <div key={nestedField.id}>
+          {nestedField.render === false && (
+            <div className="flex items-center gap-3 mb-2">
+              <input
+                id={`${nestedField.id}-include`}
+                type="checkbox"
+                checked={Boolean(entry[`${nestedField.id}__include`])}
+                onChange={e => onUpdate({ [`${nestedField.id}__include`]: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <label htmlFor={`${nestedField.id}-include`} className="text-xs text-gray-600">Include this optional field</label>
+            </div>
+          )}
+          <MultiSelectField
+            {...commonProps}
+            value={(Array.isArray(value) ? value : []) as string[]}
+            onChange={v => onUpdate({ [nestedField.id]: v })}
+          />
+        </div>
       )
     case 'checkbox':
       return (
-        <CheckboxField
-          {...commonProps}
-          key={nestedField.id}
-          value={Boolean(value)}
-          onChange={v => onUpdate({ [nestedField.id]: v })}
-        />
+        <div key={nestedField.id}>
+          {nestedField.render === false && (
+            <div className="flex items-center gap-3 mb-2">
+              <input
+                id={`${nestedField.id}-include`}
+                type="checkbox"
+                checked={Boolean(entry[`${nestedField.id}__include`])}
+                onChange={e => onUpdate({ [`${nestedField.id}__include`]: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <label htmlFor={`${nestedField.id}-include`} className="text-xs text-gray-600">Include this optional field</label>
+            </div>
+          )}
+          <CheckboxField
+            {...commonProps}
+            value={Boolean(value)}
+            onChange={v => onUpdate({ [nestedField.id]: v })}
+          />
+        </div>
       )
     default:
       return null
@@ -98,6 +167,10 @@ function renderNestedField(
 
 export function RepeatableGroupField({ field, value, error, onChange }: RepeatableGroupFieldProps) {
   const entries = value ?? []
+
+  const singularLabel = (field.validation?.singular_label as string | undefined) ??
+    // naive singularization: drop trailing 's' if present
+    (field.label.endsWith('s') ? field.label.slice(0, -1) : field.label)
 
   const addEntry = () => {
     onChange([...entries, makeDefaultEntry(field)])
@@ -127,7 +200,7 @@ export function RepeatableGroupField({ field, value, error, onChange }: Repeatab
 
       {entries.length === 0 && (
         <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
-          No entries yet. Click "Add Rule" to create the first rule.
+          No entries yet. Click "Add {singularLabel}" to create the first {singularLabel.toLowerCase()}.
         </div>
       )}
 
@@ -136,8 +209,8 @@ export function RepeatableGroupField({ field, value, error, onChange }: Repeatab
           <div key={idx} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             <div className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
               <div>
-                <div className="text-sm font-semibold text-gray-800">Rule {idx + 1}</div>
-                <p className="text-xs text-gray-500">Configure the rule metadata and content for this file.</p>
+                <div className="text-sm font-semibold text-gray-800">{singularLabel} {idx + 1}</div>
+                <p className="text-xs text-gray-500">Configure the {singularLabel.toLowerCase()} metadata and content for this file.</p>
               </div>
               <button
                 type="button"
@@ -174,7 +247,7 @@ export function RepeatableGroupField({ field, value, error, onChange }: Repeatab
         className="inline-flex items-center gap-2 self-start rounded-md border border-dashed border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-600 transition hover:border-indigo-500 hover:bg-indigo-50"
       >
         <PlusIcon className="size-4" />
-        Add Rule
+        {`Add ${singularLabel}`}
       </button>
 
       {error && <p className="text-xs text-red-500">{error}</p>}

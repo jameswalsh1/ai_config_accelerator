@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from app.enums import FieldType, OutputFormat
 from app.models.wizard import WizardConfig, WizardField, WizardStep
@@ -159,22 +159,39 @@ def _render_agent(agent: dict[str, Any]) -> str:
     return "\n".join(parts).rstrip() + "\n"
 
 
-def _render_group_entry(fields: list[dict[str, Any]], entry: dict[str, Any], title: str, output_format: OutputFormat) -> str:
+def _render_group_entry(fields: list[WizardField], entry: dict[str, Any], title: str, output_format: OutputFormat) -> str:
     class TempStep:
-        pass
+        title: str
+        fields: list[WizardField]
+        output_format: OutputFormat
+
+    # Filter out nested fields that are marked `render: false` unless the
+    # corresponding include flag (nestedField.id + '__include') is truthy in
+    # the entry. This ensures optional fields the user did not opt into are
+    # omitted from generated output.
+    filtered_fields: list[WizardField] = []
+    for f in fields:
+        # WizardField has a `render` attribute; avoid getattr for static typing.
+        if f.render is False:
+            include_flag = entry.get(f.id + '__include')
+            if not include_flag:
+                continue
+        filtered_fields.append(f)
 
     temp_step = TempStep()
     temp_step.title = title
-    temp_step.fields = fields
+    temp_step.fields = filtered_fields
     temp_step.output_format = output_format
+    
+    step = cast(WizardStep, temp_step)
 
     if output_format == OutputFormat.markdown:
-        return _render_markdown(temp_step, entry)
+        return _render_markdown(step, entry)
     if output_format == OutputFormat.markdown_frontmatter:
-        return _render_markdown_frontmatter(temp_step, entry)
+        return _render_markdown_frontmatter(step, entry)
     if output_format == OutputFormat.verbatim:
-        return _render_verbatim(temp_step, entry)
-    return _render_text(temp_step, entry)
+        return _render_verbatim(step, entry)
+    return _render_text(step, entry)
 
 
 def _resolve_directory_output(step: WizardStep, step_answers: dict[str, Any]) -> str | None:
@@ -279,17 +296,95 @@ def generate_files(config: WizardConfig, answers: Answers) -> dict[str, str]:
                 if block.strip():
                     files[entry_filename] = [block]
 
+        # If the step only contains agent_list/repeatable_group fields, skip
+        # the normal single-file rendering *unless* a repeatable_group field
+        # contains a legacy non-list value (textarea style). In that case
+        # keep falling through so the old textarea-style answers still
+        # produce a single directory output file for backwards compatibility.
         if all(f.type in (FieldType.agent_list, FieldType.repeatable_group) for f in step.fields):
-            continue
+            legacy_present = False
+            for f in step.fields:
+                if f.type == FieldType.repeatable_group:
+                    v = step_answers.get(f.id)
+                    if v is not None and not isinstance(v, list):
+                        legacy_present = True
+                        break
+            if not legacy_present:
+                continue
 
         if dir_output := _resolve_directory_output(step, step_answers):
-            block = _render_verbatim(step, step_answers) if step.output_format == OutputFormat.verbatim else (
-                _render_markdown(step, step_answers)
-                if step.output_format == OutputFormat.markdown
-                else _render_markdown_frontmatter(step, step_answers)
-                if step.output_format == OutputFormat.markdown_frontmatter
-                else _render_text(step, step_answers)
-            )
+            # detect legacy repeatable_group textarea-style answers
+            legacy_present = False
+            for f in step.fields:
+                if f.type == FieldType.repeatable_group:
+                    v = step_answers.get(f.id)
+                    if v is not None and not isinstance(v, list):
+                        legacy_present = True
+                        break
+
+            # if legacy answers present, render using a temporary step that
+            # exposes the repeatable_group field as a textarea so existing
+            # textarea-style answers are preserved for backward compatibility.
+            if legacy_present:
+                class TempStepForRender:
+                    title: str
+                    fields: list[WizardField]
+                    output_format: OutputFormat
+
+                temp_fields: list[Any] = []
+                for f in step.fields:
+                    if f.type == FieldType.repeatable_group:
+                        class TempField:
+                            id: str
+                            type: FieldType
+                            label: str
+                            description: str | None
+                            placeholder: Any
+                            required: bool
+                            render: bool
+                            locked_value: Any
+                            default: Any
+                            rows: int
+                            frontmatter: bool
+                            frontmatter_key: Any
+
+                        tf = TempField()
+                        tf.id = f.id
+                        tf.type = FieldType.textarea
+                        tf.label = f.label
+                        tf.description = f.description
+                        tf.placeholder = f.placeholder
+                        tf.required = f.required
+                        tf.render = True
+                        tf.locked_value = None
+                        tf.default = None
+                        tf.rows = f.rows if f.rows is not None else 4
+                        tf.frontmatter = False
+                        tf.frontmatter_key = None
+                        temp_fields.append(tf)
+                    else:
+                        temp_fields.append(f)
+
+                temp_step = TempStepForRender()
+                temp_step.title = step.title
+                temp_step.fields = temp_fields
+                temp_step.output_format = step.output_format
+
+                step_for_render = temp_step
+            else:
+                step_for_render = step
+
+            if step_for_render.output_format == OutputFormat.verbatim:
+                block = _render_verbatim(step_for_render, step_answers)
+            else:
+                block = (
+                    _render_markdown(step_for_render, step_answers)
+                    if step_for_render.output_format == OutputFormat.markdown
+                    else _render_markdown_frontmatter(step_for_render, step_answers)
+                    if step_for_render.output_format == OutputFormat.markdown_frontmatter
+                    else _render_text(step_for_render, step_answers)
+                )
+
             if block.strip():
                 files[dir_output] = [block]
             continue

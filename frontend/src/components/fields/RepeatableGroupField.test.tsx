@@ -43,38 +43,39 @@ function RenderWrapper() {
 describe('RepeatableGroupField', () => {
   it('renders the empty state and allows adding a new rule entry', async () => {
     render(<RenderWrapper />)
+    expect(screen.getByText('No entries yet. Click "Add Cursor Rule" to create the first cursor rule.')).toBeInTheDocument()
 
-    expect(screen.getByText('No entries yet. Click "Add Rule" to create the first rule.')).toBeInTheDocument()
-
-    const addButton = screen.getByRole('button', { name: /add rule/i })
+    const addButton = screen.getByRole('button', { name: /add cursor rule/i })
     await userEvent.click(addButton)
 
-    expect(screen.getByText('Rule 1')).toBeInTheDocument()
+    expect(screen.getByText('Cursor Rule 1')).toBeInTheDocument()
+    // Optional nested field (render:false) should show an include checkbox
+    expect(screen.getByLabelText(/include this optional field/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Add focused rules for this file...')).toBeInTheDocument()
   })
 
   it('supports multiple entries and removal of an entry', async () => {
     render(<RenderWrapper />)
 
-    const addButton = screen.getByRole('button', { name: /add rule/i })
+    const addButton = screen.getByRole('button', { name: /add cursor rule/i })
     await userEvent.click(addButton)
     await userEvent.click(addButton)
 
-    expect(screen.getByText('Rule 1')).toBeInTheDocument()
-    expect(screen.getByText('Rule 2')).toBeInTheDocument()
+    expect(screen.getByText('Cursor Rule 1')).toBeInTheDocument()
+    expect(screen.getByText('Cursor Rule 2')).toBeInTheDocument()
 
     const removeButtons = screen.getAllByRole('button', { name: /remove/i })
     expect(removeButtons).toHaveLength(2)
 
     await userEvent.click(removeButtons[0])
-    expect(screen.getByText('Rule 1')).toBeInTheDocument()
-    expect(screen.queryByText('Rule 2')).not.toBeInTheDocument()
+    expect(screen.getByText('Cursor Rule 1')).toBeInTheDocument()
+    expect(screen.queryByText('Cursor Rule 2')).not.toBeInTheDocument()
   })
 
   it('updates nested textarea value when typing', async () => {
     render(<RenderWrapper />)
 
-    const addButton = screen.getByRole('button', { name: /add rule/i })
+    const addButton = screen.getByRole('button', { name: /add cursor rule/i })
     await userEvent.click(addButton)
 
     const textarea = screen.getByPlaceholderText('Add focused rules for this file...')

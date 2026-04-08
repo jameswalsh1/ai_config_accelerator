@@ -9,7 +9,7 @@
   },
   "output_preview_targets": [
     {
-      "target": "claude_code",
+      "target": "claude_md",
       "label": "Claude Code CLAUDE.md"
     },
     {
@@ -29,12 +29,16 @@
       "label": "Skill files"
     }
   ],
+  "file_classification": {
+    "claude_native": ["CLAUDE.md", ".claude/settings.json", ".claude/skills/", ".claude/agents/", ".mcp.json"],
+    "accelerator_native": [".claude/build_test_commands.json", ".claude/verification_policy.json"]
+  },
   "steps": [
     {
       "id": "claude_md",
       "title": "Claude Code Instructions (CLAUDE.md)",
-      "description": "Configure CLAUDE.md \u2014 the primary instruction file loaded into Claude Code context at every session start. Use CLAUDE.md for stable project guidance and invariants rather than putting ephemeral workflow advice into one file.",
-      "hint": "CLAUDE.md is automatically loaded by Claude Code at every session start \u2014 it is persistent context that shapes every task. Keep it stable and focused on durable project guidance; reserve task-specific skills and prompt snippets for workflow execution.",
+      "description": "Configure CLAUDE.md \u2014 the primary project instruction file treated as project context by Claude Code. Use CLAUDE.md for stable, durable guidance and invariants; avoid placing transient, task-specific workflow instructions here unless you explicitly want them included.",
+      "hint": "CLAUDE.md is treated as project context by Claude Code and is available to sessions. Keep it concise and focused on durable guidance; put reusable operational workflows into skills instead of embedding ephemeral instructions.",
       "output_file": "CLAUDE.md",
       "output_format": "markdown",
       "fields": [
@@ -97,9 +101,10 @@
           "id": "task_workflow_hints",
           "type": "textarea",
           "label": "Task workflow hints",
-          "description": "Optional task-focused guidance that may change between workflows, such as how to approach PR review or multi-file changes.",
+          "description": "Optional task-focused guidance. This field is not included in CLAUDE.md by default; consider moving durable workflows into skills.",
           "placeholder": "Document workflow reminders that are useful for specific tasks, such as using planning mode for larger changes or how to prioritise fixes.",
-          "screen_hint": "Use this for workflow advice that is not part of stable project policy. Consider moving reusable workflows into skills."
+          "screen_hint": "These hints are optional render-time content and are not part of the core CLAUDE.md guidance unless explicitly selected.",
+          "render": false
         },
         {
           "id": "project_overview",
@@ -508,11 +513,11 @@
       ]
     },
     {
-      "id": "evaluation_policy",
-      "title": "Evaluation & Verification Policy",
-      "description": "Define how evaluation, verification, and acceptance gates should work for code changes and automated checks.",
-      "hint": "Use structured fields for model policy, escalation conditions, coverage targets, and required checks to preserve intent across different render targets.",
-      "output_file": ".claude/evaluation_policy.json",
+      "id": "verification_policy",
+      "title": "Accelerator Verification Policy",
+      "description": "Accelerator-maintained verification policy describing model, escalation, coverage and required checks. This is an accelerator abstraction and not a native Claude Code config file.",
+      "hint": "This file is maintained by the accelerator; it is not a documented Claude Code settings surface. Use it as the source-of-truth for CI/verification automation.",
+      "output_file": ".claude/verification_policy.json",
       "output_format": "verbatim",
       "fields": [
         {
@@ -523,19 +528,11 @@
           "required": true,
           "default": "claude-sonnet-4-5",
           "options": [
-            {
-              "value": "claude-sonnet-4-5",
-              "label": "claude-sonnet-4-5"
-            },
-            {
-              "value": "claude-opus-4-5",
-              "label": "claude-opus-4-5"
-            },
-            {
-              "value": "claude-haiku-3-5",
-              "label": "claude-haiku-3-5"
-            }
-          ]
+            { "value": "claude-sonnet-4-5", "label": "claude-sonnet-4-5 (accelerator-maintained)" },
+            { "value": "claude-opus-4-5", "label": "claude-opus-4-5 (accelerator-maintained)" },
+            { "value": "claude-haiku-3-5", "label": "claude-haiku-3-5 (accelerator-maintained)" }
+          ],
+          "validation": { "note": "Model names are accelerator options and may not reflect the latest Claude Code releases. Consider validating dynamically or updating presets periodically." }
         },
         {
           "id": "escalation_conditions",
@@ -563,18 +560,23 @@
     {
       "id": "skill_definitions",
       "title": "Skill Definitions (.claude/skills/)",
-      "description": "Define reusable SKILL.md skills for common workflows such as PR review, safe migration planning, or CI debugging.",
-      "hint": "Use skills for reusable task-specific workflows instead of putting ephemeral operational guidance in CLAUDE.md.",
+      "description": "Define reusable skills. Each skill becomes a SKILL.md under .claude/skills/.",
+      "hint": "Skills are the recommended home for reusable operational workflows and automations.",
       "output_file": ".claude/skills/",
       "output_format": "text",
       "fields": [
         {
           "id": "skills",
-          "type": "textarea",
-          "label": "Skill definitions",
-          "description": "Describe one or more skills and their intent, expected inputs, outputs, and restrictions.",
-          "placeholder": "- Name: review-pr\n  Description: Review a pending pull request for correctness, style, and tests.\n  Tools: Read, Grep\n  Output: concise findings and remediation steps\n\n- Name: safe-migration\n  Description: Plan a schema migration with rollback and compatibility checks.\n  Tools: Read, Edit\n  Output: migration plan and test strategy",
-          "screen_hint": "Skills should be narrow and reusable. Keep each skill focused on one workflow or decision task."
+          "type": "repeatable_group",
+          "label": "Skills",
+          "description": "One SKILL.md per entry. Provide structured metadata plus the SKILL.md content.",
+          "required": false,
+          "fields": [
+            { "id": "name", "type": "text", "label": "Skill name", "required": true },
+            { "id": "description", "type": "text", "label": "Short description", "required": true },
+            { "id": "skill_md", "type": "textarea", "label": "SKILL.md content", "required": true, "rows": 10, "frontmatter": true },
+            { "id": "supporting_files", "type": "textarea", "label": "Supporting files (JSON list)", "description": "Optional supporting files as a JSON array of { path, content } objects.", "placeholder": "[ { \"path\": \"example/script.sh\", \"content\": \"echo hi\" } ]" }
+          ]
         }
       ]
     },
@@ -593,15 +595,16 @@
           "description": "Edit the JSON for .claude/settings.json. The secure baseline above is always written to the file \u2014 your edits are merged on top.",
           "rows": 12,
           "screen_hint": "The secure baseline (deny access to .env, secrets, .pem keys) is always included and cannot be removed. Use this field to grant additional permissions (e.g., allow Docker access, allow writing to specific directories) or set project environment variables. Leave blank if the secure baseline is sufficient.",
-          "locked_value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\",\n      \"Read(**/node_modules/**)\",\n      \"Read(**/dist/**)\",\n      \"Read(**/build/**)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
+          "locked_value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
           "default": ""
         },
         {
           "id": "strict_mcp_config",
           "type": "checkbox",
-          "label": "Strict MCP config",
-          "description": "Require Claude Code to use only project-declared MCP servers and ignore global or user MCP definitions.",
-          "default": false
+          "label": "Strict MCP config (runtime only)",
+          "description": "CLI/runtime policy: when enabled the launcher will invoke Claude Code with --strict-mcp-config to restrict MCP servers to the project-provided list. This is not written into settings.json.",
+          "default": false,
+          "render": false
         }
       ],
       "presets": [
@@ -650,6 +653,28 @@
       ]
     },
     {
+      "id": "hooks",
+      "title": "Project Hooks (.claude/hooks/)",
+      "description": "Define automation hooks for repository events and edit-time actions. Hooks are used for tasks such as formatting after edits, audit checks, notifications, and reinforcement of context.",
+      "hint": "Hooks are emitted under .claude/hooks/ as JSON or executable scripts depending on the hook type. These are accelerator-emitted artifacts that the project or CI can consume.",
+      "output_file": ".claude/hooks/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "hooks",
+          "type": "repeatable_group",
+          "label": "Hooks",
+          "description": "One entry per hook. Provide a name, trigger, and the hook body or JSON configuration.",
+          "required": false,
+          "fields": [
+            { "id": "name", "type": "text", "label": "Hook name", "required": true },
+            { "id": "trigger", "type": "text", "label": "Trigger (e.g., post-edit, pre-commit)", "required": true },
+            { "id": "body", "type": "textarea", "label": "Hook body / JSON", "required": true, "rows": 8 }
+          ]
+        }
+      ]
+    },
+    {
       "id": "mcp_config",
       "title": "Project MCP Configuration (.mcp.json)",
       "description": "Configure project-scoped MCP servers shared with your team via version control.",
@@ -685,7 +710,8 @@
               "auth_required": false,
               "required_env_vars": [],
               "platform_notes": "Commonly referenced in MCP documentation for browser automation.",
-              "mode": "merge_json"
+              "mode": "merge_json",
+              "validation": { "verify_package_exists": true }
             },
             {
               "label": "GitHub",
@@ -991,6 +1017,7 @@
                   "Glob"
                 ],
                 "model": "claude-sonnet-4-5",
+                "initial_prompt": "",
                 "system_prompt": "Review the provided code for security vulnerabilities including: SQL/command injection, broken authentication, insecure data handling, sensitive data exposure, missing authorisation checks, and leaked secrets or credentials.\n\nFor each issue found:\n1. State the severity (Critical / High / Medium / Low)\n2. Describe the vulnerability\n3. Provide a concrete, minimal fix\n\nDo not suggest stylistic changes \u2014 focus solely on security."
               },
               "mode": "append"

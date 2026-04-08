@@ -35,11 +35,19 @@ function validateField(field: WizardField, value: unknown): string | null {
   if (field.type === 'repeatable_group') {
     const entries = value as Record<string, unknown>[] | undefined
     if (!entries || entries.length === 0) return `${field.label} requires at least one entry`
+    const singularLabel = (field.validation?.singular_label as string | undefined) ??
+      (field.label.endsWith('s') ? field.label.slice(0, -1) : field.label)
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i]
       for (const nestedField of field.fields ?? []) {
-        if (!nestedField.required || nestedField.render === false) continue
+        // If the nested field is not required, skip. If it's marked render:false,
+        // only validate it when the user explicitly included it via the companion include flag.
+        if (!nestedField.required) continue
+        if (nestedField.render === false) {
+          const included = Boolean(entry[`${nestedField.id}__include`])
+          if (!included) continue
+        }
         const nestedValue = entry[nestedField.id] ?? nestedField.default
         const isEmpty =
           nestedValue === undefined ||
@@ -47,7 +55,7 @@ function validateField(field: WizardField, value: unknown): string | null {
           nestedValue === '' ||
           (Array.isArray(nestedValue) && nestedValue.length === 0)
         if (isEmpty) {
-          return `${nestedField.label} is required for rule ${i + 1}`
+          return `${nestedField.label} is required for ${singularLabel} ${i + 1}`
         }
       }
     }

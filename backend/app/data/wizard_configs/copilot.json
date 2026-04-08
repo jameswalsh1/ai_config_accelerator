@@ -41,8 +41,8 @@
     {
       "id": "repo_instructions",
       "title": "Repository-Wide Custom Instructions",
-      "description": "Configure .github/copilot-instructions.md — applied automatically to all supported Copilot surfaces in this repository.",
-      "supported_surfaces": ["chat", "completions", "code_review", "cloud_agent", "agents"],
+      "description": "Configure .github/copilot-instructions.md — applied automatically to supported Copilot surfaces in this repository. Note: organization-level instructions exist but are outside the scope of this generator.",
+      "supported_surfaces": ["chat", "code_review", "cloud_agent", "agents"],
       "hint": "Repository-wide instructions are best used for stable project context: coding standards, stack details, build/test commands, and durable conventions. Avoid editor-specific UI shortcuts or transient guidance in this file.",
       "output_file": ".github/copilot-instructions.md",
       "output_format": "markdown",
@@ -184,25 +184,55 @@
     },
     {
       "id": "path_instructions",
-      "title": "Path-Specific Custom Instructions",
-      "description": "Configure one or more .instructions.md files under .github/instructions/ for path-based Copilot guidance.",
+      "title": "Path-Specific Instruction Files",
+      "description": "Create one or more .instructions.md files under .github/instructions/ for path-based guidance. Multiple files may apply and can combine with repo-wide instructions; conflicts are warned.",
       "supported_surfaces": ["chat", "code_review", "cloud_agent"],
-      "hint": "Path-specific instruction files are supported in Copilot Chat, code review, and cloud agent surfaces on supported platforms. Use applyTo frontmatter to target files, and keep these files focused on path-specific conventions.",
+      "hint": "Use one file per concern and target via the applyTo frontmatter. The generator will warn on conflicting semantics between path-specific and repo-wide instructions.",
       "output_file": ".github/instructions/",
       "output_format": "markdown_frontmatter",
       "fields": [
         {
           "id": "instruction_files",
-          "type": "textarea",
-          "label": "Path-Specific Instruction Files",
-          "description": "Define one or more path-specific .instructions.md files using applyTo frontmatter blocks.",
-          "placeholder": "---\napplyTo: '**/*.test.ts'\n---\n# Test guidance\n- Use Arrange / Act / Assert structure.\n\n---\napplyTo: 'src/backend/**'\n---\n# Backend guidance\n- Validate all request inputs with Pydantic models.",
-          "screen_hint": "This field supports multiple files in a single editor block. The generator should validate frontmatter, comma-separated glob syntax, overlapping rules, and duplicate patterns before writing files.",
+          "type": "repeatable_group",
+          "label": "Instruction files",
+          "description": "Define individual .instructions.md files. Each entry becomes a separate file under .github/instructions/",
+          "required": true,
+          "fields": [
+            {
+              "id": "file_name",
+              "type": "text",
+              "label": "File name",
+              "description": "Filename relative to .github/instructions/, e.g. testing.instructions.md",
+              "placeholder": "testing.instructions.md",
+              "required": true,
+              "render": false
+            },
+            {
+              "id": "applyTo",
+              "type": "text",
+              "label": "applyTo (glob)",
+              "description": "Glob pattern(s) to match files this instruction applies to",
+              "placeholder": "**/*.test.ts",
+              "required": true,
+              "frontmatter": true,
+              "frontmatter_key": "applyTo"
+            },
+            {
+              "id": "instruction_body",
+              "type": "textarea",
+              "label": "Instruction Body",
+              "description": "Markdown body for this instruction file",
+              "placeholder": "# Guidance\n- ...",
+              "rows": 12,
+              "required": true,
+              "screen_hint": "Keep each file focused; multiple matching files are combined at runtime and may produce ambiguous results if they conflict."
+            }
+          ],
           "validation": {
             "frontmatter": true,
             "glob_patterns": true,
             "duplicate_matches": true,
-            "overlap_detection": true
+            "conflict_warnings": true
           }
         }
       ]
@@ -210,45 +240,58 @@
     {
       "id": "agent_skills",
       "title": "Agent Skills",
-      "description": "Define reusable Copilot agent skills for task-specific workflows like debug CI, review a PR, or write a migration.",
-      "supported_surfaces": ["agents", "chat", "cloud_agent"],
-      "hint": "Agent skills are a better home for reusable workflows than broad repository instructions or AGENTS.md. Skills should be narrow, task-focused, and reusable.",
+      "description": "Define reusable Copilot skills. Each skill should live in its own directory under .github/skills/ and include a SKILL.md with required frontmatter (name, description).",
+      "supported_surfaces": ["agents", "cli"],
+      "hint": "Model each skill as a directory with a SKILL.md file; this structured format helps validation and prevents invalid skill blobs.",
       "output_file": ".github/skills/",
       "output_format": "text",
       "fields": [
         {
           "id": "skills",
-          "type": "textarea",
-          "label": "Agent Skills",
-          "description": "Describe one or more reusable skills, their intent, expected inputs, outputs, and restrictions.",
-          "placeholder": "- Name: debug-ci\n  Description: Diagnose and fix failing CI jobs.\n  Tools: Read, Bash\n  Output: root cause and remediation steps\n\n- Name: review-pr\n  Description: Review a pull request for correctness, style, and tests.\n  Tools: Read, Search\n  Output: concise findings and suggested fixes",
-          "screen_hint": "Use skills for reusable task-specific workflows rather than broad project context. Keep each skill focused and narrow."
+          "type": "repeatable_group",
+          "label": "Skills",
+          "description": "One entry per skill directory. Each entry produces a <directory>/SKILL.md file under .github/skills/",
+          "required": true,
+          "fields": [
+            { "id": "directory_name", "type": "text", "label": "Directory name", "description": "Directory under .github/skills/, e.g. debug-ci", "placeholder": "debug-ci", "required": true, "render": false },
+            { "id": "skill_name", "type": "text", "label": "Skill name", "description": "Frontmatter 'name' for SKILL.md", "required": true, "frontmatter": true, "frontmatter_key": "name" },
+            { "id": "skill_description", "type": "text", "label": "Skill description", "description": "Frontmatter 'description' for SKILL.md", "frontmatter": true, "frontmatter_key": "description" },
+            { "id": "skill_md", "type": "textarea", "label": "SKILL.md Body", "description": "Body content for SKILL.md (after frontmatter)", "rows": 12, "required": true }
+          ]
         }
       ]
     },
     {
       "id": "prompt_files",
       "title": "Prompt Files",
-      "description": "Create reusable prompt files for one-off tasks and standardized prompts.",
-      "hint": "Prompt files sit between broad instructions and fully custom agents. Use them for repeatable task prompts that are too specific for repository instructions but too lightweight for a full agent profile.",
+      "description": "Create .github/prompts/*.prompt.md files with frontmatter and body. Prompt files are currently in public preview and supported only in VS Code, Visual Studio, and JetBrains IDEs.",
+      "supported_surfaces": ["vscode", "visual-studio", "jetbrains"],
+      "hint": "Prompt files are in public preview — generated prompts may not be available across all Copilot surfaces. This step will emit one prompt file per entry.",
       "output_file": ".github/prompts/",
       "output_format": "text",
       "fields": [
         {
           "id": "prompt_files",
-          "type": "textarea",
-          "label": "Prompt Files",
-          "description": "Define prompt files and their intended use cases.",
-          "placeholder": "- Name: release-note-draft\n  Description: Draft release notes from PR descriptions and changelog entries.\n  Prompt: Summarize merged changes into release notes for the next version.",
-          "screen_hint": "Prompt files should describe a narrow reusable prompt, not broad repository conventions."
+          "type": "repeatable_group",
+          "label": "Prompt files",
+          "description": "One prompt file per entry. Each becomes .github/prompts/<filename>",
+          "fields": [
+            { "id": "file_name", "type": "text", "label": "File name", "description": "Filename under .github/prompts/, e.g. release-note.prompt.md", "placeholder": "release-note.prompt.md", "required": true, "render": false },
+            { "id": "description", "type": "text", "label": "Description", "description": "Frontmatter description for the prompt file", "frontmatter": true, "frontmatter_key": "description" },
+            { "id": "agent", "type": "text", "label": "Agent (optional)", "description": "Optional agent this prompt targets (if applicable)", "placeholder": "test-writer" },
+            { "id": "prompt_body", "type": "textarea", "label": "Prompt Body", "description": "Prompt content (Markdown allowed)", "rows": 8, "required": true }
+          ],
+          "validation": {
+            "frontmatter": true
+          }
         }
       ]
     },
     {
       "id": "agent_instruction_files",
       "title": "Agent Instruction Files",
-      "description": "Configure AGENTS.md guidance for agentic workflows. Root AGENTS.md can combine with .github/copilot-instructions.md, and nested AGENTS.md files take precedence in subtrees.",
-      "hint": "AGENTS.md is specifically relevant to agentic scenarios. Use nested AGENTS.md files for /frontend, /backend, or /infra directories when you need subtree-specific agent guidance.",
+      "description": "Configure AGENTS.md guidance for agentic workflows. The generator can emit a root AGENTS.md plus optional nested AGENTS.md files; the root file is treated as the primary instruction source and nested files are additional guidance rather than strict overrides.",
+      "hint": "AGENTS.md is specifically relevant to agentic scenarios. Use nested AGENTS.md for subtree-specific additional guidance; the root AGENTS.md is considered primary.",
       "output_file": "AGENTS.md",
       "output_format": "markdown",
       "fields": [
@@ -256,14 +299,14 @@
           "id": "generate_agent_instructions",
           "type": "checkbox",
           "label": "Generate AGENTS.md instruction files",
-          "description": "Enable root and subtree AGENTS.md guidance files when custom agents or agentic workflows are required.",
+          "description": "Enable root and optional subtree AGENTS.md guidance files when custom agents or agentic workflows are required.",
           "default": false
         },
         {
           "id": "instruction_files",
           "type": "textarea",
           "label": "AGENTS.md Content",
-          "description": "Write root AGENTS.md content and optionally describe nested subtree overrides for AGENTS.md files.",
+          "description": "Write root AGENTS.md content and optionally describe nested subtree additional guidance for AGENTS.md files.",
           "placeholder": "# Agent instructions\n- Use the security reviewer for security-related changes.\n- Use the test writer for new or changed code that needs coverage.",
           "screen_hint": "AGENTS.md is an instruction file, not an agent profile. Keep it concise and focused on agent behavior expectations. If you need reusable agents, use the Custom Agents step instead."
         }
@@ -273,7 +316,7 @@
       "id": "custom_agents",
       "title": "Custom Agents",
       "description": "Define custom Copilot agents with specific roles, tool access, optional MCP server config, and scope.",
-      "hint": "Custom agents are specialist profiles. Use repository-scoped agents for shared team workflows, or user-scoped agents for personal specialist profiles.",
+      "hint": "Custom agents are specialist profiles. Use repository-scoped agents for shared team workflows, or user-scoped agents for personal specialist profiles. The renderer will choose output paths based on agent scope.",
       "output_file": ".github/agents/",
       "output_format": "text",
       "fields": [
@@ -293,7 +336,7 @@
           "type": "agent_list",
           "label": "Copilot Agents",
           "description": "Define one or more custom agents. Each becomes a separate agent profile file.",
-          "screen_hint": "Each agent gets a system prompt that defines its role and boundary. Restrict tools to only what the agent needs — narrower permissions make agents safer, more reliable, and faster.",
+          "screen_hint": "Each agent gets a system prompt that defines its role and boundary. Restrict tools to only what the agent needs — narrower permissions make agents safer, more reliable, and faster. The renderer will emit repository agents under .github/agents/ and user agents under ~/.copilot/agents/ depending on scope.",
           "presets": [
             {
               "label": "Security Reviewer",
@@ -349,6 +392,7 @@
       ],
       "agent_config": {
         "output_dir": ".github/agents/",
+        "user_output_dir": "~/.copilot/agents/",
         "file_suffix": ".agent.md",
         "available_tools": ["read", "write", "edit", "search", "run_command", "browser"],
         "available_models": ["gpt-4.1", "gpt-4.1-mini", "o3", "o4-mini", "claude-sonnet-4-5"],
@@ -358,8 +402,8 @@
     {
       "id": "repo_settings",
       "title": "Repository Settings (.github/copilot/settings.json)",
-      "description": "Configure repository-level Copilot settings committed for your whole team.",
-      "hint": "Commit settings.json for team-wide Copilot CLI defaults. Validate allowedTools and defaultModel against the documented format. Prefer auto selection unless you need a fixed model.",
+      "description": "Configure repository-level Copilot settings committed for your whole team. Note: many repository keys are ignored by Copilot; unsupported keys will be written but may have no effect.",
+      "hint": "Repository settings are limited. The generator emits selected keys; unsupported or future keys should be provided via the optional field marked for unsupported settings.",
       "output_file": ".github/copilot/settings.json",
       "output_format": "verbatim",
       "fields": [
@@ -372,49 +416,31 @@
           "default": "Always run tests before committing. Review suggestions critically and validate changes against project conventions."
         },
         {
-          "id": "allowed_tools",
-          "type": "multi_select",
-          "label": "Allowed Tools",
-          "description": "The tools this repository permits in Copilot contexts.",
-          "options": [
-            { "value": "shell", "label": "shell" },
-            { "value": "filesystem", "label": "filesystem" },
-            { "value": "search", "label": "search" },
-            { "value": "browser", "label": "browser" },
-            { "value": "edit", "label": "edit" },
-            { "value": "write", "label": "write" },
-            { "value": "read", "label": "read" },
-            { "value": "run_command", "label": "run_command" }
-          ],
-          "screen_hint": "Use only tool names that are valid in GitHub Copilot settings. Invalid values may make the settings file invalid."
-        },
-        {
-          "id": "default_model",
-          "type": "select",
-          "label": "Default Model",
-          "description": "The repo-level default model for Copilot. Use auto for GitHub-managed model selection unless you need a fixed model.",
-          "default": "auto",
-          "options": [
-            { "value": "auto", "label": "auto (recommended)" },
-            { "value": "gpt-4.1", "label": "gpt-4.1" },
-            { "value": "gpt-4.1-mini", "label": "gpt-4.1-mini" },
-            { "value": "claude-sonnet-4-5", "label": "claude-sonnet-4-5" }
-          ]
-        },
-        {
-          "id": "allow_per_agent_overrides",
-          "type": "checkbox",
-          "label": "Allow per-agent model overrides",
-          "description": "Permit custom agents to choose a different model than the repository default.",
-          "default": true
-        },
-        {
-          "id": "settings_json",
+          "id": "unsupported_or_future_settings_json",
           "type": "textarea",
-          "label": "Raw Settings JSON",
-          "description": "Optional fallback raw JSON for settings keys not covered by the structured fields.",
+          "label": "Unsupported or Future Settings (JSON)",
+          "description": "Optional JSON blob for unsupported or future repository-level settings. These keys are often ignored by Copilot and may have no effect; use with caution.",
           "rows": 8,
-          "screen_hint": "Use this only for settings that are not represented by the structured fields above. Keep the file valid JSON and avoid unsupported keys."
+          "screen_hint": "Unsupported keys in repository settings are typically ignored by Copilot. Prefer hooks or other supported mechanisms for enforcement."
+        }
+      ]
+    },
+    {
+      "id": "hooks",
+      "title": "Repository Hooks (.github/hooks/)",
+      "description": "Optional repository hooks configuration emitted under .github/hooks/. Use hooks for enforcement-style behavior instead of embedding unsupported keys in settings.json.",
+      "output_file": ".github/hooks/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "hook_files",
+          "type": "repeatable_group",
+          "label": "Hook files",
+          "description": "Define hook JSON files to emit under .github/hooks/",
+          "fields": [
+            { "id": "file_name", "type": "text", "label": "Filename", "placeholder": "pre-commit.json", "required": true, "render": false },
+            { "id": "content", "type": "textarea", "label": "Hook content (JSON)", "rows": 12, "required": true }
+          ]
         }
       ]
     }
