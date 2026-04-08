@@ -325,6 +325,10 @@ def generate_files(config: WizardConfig, answers: Answers) -> dict[str, str]:
             # if legacy answers present, render using a temporary step that
             # exposes the repeatable_group field as a textarea so existing
             # textarea-style answers are preserved for backward compatibility.
+            # Ensure `step_for_render` is typed as `WizardStep` so assigning
+            # either the original `step` or a temporary rendering step is
+            # type-safe for static checkers.
+            step_for_render: WizardStep
             if legacy_present:
                 class TempStepForRender:
                     title: str
@@ -370,7 +374,7 @@ def generate_files(config: WizardConfig, answers: Answers) -> dict[str, str]:
                 temp_step.fields = temp_fields
                 temp_step.output_format = step.output_format
 
-                step_for_render = temp_step
+                step_for_render = cast(WizardStep, temp_step)
             else:
                 step_for_render = step
 
