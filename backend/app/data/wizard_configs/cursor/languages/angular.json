@@ -1,0 +1,20 @@
+{
+  "id": "cursor",
+  "target": "cursor",
+  "language": "angular",
+  "description": "Angular-specific presets for Cursor",
+  "step_overrides": [
+    {
+      "step_id": "cursor_ignore",
+      "field_id": "content",
+      "presets_to_add": [
+        {
+          "label": "Angular-specific ignores",
+          "description": "Angular build and output directories",
+          "value": "dist/\nbuild/\nnode_modules/\n.angular/\n.ng*",
+          "mode": "append"
+        }
+      ]
+    }
+  ]
+}

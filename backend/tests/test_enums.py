@@ -31,7 +31,7 @@ class TestFieldType:
 
     def test_all_members_present(self):
         members = {m.value for m in FieldType}
-        assert members == {"text", "textarea", "select", "multi_select", "checkbox", "agent_list"}
+        assert members == {"text", "textarea", "select", "multi_select", "checkbox", "agent_list", "repeatable_group"}
 
 
 class TestOutputFormat:

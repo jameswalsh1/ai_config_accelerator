@@ -6,6 +6,16 @@ from app.models.wizard import WizardConfig, WizardField, WizardStep
 type Answers = dict[str, dict[str, Any]]
 
 
+def _get_selected_language(answers: Answers) -> str | None:
+    """Extract the selected language from language_selection step.
+    
+    Returns the language value if present, otherwise None.
+    """
+    language_selection = answers.get("language_selection", {})
+    language = language_selection.get("language")
+    return language if isinstance(language, str) else None
+
+
 def _get(step_answers: dict[str, Any], field_id: str, default: Any = None) -> Any:
     v = step_answers.get(field_id)
     return v if v is not None else default
@@ -256,8 +266,13 @@ def _resolve_directory_output_for_entry(step: WizardStep, entry: dict[str, Any])
 
 
 def generate_files(config: WizardConfig, answers: Answers) -> dict[str, str]:
-    """Return {output_filename: text_content} built from wizard answers."""
+    """Return {output_filename: text_content} built from wizard answers.
+    
+    Extracts language selection from answers and uses it to inform rendering
+    (currently used for logging/context; UI should filter presets based on language).
+    """
     files: dict[str, list[str]] = {}
+    selected_language = _get_selected_language(answers)
 
     for step in config.steps:
         step_answers = answers.get(step.id, {})

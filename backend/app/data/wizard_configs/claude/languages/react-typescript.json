@@ -1,0 +1,20 @@
+{
+  "id": "claude",
+  "target": "claude",
+  "language": "react-typescript",
+  "description": "React + TypeScript-specific presets and configurations for Claude Code",
+  "step_overrides": [
+    {
+      "step_id": "claude_md",
+      "field_id": "tech_stack",
+      "presets_to_add": [
+        {
+          "label": "React + TypeScript strict",
+          "description": "React with TypeScript strict mode",
+          "value": "- Frontend: React 19 + TypeScript strict mode\n- Build: Vite\n- Styling: Tailwind CSS v4\n- State management: React Context + hooks (no Redux)",
+          "mode": "append"
+        }
+      ]
+    }
+  ]
+}

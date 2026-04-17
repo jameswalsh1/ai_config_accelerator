@@ -1,0 +1,32 @@
+{
+  "id": "copilot",
+  "target": "copilot",
+  "language": "dotnet",
+  "description": ".NET-specific presets and configurations for GitHub Copilot",
+  "step_overrides": [
+    {
+      "step_id": "repo_instructions",
+      "field_id": "architecture_notes",
+      "presets_to_add": [
+        {
+          "label": ".NET 8+ with C#",
+          "description": ".NET backend with C# and ASP.NET Core",
+          "value": "- Backend: .NET 8+ with C# 12\n- Framework: ASP.NET Core\n- ORM: Entity Framework Core\n- Testing: xUnit or NUnit",
+          "mode": "append"
+        }
+      ]
+    },
+    {
+      "step_id": "repo_instructions",
+      "field_id": "coding_standards",
+      "presets_to_add": [
+        {
+          "label": "C# conventions",
+          "description": "C# and .NET style conventions",
+          "value": "- Follow .NET design guidelines (Microsoft.NET.Sdk.Design).\n- Use nullable reference types (#nullable enable).\n- Prefer records for immutable data types.\n- Use LINQ appropriately for readability.",
+          "mode": "append"
+        }
+      ]
+    }
+  ]
+}

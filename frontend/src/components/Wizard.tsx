@@ -78,7 +78,6 @@ export function Wizard({ config, onBack }: WizardProps) {
           currentScreenIndex={currentScreenIndex}
           totalScreens={screens.length}
           currentStepIndex={currentScreen.stepIndex}
-          totalSteps={config.steps.length}
           currentStepTitle={currentScreen.step.title}
           stepsFieldCounts={stepsFieldCounts}
         />

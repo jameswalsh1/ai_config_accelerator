@@ -3,20 +3,15 @@ import type { AgentEntry, WizardAnswers, WizardConfig, WizardField, WizardStep }
 
 export interface Screen {
   stepIndex: number
-  fieldIndex: number
   step: WizardStep
-  field: WizardField
-  /** true when this is the first field belonging to the step */
-  isFirstFieldOfStep: boolean
+  fields: WizardField[]
 }
 
 function buildScreens(config: WizardConfig): Screen[] {
   const screens: Screen[] = []
   for (let si = 0; si < config.steps.length; si++) {
     const step = config.steps[si]
-    for (let fi = 0; fi < step.fields.length; fi++) {
-      screens.push({ stepIndex: si, fieldIndex: fi, step, field: step.fields[fi], isFirstFieldOfStep: fi === 0 })
-    }
+    screens.push({ stepIndex: si, step, fields: step.fields })
   }
   return screens
 }
@@ -117,14 +112,18 @@ export function useWizard(config: WizardConfig): UseWizardReturn {
   }, [])
 
   const nextScreen = useCallback((): boolean => {
-    const { step, field } = screens[currentScreenIndex]
-    // Fall back to field.default so required fields with defaults pass without user interaction
-    const value = answers[step.id]?.[field.id] ?? field.default
-    const error = validateField(field, value)
-    if (error) {
-      setFieldError(error)
-      return false
+    const { step, fields } = screens[currentScreenIndex]
+    
+    // Validate all fields on the current step
+    for (const field of fields) {
+      const value = answers[step.id]?.[field.id] ?? field.default
+      const error = validateField(field, value)
+      if (error) {
+        setFieldError(error)
+        return false
+      }
     }
+    
     setFieldError(null)
     if (currentScreenIndex < screens.length - 1) {
       setCurrentScreenIndex(i => i + 1)

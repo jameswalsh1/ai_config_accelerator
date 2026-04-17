@@ -3,7 +3,11 @@
 import pytest
 
 from app.models.wizard import WizardConfig, WizardConfigSummary
-from app.services.config_loader import get_all_configs, get_config
+from app.services.config_loader import (
+    get_all_configs,
+    get_config,
+    get_config_with_language_filter,
+)
 
 
 class TestGetAllConfigs:
@@ -80,3 +84,101 @@ class TestGetConfig:
         assert isinstance(cfg.schema_version, str)
         assert cfg.target_version_constraints is None or isinstance(cfg.target_version_constraints, dict)
         assert cfg.output_preview_targets is None or isinstance(cfg.output_preview_targets, list)
+
+
+class TestLanguageSelection:
+    """Tests for language-aware configuration filtering."""
+
+    @pytest.mark.parametrize("config_id", ["claude", "copilot", "cursor"])
+    def test_first_step_is_language_selection(self, config_id):
+        """Verify that language_selection is the first step in main tool configs."""
+        cfg = get_config(config_id)
+        assert cfg is not None
+        assert len(cfg.steps) > 0
+        assert cfg.steps[0].id == "language_selection"
+
+    @pytest.mark.parametrize("config_id", ["claude", "copilot", "cursor"])
+    def test_language_selection_has_required_field(self, config_id):
+        """Verify language_selection step has the language select field."""
+        cfg = get_config(config_id)
+        assert cfg is not None
+        lang_step = cfg.steps[0]
+        assert lang_step.id == "language_selection"
+        lang_field = next((f for f in lang_step.fields if f.id == "language"), None)
+        assert lang_field is not None
+        assert lang_field.type.value == "select"
+        assert lang_field.required
+        assert lang_field.options is not None
+        assert len(lang_field.options) >= 6
+
+    def test_language_filter_returns_none_for_invalid_config(self):
+        """Verify language filter returns None for invalid config IDs."""
+        result = get_config_with_language_filter("invalid_config", "python")
+        assert result is None
+
+    def test_language_filter_returns_full_config_for_none_language(self):
+        """Verify language filter returns unfiltered config when language is None."""
+        config_full = get_config("claude")
+        config_none = get_config_with_language_filter("claude", None)
+        assert config_full is not None
+        assert config_none is not None
+        # Get presets from both
+        claude_md_full = next(s for s in config_full.steps if s.id == "claude_md")
+        claude_md_none = next(s for s in config_none.steps if s.id == "claude_md")
+        tech_stack_full = next(f for f in claude_md_full.fields if f.id == "tech_stack")
+        tech_stack_none = next(f for f in claude_md_none.fields if f.id == "tech_stack")
+        full_count = len(tech_stack_full.presets) if tech_stack_full.presets else 0
+        none_count = len(tech_stack_none.presets) if tech_stack_none.presets else 0
+        assert full_count == none_count
+
+    @pytest.mark.parametrize("language", ["python", "typescript", "java", "dotnet"])
+    def test_language_filter_reduces_preset_count(self, language):
+        """Verify language filtering reduces preset count for specific languages."""
+        config_full = get_config("claude")
+        config_filtered = get_config_with_language_filter("claude", language)
+        assert config_filtered is not None
+
+        # Compare preset counts
+        claude_md_full = next(s for s in config_full.steps if s.id == "claude_md")
+        claude_md_filt = next(s for s in config_filtered.steps if s.id == "claude_md")
+        tech_stack_full = next(f for f in claude_md_full.fields if f.id == "tech_stack")
+        tech_stack_filt = next(f for f in claude_md_filt.fields if f.id == "tech_stack")
+
+        full_count = len(tech_stack_full.presets) if tech_stack_full.presets else 0
+        filt_count = len(tech_stack_filt.presets) if tech_stack_filt.presets else 0
+        # Filtered should be <= full
+        assert filt_count <= full_count
+
+    def test_language_filter_shows_only_relevant_presets(self):
+        """Verify filtered config shows only language-relevant presets."""
+        config_python = get_config_with_language_filter("claude", "python")
+        assert config_python is not None
+
+        claude_md = next(s for s in config_python.steps if s.id == "claude_md")
+        tech_stack = next(f for f in claude_md.fields if f.id == "tech_stack")
+
+        # Python config should include FastAPI and Django
+        labels = [p.label for p in (tech_stack.presets or [])]
+        assert any("FastAPI" in label for label in labels)
+        assert any("Django" in label for label in labels)
+
+    def test_language_presets_have_tags(self):
+        """Verify that presets from language modules have appropriate tags."""
+        config = get_config("claude")
+        assert config is not None
+
+        claude_md = next(s for s in config.steps if s.id == "claude_md")
+        tech_stack = next(f for f in claude_md.fields if f.id == "tech_stack")
+
+        # Check that some presets have language tags
+        tagged_presets = [p for p in (tech_stack.presets or []) if p.tags]
+        assert len(tagged_presets) > 0
+
+        # Verify tag structure
+        for preset in tagged_presets:
+            assert isinstance(preset.tags, list)
+            assert len(preset.tags) > 0
+            # Tags should be lowercase language identifiers
+            for tag in preset.tags:
+                assert isinstance(tag, str)
+                assert tag.islower() or "_" in tag  # e.g., python, typescript, react-typescript

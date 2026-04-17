@@ -49,6 +49,16 @@ backend:
 frontend:
 	cd $(FRONTEND_DIR) && npm run dev -- --host 0.0.0.0
 
+# Start services via Docker Compose (build + run in foreground)
+.PHONY: docker-up docker-down
+docker-up:
+	@echo "Starting services with docker compose (foreground)"
+	docker compose up --build
+
+docker-down:
+	@echo "Stopping and removing docker compose services"
+	docker compose down
+
 # ── Linting ───────────────────────────────────────────────────────────────────
 
 lint: lint-backend lint-frontend
