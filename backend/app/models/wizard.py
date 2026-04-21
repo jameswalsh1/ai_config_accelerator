@@ -1,8 +1,12 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
 from app.enums import FieldType, OutputFormat, PresetMode
+
+
+# Type alias for field editability states
+FieldEditability = Literal["free", "locked", "suggested", "defaulted"]
 
 
 class FieldOption(BaseModel):
@@ -57,6 +61,11 @@ class WizardField(BaseModel):
         None  # read-only best-practice content always prepended to generated output
     )
     agent_config: AgentFieldConfig | None = None  # only for agent_list fields
+    # ===== Composable Config Metadata =====
+    editability: FieldEditability = "free"  # "free" (user can edit), "locked" (readonly),
+                                            # "suggested" (recommended), "defaulted" (pre-filled but editable)
+    override_source: str | None = None  # tracks which layer (schema/tool/language/override) provided this value
+    hidden: bool = False  # if true, field is used for metadata/control but hidden from UI
 
 
 class WizardStep(BaseModel):

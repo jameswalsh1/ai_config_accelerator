@@ -1,0 +1,48 @@
+{
+  "language_id": "dotnet",
+  "version": "1.0",
+  "applies_to": {
+    "languages": [
+      "dotnet"
+    ]
+  },
+  "metadata_overrides": [
+    {
+      "field_id": "claude_md.tech_stack",
+      "default": "C#"
+    }
+  ],
+  "field_overrides": [
+    {
+      "field_id": "claude_md.tech_stack",
+      "merge_presets": [
+        {
+          "label": ".NET 8+ with C#",
+          "description": ".NET backend with C# and ASP.NET Core",
+          "value": "- Backend: .NET 8+ with C# 12\n- Framework: ASP.NET Core\n- ORM: Entity Framework Core\n- Testing: xUnit or NUnit",
+          "mode": "append",
+          "tags": [
+            "dotnet"
+          ]
+        }
+      ],
+      "merge_mode": "append"
+    },
+    {
+      "field_id": "claude_md.coding_conventions",
+      "merge_presets": [
+        {
+          "label": "C# conventions",
+          "description": "C# and .NET style conventions",
+          "value": "- Follow .NET design guidelines (Microsoft.NET.Sdk.Design).\n- Use nullable reference types (#nullable enable).\n- Prefer records for immutable data types.\n- Use LINQ appropriately for readability.",
+          "mode": "append",
+          "tags": [
+            "dotnet"
+          ]
+        }
+      ],
+      "merge_mode": "append"
+    }
+  ],
+  "step_overrides": []
+}

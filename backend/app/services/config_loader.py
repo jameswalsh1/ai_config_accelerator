@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from app.models.wizard import WizardConfig, WizardConfigSummary
+from app.services.config_loader_composable import load_composable_config
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
 
@@ -105,50 +106,99 @@ def _load_modular_config(config_id: str) -> dict[str, Any] | None:
 
 
 def _load_all() -> list[WizardConfig]:
+    """Load all wizard configurations using the new composable system.
+    
+    Attempts to load configs using:
+    1. New composable system (schema + overrides)
+    2. Fall back to old modular system for backward compatibility
+    """
     configs: list[WizardConfig] = []
     loaded_ids = set()
     
-    # First, try to load modular configs from directories
-    for dir_path in sorted(DATA_DIR.iterdir()):
-        if dir_path.is_dir() and not dir_path.name.startswith("_"):
-            # Check if this is a modular config directory
-            base_file = dir_path / "_base.json"
-            if base_file.exists():
-                with base_file.open(encoding="utf-8") as f:
-                    config_data = json.load(f)
-                config_id = config_data.get("id")
-                tool_id = dir_path.name  # Use directory name as tool_id
-                
-                # Merge tool-specific language overrides
-                languages_dir = dir_path / "languages"
-                if languages_dir.is_dir():
-                    for lang_file in sorted(languages_dir.glob("*.json")):
-                        with lang_file.open(encoding="utf-8") as f:
-                            lang_config = json.load(f)
-                        config_data = _merge_language_overrides(config_data, lang_config)
-                
-                # Merge shared language overrides (from root /languages/ directory)
-                shared_languages_dir = DATA_DIR / "languages"
-                if shared_languages_dir.is_dir():
-                    for lang_file in sorted(shared_languages_dir.glob("*.json")):
-                        with lang_file.open(encoding="utf-8") as f:
-                            lang_config = json.load(f)
-                        config_data = _merge_language_overrides(config_data, lang_config, tool_id=tool_id)
-                
-                # Resolve preset files
-                resolved = _resolve_preset_files(config_data)
-                configs.append(WizardConfig.model_validate(resolved))
-                loaded_ids.add(config_id)
+    # Try to load tool configs from the new composable system
+    tools_dir = DATA_DIR / "tools"
+    if tools_dir.exists():
+        for tool_file in sorted(tools_dir.glob("*.json")):
+            tool_id = tool_file.stem
+            
+            # Try each language
+            languages_dir = DATA_DIR / "languages"
+            if languages_dir.exists():
+                for lang_file in sorted(languages_dir.glob("*.json")):
+                    lang_id = lang_file.stem
+                    
+                    try:
+                        # Load composable config
+                        config_data = load_composable_config(tool_id, lang_id)
+                        
+                        # The composable loader already sets id, title, target, description
+                        # from tool_metadata, so no need to override here
+                        
+                        config = WizardConfig.model_validate(config_data)
+                        configs.append(config)
+                        config_id = config_data.get("id")
+                        if config_id:
+                            loaded_ids.add(config_id)
+                    except FileNotFoundError:
+                        # Schema or override file not found, skip
+                        pass
+                    except Exception as e:
+                        print(f"Error loading {tool_id} + {lang_id}: {e}")
+                        pass
     
-    # Then, load root-level JSON files (for backward compatibility)
-    # But skip if we already loaded a modular version
-    for path in sorted(DATA_DIR.glob("*.json")):
-        with path.open(encoding="utf-8") as f:
-            data = json.load(f)
-        config_id = data.get("id")
-        if config_id not in loaded_ids:
-            resolved = _resolve_preset_files(data)
-            configs.append(WizardConfig.model_validate(resolved))
+    # Fall back to old modular system if no configs were loaded
+    if not configs:
+        # Load from old modular structure (base + language variants)
+        for dir_path in sorted(DATA_DIR.iterdir()):
+            if dir_path.is_dir() and not dir_path.name.startswith("_") and dir_path.name not in ["tools", "languages", "presets", "overrides", "shared"]:
+                # Check if this is a modular config directory
+                base_file = dir_path / "_base.json"
+                if base_file.exists():
+                    with base_file.open(encoding="utf-8") as f:
+                        config_data = json.load(f)
+                    config_id = config_data.get("id")
+                    tool_id = dir_path.name  # Use directory name as tool_id
+                    
+                    # Merge tool-specific language overrides (old format)
+                    languages_dir = dir_path / "languages"
+                    if languages_dir.is_dir():
+                        for lang_file in sorted(languages_dir.glob("*.json")):
+                            with lang_file.open(encoding="utf-8") as f:
+                                lang_config = json.load(f)
+                            config_data = _merge_language_overrides(config_data, lang_config)
+                    
+                    # Merge shared language overrides (old format)
+                    shared_languages_dir = DATA_DIR / "languages"
+                    if shared_languages_dir.is_dir():
+                        for lang_file in sorted(shared_languages_dir.glob("*.json")):
+                            # Skip if this is a new-format override
+                            try:
+                                with lang_file.open(encoding="utf-8") as f:
+                                    lang_config = json.load(f)
+                                # Check if this looks like old format (has step_overrides)
+                                if "step_overrides" in lang_config:
+                                    config_data = _merge_language_overrides(config_data, lang_config, tool_id=tool_id)
+                            except:
+                                pass
+                    
+                    # Resolve preset files
+                    resolved = _resolve_preset_files(config_data)
+                    configs.append(WizardConfig.model_validate(resolved))
+                    if config_id:
+                        loaded_ids.add(config_id)
+        
+        # Then, load root-level JSON files (for backward compatibility)
+        for path in sorted(DATA_DIR.glob("*.json")):
+            try:
+                with path.open(encoding="utf-8") as f:
+                    data = json.load(f)
+                config_id = data.get("id")
+                if config_id and config_id not in loaded_ids and "steps" in data:
+                    resolved = _resolve_preset_files(data)
+                    configs.append(WizardConfig.model_validate(resolved))
+                    loaded_ids.add(config_id)
+            except:
+                pass
     
     return configs
 

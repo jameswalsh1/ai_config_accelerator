@@ -1,9 +1,0 @@
-[
-  {
-    "label": "Java / Spring Boot conventions",
-    "description": "Java style and Spring Boot service patterns.",
-    "value": "## Java / Spring Boot Coding Standards\n\n- Follow Google Java Style Guide and use `google-java-format`.\n- Target Java 17+ and favour records for simple data carriers.\n- Prefer constructor injection for Spring beans.\n- Use `Optional` for absent values instead of returning `null`.\n- Use try-with-resources for all closeable resources.\n- Test with JUnit 5 and Mockito, and use Testcontainers for integration tests.\n- Keep controllers slim and move business logic to services.",
-    "mode": "append",
-    "tags": ["cursor", "java"]
-  }
-]

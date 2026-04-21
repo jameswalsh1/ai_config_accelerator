@@ -1,0 +1,53 @@
+{
+  "language_id": "typescript",
+  "version": "1.0",
+  "applies_to": {
+    "languages": [
+      "typescript"
+    ]
+  },
+  "metadata_overrides": [],
+  "field_overrides": [
+    {
+      "field_id": "claude_md.tech_stack",
+      "merge_presets": [
+        {
+          "label": "React",
+          "value": "react"
+        }
+      ],
+      "merge_mode": "append"
+    },
+    {
+      "field_id": "claude_md.coding_conventions",
+      "merge_presets": [
+        {
+          "label": "TypeScript strict mode",
+          "description": "Enforce strict type checking",
+          "value": "- Use TypeScript strict mode. Prefer explicit types at all public API boundaries.\n- Never use `any` \u2014 use `unknown` and narrow with type guards.\n- Use named exports exclusively. Avoid default exports.\n- Use async/await throughout. Never use .then() chains or callbacks.",
+          "mode": "append",
+          "tags": [
+            "typescript"
+          ]
+        }
+      ],
+      "merge_mode": "append"
+    },
+    {
+      "field_id": "claude_md.project_overview",
+      "merge_presets": [
+        {
+          "label": "React/Next.js frontend",
+          "description": "Frontend application built with React or Next.js",
+          "value": "This is a modern frontend application built with React or Next.js. The application provides a responsive user interface, handles client-side state management, and communicates with backend APIs.",
+          "mode": "append",
+          "tags": [
+            "typescript"
+          ]
+        }
+      ],
+      "merge_mode": "append"
+    }
+  ],
+  "step_overrides": []
+}

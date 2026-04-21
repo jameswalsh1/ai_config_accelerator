@@ -1,0 +1,116 @@
+{
+  "tool_id": "copilot",
+  "tool_metadata": {
+    "title": "GitHub Copilot Configuration",
+    "description": "Generate repository-wide custom instructions, path-specific custom instructions, agent skills, prompt files, custom agents, and repository settings for GitHub Copilot.",
+    "target": "copilot",
+    "schema_version": "1.0",
+    "target_version_constraints": {
+      "copilot": "enterprise-cloud-latest"
+    },
+    "output_preview_targets": [
+      {
+        "target": "repo_instructions",
+        "label": ".github/copilot-instructions.md"
+      },
+      {
+        "target": "path_instructions",
+        "label": ".github/instructions/*.instructions.md"
+      },
+      {
+        "target": "agent_skills",
+        "label": ".github/skills/*"
+      },
+      {
+        "target": "prompt_files",
+        "label": ".github/prompts/*"
+      },
+      {
+        "target": "agent_instruction_files",
+        "label": "AGENTS.md (root or nested)"
+      },
+      {
+        "target": "custom_agents",
+        "label": ".github/agents/*"
+      },
+      {
+        "target": "repo_settings",
+        "label": ".github/copilot/settings.json"
+      }
+    ]
+  },
+  "version": "1.0",
+  "applies_to": {
+    "tools": [
+      "copilot"
+    ]
+  },
+  "metadata_overrides": [],
+  "field_overrides": [],
+  "step_overrides": [
+    {
+      "step_id": "agent_definitions",
+      "hidden": true
+    },
+    {
+      "step_id": "agents_guidance",
+      "hidden": true
+    },
+    {
+      "step_id": "agents_heading",
+      "hidden": true
+    },
+    {
+      "step_id": "build_test_commands",
+      "hidden": true
+    },
+    {
+      "step_id": "claude_md",
+      "hidden": true
+    },
+    {
+      "step_id": "claude_settings",
+      "hidden": true
+    },
+    {
+      "step_id": "cursor_ignore",
+      "hidden": true
+    },
+    {
+      "step_id": "cursor_indexing_content",
+      "hidden": true
+    },
+    {
+      "step_id": "cursor_indexing_strategy",
+      "hidden": true
+    },
+    {
+      "step_id": "cursor_settings",
+      "hidden": true
+    },
+    {
+      "step_id": "ignore_verification",
+      "hidden": true
+    },
+    {
+      "step_id": "mcp_config",
+      "hidden": true
+    },
+    {
+      "step_id": "rule_files",
+      "hidden": true
+    },
+    {
+      "step_id": "skill_definitions",
+      "hidden": true
+    },
+    {
+      "step_id": "verification_policy",
+      "hidden": true
+    },
+    {
+      "step_id": "hooks",
+      "hidden": true
+    }
+  ]
+}
