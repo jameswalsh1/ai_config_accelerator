@@ -497,3 +497,338 @@ class TestEditableConfigEndpoint:
         # - locked
         for field in data["step"]["fields"]:
             assert "is_locked" in field
+
+
+class TestConfigEditEndpoint:
+    """Test GET /config/edit endpoint for editable config slices."""
+    
+    def test_returns_200_for_valid_combo_and_step(self):
+        response = client.get(
+            "/config/edit?tool=claude&language=python&step_id=language_selection"
+        )
+        assert response.status_code == 200
+    
+    def test_returns_dict_with_step_and_source_tracking(self):
+        data = client.get(
+            "/config/edit?tool=claude&language=python&step_id=language_selection"
+        ).json()
+        assert isinstance(data, dict)
+        assert "step" in data
+        assert "source_tracking" in data
+    
+    def test_step_contains_required_fields(self):
+        data = client.get(
+            "/config/edit?tool=claude&language=python&step_id=language_selection"
+        ).json()
+        step = data["step"]
+        
+        # Step structure
+        assert "id" in step
+        assert "title" in step
+        assert step["id"] == "language_selection"
+        assert "fields" in step
+        assert len(step["fields"]) > 0
+    
+    def test_fields_have_editability_metadata(self):
+        data = client.get(
+            "/config/edit?tool=claude&language=python&step_id=language_selection"
+        ).json()
+        
+        for field in data["step"]["fields"]:
+            # Core field structure
+            assert "id" in field
+            assert "type" in field
+            assert "label" in field
+            
+            # Editability metadata (added by config_editor)
+            assert "editability" in field
+            assert field["editability"] in ["free", "locked", "suggested", "defaulted", "readonly"]
+            assert "is_locked" in field
+            assert isinstance(field["is_locked"], bool)
+            assert "is_default" in field
+            assert isinstance(field["is_default"], bool)
+            assert "override_source" in field
+            assert "source_file" in field
+    
+    def test_response_structure_matches_acceptance_criteria(self):
+        """Verify response matches all acceptance criteria."""
+        data = client.get(
+            "/config/edit?tool=claude&language=python&step_id=language_selection"
+        ).json()
+        
+        # Acceptance Criteria:
+        # 1. Returns: fields in step
+        assert "step" in data
+        assert "fields" in data["step"]
+        assert len(data["step"]["fields"]) > 0
+        
+        # 2. Returns: current overrides
+        for field in data["step"]["fields"]:
+            assert "override_source" in field  # Indicates where override came from
+        
+        # 3. Returns: source file (base/tool/language)
+        for field in data["step"]["fields"]:
+            assert "source_file" in field
+            source_file = field["source_file"]
+            valid_sources = ["schema.json", "tools/", "languages/", "overrides/"]
+            assert any(source_file.startswith(s) if s != "schema.json" else source_file == "schema.json" 
+                      for s in valid_sources)
+        
+        # 4. Clearly indicates:
+        # - default
+        for field in data["step"]["fields"]:
+            assert "is_default" in field
+        
+        # - overridden
+        for field in data["step"]["fields"]:
+            assert "override_source" in field
+        
+        # - locked
+        for field in data["step"]["fields"]:
+            assert "is_locked" in field
+
+
+
+class TestConfigUpdateEndpoint:
+    """Test POST /config/update endpoint for updating field config."""
+    
+    def test_returns_200_for_valid_update(self):
+        payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "changes": {
+                "default": "javascript",
+                "editable": False
+            }
+        }
+        response = client.post("/config/update", json=payload)
+        assert response.status_code == 200
+    
+    def test_returns_updated_config_slice(self):
+        payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "changes": {
+                "default": "javascript",
+                "editable": False
+            }
+        }
+        data = client.post("/config/update", json=payload).json()
+        assert isinstance(data, dict)
+        assert "step" in data
+        assert "source_tracking" in data
+        assert data["step"]["id"] == "language_selection"
+    
+    def test_updates_correct_json_file(self):
+        # This test assumes the update actually modifies the file
+        # We can check by verifying the response includes the updated value
+        payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "changes": {
+                "default": "test_language",
+                "editable": False
+            }
+        }
+        data = client.post("/config/update", json=payload).json()
+        
+        # Find the updated field
+        language_field = None
+        for field in data["step"]["fields"]:
+            if field["id"] == "language":
+                language_field = field
+                break
+        
+        assert language_field is not None
+        assert language_field["default"] == "test_language"
+        assert language_field["editability"] == "locked"
+    
+    def test_returns_400_for_missing_required_fields(self):
+        # Missing scope
+        payload = {
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "changes": {"default": "javascript"}
+        }
+        response = client.post("/config/update", json=payload)
+        assert response.status_code == 400
+    
+    def test_returns_400_for_invalid_scope(self):
+        payload = {
+            "scope": "invalid",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "changes": {"default": "javascript"}
+        }
+        response = client.post("/config/update", json=payload)
+        assert response.status_code == 400
+    
+    def test_returns_404_for_invalid_target(self):
+        payload = {
+            "scope": "language",
+            "target": "nonexistent",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "changes": {"default": "javascript"}
+        }
+        response = client.post("/config/update", json=payload)
+        assert response.status_code == 404
+
+
+class TestPresetEndpoints:
+    """Test POST /config/presets/add and /config/presets/remove endpoints."""
+    
+    def test_add_preset_returns_200_for_valid_request(self):
+        payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "preset": {
+                "label": "Test Preset",
+                "value": "test_value",
+                "description": "A test preset"
+            }
+        }
+        response = client.post("/config/presets/add", json=payload)
+        assert response.status_code == 200
+    
+    def test_add_preset_returns_updated_config_slice(self):
+        payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "preset": {
+                "label": "Test Preset",
+                "value": "test_value",
+                "description": "A test preset"
+            }
+        }
+        data = client.post("/config/presets/add", json=payload).json()
+        assert isinstance(data, dict)
+        assert "step" in data
+        assert "source_tracking" in data
+        assert data["step"]["id"] == "language_selection"
+    
+    def test_add_preset_with_position(self):
+        payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "preset": {
+                "label": "Positioned Preset",
+                "value": "positioned_value",
+                "description": "A positioned preset"
+            },
+            "position": 0
+        }
+        response = client.post("/config/presets/add", json=payload)
+        assert response.status_code == 200
+    
+    def test_remove_preset_returns_200_for_valid_request(self):
+        # First add a preset
+        add_payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "preset": {
+                "label": "Preset to Remove",
+                "value": "remove_value",
+                "description": "A preset to be removed"
+            }
+        }
+        client.post("/config/presets/add", json=add_payload)
+        
+        # Now remove it
+        remove_payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "preset_label": "Preset to Remove"
+        }
+        response = client.post("/config/presets/remove", json=remove_payload)
+        assert response.status_code == 200
+    
+    def test_remove_preset_by_position(self):
+        # First add a preset
+        add_payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "preset": {
+                "label": "Preset to Remove by Position",
+                "value": "remove_by_pos",
+                "description": "A preset to be removed by position"
+            }
+        }
+        client.post("/config/presets/add", json=add_payload)
+        
+        # Now remove it by position
+        remove_payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "position": 0
+        }
+        response = client.post("/config/presets/remove", json=remove_payload)
+        assert response.status_code == 200
+    
+    def test_add_preset_returns_400_for_missing_required_fields(self):
+        # Missing preset
+        payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language"
+        }
+        response = client.post("/config/presets/add", json=payload)
+        assert response.status_code == 400
+    
+    def test_remove_preset_returns_400_for_missing_identifier(self):
+        payload = {
+            "scope": "language",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language"
+        }
+        response = client.post("/config/presets/remove", json=payload)
+        assert response.status_code == 400
+    
+    def test_add_preset_returns_400_for_invalid_scope(self):
+        payload = {
+            "scope": "invalid",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "preset": {
+                "label": "Test",
+                "value": "test"
+            }
+        }
+        response = client.post("/config/presets/add", json=payload)
+        assert response.status_code == 400
+    
+    def test_remove_preset_returns_400_for_invalid_scope(self):
+        payload = {
+            "scope": "invalid",
+            "target": "python",
+            "step_id": "language_selection",
+            "field_id": "language",
+            "preset_label": "Test"
+        }
+        response = client.post("/config/presets/remove", json=payload)
+        assert response.status_code == 400

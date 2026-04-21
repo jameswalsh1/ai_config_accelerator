@@ -23,6 +23,11 @@
       "default": "PEP8+Black"
     },
     {
+      "field_id": "language_selection.language",
+      "default": "test_language",
+      "editability": "locked"
+    },
+    {
       "field_id": "claude_md.tech_stack",
       "default": "test_value_xyz"
     }
@@ -192,6 +197,41 @@
         }
       ],
       "merge_mode": "append"
+    },
+    {
+      "field_id": "language_selection.language",
+      "replace_presets_with": [
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Preset to Remove by Position",
+          "value": "remove_by_pos",
+          "description": "A preset to be removed by position"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Preset to Remove by Position",
+          "value": "remove_by_pos",
+          "description": "A preset to be removed by position"
+        }
+      ]
     }
   ],
   "step_overrides": [

@@ -555,3 +555,159 @@ def remove_field_override(
         
     finally:
         _release_file_lock(target_file)
+
+
+def add_preset_to_field(
+    scope: PatchScope,
+    target: str,
+    step_id: str,
+    field_id: str,
+    preset: dict[str, Any],
+    position: int | None = None,
+) -> dict[str, Any]:
+    """
+    Add a preset to a field's presets list at the specified position.
+    
+    Args:
+        scope: "tool", "language", or "override"
+        target: Tool/language ID or combo
+        step_id: Step containing the field
+        field_id: Field to add preset to
+        preset: Preset dict with label, value, etc.
+        position: Position to insert at (None = append)
+    
+    Returns:
+        The updated override file content
+    
+    Raises:
+        ConfigNotFoundError: If target file not found
+        FileLockError: If unable to acquire lock
+        PatchError: If operation fails
+    """
+    target_file = _get_target_file(scope, target)
+    
+    # Acquire lock
+    _acquire_file_lock(target_file)
+    
+    try:
+        # Read current content
+        config = _read_json_file(target_file)
+        
+        # Ensure field_overrides list exists
+        if "field_overrides" not in config:
+            config["field_overrides"] = []
+        
+        field_overrides = config["field_overrides"]
+        full_field_id = f"{step_id}.{field_id}"
+        
+        # Find existing override or create new one
+        override_idx = _get_field_override_index(field_overrides, full_field_id)
+        
+        if override_idx is not None:
+            override = field_overrides[override_idx]
+        else:
+            override = {"field_id": full_field_id}
+            field_overrides.append(override)
+        
+        # Get current presets from override or initialize
+        current_presets = override.get("replace_presets_with", [])
+        
+        # Insert preset at position
+        if position is None or position >= len(current_presets):
+            current_presets.append(preset)
+        else:
+            current_presets.insert(position, preset)
+        
+        # Update override
+        override["replace_presets_with"] = current_presets
+        
+        # Write back
+        _write_json_file(target_file, config)
+        
+        return config
+        
+    finally:
+        _release_file_lock(target_file)
+
+
+def remove_preset_from_field(
+    scope: PatchScope,
+    target: str,
+    step_id: str,
+    field_id: str,
+    preset_label: str | None = None,
+    position: int | None = None,
+) -> dict[str, Any]:
+    """
+    Remove a preset from a field's presets list.
+    
+    Args:
+        scope: "tool", "language", or "override"
+        target: Tool/language ID or combo
+        step_id: Step containing the field
+        field_id: Field to remove preset from
+        preset_label: Label of preset to remove (if specified)
+        position: Position to remove from (if specified, takes precedence over label)
+    
+    Returns:
+        The updated override file content
+    
+    Raises:
+        ConfigNotFoundError: If target file not found
+        FileLockError: If unable to acquire lock
+        PatchError: If operation fails
+    """
+    target_file = _get_target_file(scope, target)
+    
+    # Acquire lock
+    _acquire_file_lock(target_file)
+    
+    try:
+        # Read current content
+        config = _read_json_file(target_file)
+        
+        # Ensure field_overrides list exists
+        if "field_overrides" not in config:
+            config["field_overrides"] = []
+        
+        field_overrides = config["field_overrides"]
+        full_field_id = f"{step_id}.{field_id}"
+        
+        # Find existing override
+        override_idx = _get_field_override_index(field_overrides, full_field_id)
+        
+        if override_idx is None:
+            raise PatchError(f"No override found for field {full_field_id}")
+        
+        override = field_overrides[override_idx]
+        current_presets = override.get("replace_presets_with", [])
+        
+        # Remove preset
+        if position is not None:
+            if 0 <= position < len(current_presets):
+                current_presets.pop(position)
+            else:
+                raise PatchError(f"Invalid position {position} for presets list of length {len(current_presets)}")
+        elif preset_label is not None:
+            # Find by label
+            found = False
+            for i, p in enumerate(current_presets):
+                if p.get("label") == preset_label:
+                    current_presets.pop(i)
+                    found = True
+                    break
+            if not found:
+                raise PatchError(f"Preset with label '{preset_label}' not found")
+        else:
+            raise PatchError("Must specify either preset_label or position")
+        
+        # Update override
+        override["replace_presets_with"] = current_presets
+        
+        # Write back
+        _write_json_file(target_file, config)
+        
+        return config
+        
+    finally:
+        _release_file_lock(target_file)
