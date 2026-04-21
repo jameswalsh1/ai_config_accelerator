@@ -30,3 +30,51 @@ export async function generateFiles(configId: string, answers: WizardAnswers): P
   anchor.click()
   URL.revokeObjectURL(url)
 }
+
+export interface ToolOption {
+  id: string
+  title: string
+  description: string
+  target: string
+}
+
+export interface LanguageOption {
+  id: string
+  title: string
+  description: string
+}
+
+export interface StepOption {
+  id: string
+  title: string
+  description: string
+}
+
+export async function fetchAvailableTools(): Promise<ToolOption[]> {
+  const res = await fetch(`${BASE}/config/tools`)
+  if (!res.ok) throw new Error(`Failed to load tools: ${res.statusText}`)
+  return res.json() as Promise<ToolOption[]>
+}
+
+export async function fetchAvailableLanguages(): Promise<LanguageOption[]> {
+  const res = await fetch(`${BASE}/config/languages`)
+  if (!res.ok) throw new Error(`Failed to load languages: ${res.statusText}`)
+  return res.json() as Promise<LanguageOption[]>
+}
+
+export async function fetchAvailableSteps(tool: string, language: string): Promise<StepOption[]> {
+  const res = await fetch(`${BASE}/config/steps?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}`)
+  if (!res.ok) throw new Error(`Failed to load steps: ${res.statusText}`)
+  return res.json() as Promise<StepOption[]>
+}
+
+export interface EditableStep {
+  step: any // The step definition with enhanced field metadata
+  source_tracking: any // Summary of override sources
+}
+
+export async function fetchEditableConfig(tool: string, language: string, stepId: string): Promise<EditableStep> {
+  const res = await fetch(`${BASE}/config/edit?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&step_id=${encodeURIComponent(stepId)}`)
+  if (!res.ok) throw new Error(`Failed to load editable config: ${res.statusText}`)
+  return res.json() as Promise<EditableStep>
+}

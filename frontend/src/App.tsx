@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchConfigs, fetchWizardConfig } from '@/api/wizardApi'
 import type { WizardConfig, WizardConfigSummary } from '@/types/wizard'
 import { Wizard } from '@/components/Wizard'
+import { ConfigEditorEntry } from '@/components/ConfigEditorEntry'
 import { BotIcon, Loader2Icon } from 'lucide-react'
 
 const TARGET_LABELS: Record<string, string> = {
@@ -19,11 +20,13 @@ const TARGET_COLORS: Record<string, string> = {
 }
 
 function App() {
+  const [mode, setMode] = useState<'config-selection' | 'wizard' | 'config-editor'>('config-selection')
   const [configs, setConfigs] = useState<WizardConfigSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedConfig, setSelectedConfig] = useState<WizardConfig | null>(null)
   const [loadingConfig, setLoadingConfig] = useState<string | null>(null)
+  const [editableConfig, setEditableConfig] = useState<any>(null)
 
   useEffect(() => {
     fetchConfigs()
@@ -52,6 +55,36 @@ function App() {
           alt="Version 1"
           className="h-8 w-auto"
         />
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => {
+              setMode('config-selection')
+              setSelectedConfig(null)
+              setEditableConfig(null)
+            }}
+            className={`px-3 py-1 text-sm rounded ${
+              mode === 'config-selection'
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Config Wizard
+          </button>
+          <button
+            onClick={() => {
+              setMode('config-editor')
+              setSelectedConfig(null)
+              setEditableConfig(null)
+            }}
+            className={`px-3 py-1 text-sm rounded ${
+              mode === 'config-editor'
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Config Editor
+          </button>
+        </div>
         <span className="text-xs font-medium uppercase tracking-widest text-gray-400">
           AI Config Accelerator
         </span>
@@ -66,6 +99,27 @@ function App() {
         <main className="min-h-screen bg-gray-50 px-4 py-10">
           <div className="mx-auto max-w-2xl">
             <Wizard config={selectedConfig} onBack={() => setSelectedConfig(null)} />
+          </div>
+        </main>
+      </>
+    )
+  }
+
+  if (mode === 'config-editor') {
+    return (
+      <>
+        {navbar}
+        <main className="min-h-screen bg-gray-50 px-4 py-12">
+          <div className="mx-auto max-w-2xl">
+            <ConfigEditorEntry onConfigSelected={setEditableConfig} />
+            {editableConfig && (
+              <div className="mt-8 p-4 bg-white rounded-lg shadow-sm border">
+                <h3 className="text-lg font-semibold mb-4">Editable Config Loaded</h3>
+                <pre className="text-xs bg-gray-50 p-4 rounded overflow-auto max-h-96">
+                  {JSON.stringify(editableConfig, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         </main>
       </>

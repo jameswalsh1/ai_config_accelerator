@@ -1,7 +1,12 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Any
 
-from app.services.config_loader_composable import load_composable_config
+from app.services.config_loader_composable import (
+    load_composable_config,
+    get_available_tools,
+    get_available_languages,
+    get_available_steps,
+)
 from app.services.config_editor import get_editable_step
 from app.services.config_patcher import update_field_metadata, ConfigNotFoundError, add_preset_to_field, remove_preset_from_field
 from app.services.config_validator import validate_language_override, validate_tool_override
@@ -360,3 +365,24 @@ def remove_preset(payload: dict[str, Any]) -> dict[str, Any]:
             status_code=500,
             detail=f"Error removing preset: {str(e)}"
         )
+
+
+@router.get("/tools")
+def list_available_tools() -> list[dict[str, str]]:
+    """Get list of available tools."""
+    return get_available_tools()
+
+
+@router.get("/languages")
+def list_available_languages() -> list[dict[str, str]]:
+    """Get list of available languages."""
+    return get_available_languages()
+
+
+@router.get("/steps")
+def list_available_steps(
+    tool: str = Query(..., description="Tool ID"),
+    language: str = Query(..., description="Language ID"),
+) -> list[dict[str, str]]:
+    """Get list of available steps for a tool/language combination."""
+    return get_available_steps(tool, language)

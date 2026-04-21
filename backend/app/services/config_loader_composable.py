@@ -476,3 +476,70 @@ def _collect_presets_from_field(
     # Recurse into nested fields
     for nested_field in field.get("fields", []):
         _collect_presets_from_field(nested_field, shared_presets, language_presets, tool_presets, tool_id, language_id)
+
+
+def get_available_tools() -> list[dict[str, str]]:
+    """Get list of available tools with their metadata."""
+    tools = []
+    tools_dir = DATA_DIR / "tools"
+    if tools_dir.exists():
+        for tool_file in sorted(tools_dir.glob("*.json")):
+            try:
+                with tool_file.open(encoding="utf-8") as f:
+                    tool_data = json.load(f)
+                
+                tool_id = tool_data.get("tool_id")
+                metadata = tool_data.get("tool_metadata", {})
+                
+                if tool_id:
+                    tools.append({
+                        "id": tool_id,
+                        "title": metadata.get("title", tool_id),
+                        "description": metadata.get("description", ""),
+                        "target": metadata.get("target", tool_id),
+                    })
+            except (json.JSONDecodeError, KeyError):
+                continue
+    
+    return tools
+
+
+def get_available_languages() -> list[dict[str, str]]:
+    """Get list of available languages with their metadata."""
+    languages = []
+    languages_dir = DATA_DIR / "languages"
+    if languages_dir.exists():
+        for lang_file in sorted(languages_dir.glob("*.json")):
+            try:
+                with lang_file.open(encoding="utf-8") as f:
+                    lang_data = json.load(f)
+                
+                language_id = lang_data.get("language_id")
+                metadata = lang_data.get("metadata", {})
+                
+                if language_id:
+                    languages.append({
+                        "id": language_id,
+                        "title": metadata.get("title", language_id),
+                        "description": metadata.get("description", ""),
+                    })
+            except (json.JSONDecodeError, KeyError):
+                continue
+    
+    return languages
+
+
+def get_available_steps(tool_id: str, language_id: str) -> list[dict[str, str]]:
+    """Get list of available steps for a tool/language combination."""
+    try:
+        config = load_composable_config(tool_id, language_id)
+        steps = []
+        for step in config.get("steps", []):
+            steps.append({
+                "id": step.get("id"),
+                "title": step.get("title", step.get("id")),
+                "description": step.get("description", ""),
+            })
+        return steps
+    except (FileNotFoundError, ValueError):
+        return []
