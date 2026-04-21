@@ -499,6 +499,64 @@ class TestEditableConfigEndpoint:
             assert "is_locked" in field
 
 
+class TestPresetsEndpoint:
+    """Tests for GET /api/wizard/presets endpoint."""
+
+    def test_returns_200_for_valid_combo(self):
+        response = client.get("/api/wizard/presets?tool=claude&language=python")
+        assert response.status_code == 200
+
+    def test_returns_categorized_presets(self):
+        data = client.get("/api/wizard/presets?tool=claude&language=python").json()
+        assert isinstance(data, dict)
+        assert "shared" in data
+        assert "language" in data
+        assert "tool" in data
+        assert isinstance(data["shared"], list)
+        assert isinstance(data["language"], list)
+        assert isinstance(data["tool"], list)
+
+    @pytest.mark.parametrize("tool,language", [
+        ("claude", "python"),
+        ("copilot", "javascript"),
+        ("cursor", "angular"),
+    ])
+    def test_multiple_tool_language_combos(self, tool, language):
+        response = client.get(f"/api/wizard/presets?tool={tool}&language={language}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "shared" in data
+        assert "language" in data
+        assert "tool" in data
+
+    def test_presets_have_required_fields(self):
+        data = client.get("/api/wizard/presets?tool=claude&language=python").json()
+        
+        # Check all preset categories
+        for category in ["shared", "language", "tool"]:
+            for preset in data[category]:
+                assert "label" in preset
+                assert "value" in preset
+                # description and tags are optional
+                if "description" in preset:
+                    assert isinstance(preset["description"], str)
+                if "tags" in preset:
+                    assert isinstance(preset["tags"], list)
+
+    def test_returns_400_without_required_params(self):
+        # Missing tool
+        response = client.get("/api/wizard/presets?language=python")
+        assert response.status_code == 422
+        
+        # Missing language
+        response = client.get("/api/wizard/presets?tool=claude")
+        assert response.status_code == 422
+
+    def test_returns_400_for_invalid_tool(self):
+        response = client.get("/api/wizard/presets?tool=invalid&language=python")
+        assert response.status_code == 400
+
+
 class TestConfigEditEndpoint:
     """Test GET /config/edit endpoint for editable config slices."""
     
