@@ -1,6 +1,14 @@
 import React, { useState } from 'react'
-import { Lock, Unlock, AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react'
+import { Lock, Unlock, AlertCircle, CheckCircle2, ChevronDown, Edit3 } from 'lucide-react'
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
+import { updateFieldMetadata } from '@/api/wizardApi'
+
+interface StepFieldEditorProps {
+  editableStep: EditableStep
+  onFieldChange?: (fieldId: string, value: unknown) => void
+  onToggleLock?: (fieldId: string, locked: boolean) => void
+  onMetadataUpdate?: (updatedStep: EditableStep) => void
+}
 
 interface StepFieldEditorProps {
   editableStep: EditableStep
@@ -28,23 +36,59 @@ export function StepFieldEditor({
   editableStep,
   onFieldChange,
   onToggleLock,
+  onMetadataUpdate,
 }: StepFieldEditorProps) {
   const { step, source_tracking } = editableStep
-  const [expandedGroups, setExpandedGroups] = useState<Record<FieldGroup, boolean>>({
+  const [expandedGroups, setExpandedGroups] = useState<Record<FieldGroup, boolean>>({ // eslint-disable-line @typescript-eslint/no-unused-vars
     overridden: true,
     default: true,
     locked: true,
     suggested: true,
   })
+  const [editingMetadata, setEditingMetadata] = useState<string | null>(null)
+  const [metadataChanges, setMetadataChanges] = useState<Record<string, unknown>>({})
+  const [updating, setUpdating] = useState(false)
 
   // Group fields by status for clear organization
   const groupedFields = groupFieldsByStatus(step.fields)
 
-  const toggleGroup = (group: FieldGroup) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [group]: !prev[group],
-    }))
+  const handleMetadataUpdate = async (fieldId: string, changes: Record<string, unknown>) => {
+    const field = step.fields.find(f => f.id === fieldId)
+    if (!field || !field.override_source) return
+
+    // Parse override_source like "language:python" or "tool:claude"
+    const [scope, target] = field.override_source.split(':', 2)
+    if (!scope || !target) return
+
+    try {
+      setUpdating(true)
+      const updatedStep = await updateFieldMetadata(scope, target, step.id, fieldId, changes)
+      onMetadataUpdate?.(updatedStep)
+    } catch (error) {
+      console.error('Failed to update metadata:', error)
+      // Could add error state here
+    } finally {
+      setUpdating(false)
+      setEditingMetadata(null)
+      setMetadataChanges({})
+    }
+  }
+
+  const startEditingMetadata = (fieldId: string) => {
+    const field = step.fields.find(f => f.id === fieldId)
+    if (!field) return
+
+    setEditingMetadata(fieldId)
+    setMetadataChanges({
+      default: field.default,
+      editability: field.editability,
+      hidden: field.render === false, // Assuming render=false means hidden
+    })
+  }
+
+  const cancelEditingMetadata = () => {
+    setEditingMetadata(null)
+    setMetadataChanges({})
   }
 
   const getSourceLabel = (field: EditableField): string => {
@@ -59,6 +103,7 @@ export function StepFieldEditor({
     const sourceColor = SOURCE_COLORS[sourceLabel] || SOURCE_COLORS.base
     const canEdit = field.editability === 'free' && !field.is_locked
     const displayValue = field.current_value ?? field.default ?? ''
+    const isEditingMetadata = editingMetadata === field.id
 
     return (
       <div
@@ -107,21 +152,103 @@ export function StepFieldEditor({
             </div>
           </div>
 
-          {/* Lock Toggle */}
-          {field.editability !== 'locked' && (
-            <button
-              onClick={() => onToggleLock?.(field.id, !field.is_locked)}
-              className="p-2 rounded hover:bg-gray-200 transition-colors"
-              title={field.is_locked ? 'Unlock field' : 'Lock field'}
-            >
-              {field.is_locked ? (
-                <Lock className="size-4 text-red-500" />
-              ) : (
-                <Unlock className="size-4 text-gray-400" />
-              )}
-            </button>
-          )}
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            {/* Edit Metadata Button */}
+            {!field.is_locked && field.override_source && (
+              <button
+                onClick={() => isEditingMetadata ? cancelEditingMetadata() : startEditingMetadata(field.id)}
+                className="p-2 rounded hover:bg-gray-200 transition-colors"
+                title={isEditingMetadata ? 'Cancel editing metadata' : 'Edit field metadata'}
+                disabled={updating}
+              >
+                <Edit3 className={`size-4 ${isEditingMetadata ? 'text-blue-500' : 'text-gray-400'}`} />
+              </button>
+            )}
+
+            {/* Lock Toggle */}
+            {field.editability !== 'locked' && (
+              <button
+                onClick={() => onToggleLock?.(field.id, !field.is_locked)}
+                className="p-2 rounded hover:bg-gray-200 transition-colors"
+                title={field.is_locked ? 'Unlock field' : 'Lock field'}
+              >
+                {field.is_locked ? (
+                  <Lock className="size-4 text-red-500" />
+                ) : (
+                  <Unlock className="size-4 text-gray-400" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Metadata Editing Section */}
+        {isEditingMetadata && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <h5 className="text-sm font-medium text-blue-900 mb-3">Edit Field Metadata</h5>
+            <div className="space-y-3">
+              {/* Default Value */}
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1">Default Value</label>
+                <input
+                  type="text"
+                  value={(metadataChanges.default as string) || ''}
+                  onChange={e => setMetadataChanges(prev => ({ ...prev, default: e.target.value }))}
+                  placeholder="Enter default value"
+                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Editability */}
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1">Editability</label>
+                <select
+                  value={metadataChanges.editability as string || field.editability}
+                  onChange={e => setMetadataChanges(prev => ({ ...prev, editability: e.target.value }))}
+                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="free">Free</option>
+                  <option value="locked">Locked</option>
+                  <option value="suggested">Suggested</option>
+                  <option value="defaulted">Defaulted</option>
+                </select>
+              </div>
+
+              {/* Visibility */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`hidden-${field.id}`}
+                  checked={metadataChanges.hidden as boolean || false}
+                  onChange={e => setMetadataChanges(prev => ({ ...prev, hidden: e.target.checked }))}
+                  className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor={`hidden-${field.id}`} className="text-xs font-medium text-blue-700">
+                  Hidden
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => handleMetadataUpdate(field.id, metadataChanges)}
+                  disabled={updating}
+                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updating ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  onClick={cancelEditingMetadata}
+                  disabled={updating}
+                  className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Field Value Display/Edit */}
         <div className="mt-2">

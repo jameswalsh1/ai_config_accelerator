@@ -75,3 +75,25 @@ export async function fetchEditableConfig(tool: string, language: string, stepId
   if (!res.ok) throw new Error(`Failed to load editable config: ${res.statusText}`)
   return res.json() as Promise<EditableStep>
 }
+
+export async function updateFieldMetadata(
+  scope: string,
+  target: string,
+  stepId: string,
+  fieldId: string,
+  changes: Record<string, unknown>
+): Promise<EditableStep> {
+  const res = await fetch(`${BASE}/config/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scope,
+      target,
+      step_id: stepId,
+      field_id: fieldId,
+      changes,
+    }),
+  })
+  if (!res.ok) throw new Error(`Failed to update field metadata: ${res.statusText}`)
+  return res.json() as Promise<EditableStep>
+}

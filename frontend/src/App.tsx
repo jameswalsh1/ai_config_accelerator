@@ -65,24 +65,8 @@ function App() {
     })
   }
 
-  const handleToggleLock = (fieldId: string, locked: boolean) => {
-    if (!editableConfig) return
-    setEditableConfig(prev => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        step: {
-          ...prev.step,
-          fields: prev.step.fields.map(field =>
-            field.id === fieldId ? { ...field, is_locked: locked } : field
-          )
-        },
-        source_tracking: {
-          ...prev.source_tracking,
-          locked_fields: prev.source_tracking.locked_fields + (locked ? 1 : -1)
-        }
-      }
-    })
+  const handleMetadataUpdate = (updatedStep: EditableStep) => {
+    setEditableConfig(updatedStep)
   }
 
   const navbar = (
@@ -155,6 +139,7 @@ function App() {
                   editableStep={editableConfig} 
                   onFieldChange={handleFieldChange}
                   onToggleLock={handleToggleLock}
+                  onMetadataUpdate={handleMetadataUpdate}
                 />
               </div>
             )}
