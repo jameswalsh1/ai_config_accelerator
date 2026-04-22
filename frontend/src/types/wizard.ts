@@ -12,6 +12,17 @@ export interface Preset {
   tags?: string[]
 }
 
+export interface PresetAssignment {
+  id: string
+  preset_id: string
+  display_order: number
+  assignment_mode: 'suggested' | 'defaulted' | 'locked' | 'hidden_applied'
+  is_editable: boolean
+  is_visible: boolean
+  is_default: boolean
+  preset: Preset
+}
+
 export interface PreviewTarget {
   target: string
   label: string
@@ -100,6 +111,8 @@ export interface EditableField extends WizardField {
   override_source?: string
   source_file?: string
   current_value?: unknown
+  current_value_source?: string
+  preset_assignments?: PresetAssignment[]
 }
 
 export interface EditableStepData {

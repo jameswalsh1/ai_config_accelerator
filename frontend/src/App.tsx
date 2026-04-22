@@ -29,6 +29,8 @@ function App() {
   const [selectedConfig, setSelectedConfig] = useState<WizardConfig | null>(null)
   const [loadingConfig, setLoadingConfig] = useState<string | null>(null)
   const [editableConfig, setEditableConfig] = useState<EditableStep | null>(null)
+  const [selectedTool, setSelectedTool] = useState<string>('')
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('')
 
   useEffect(() => {
     fetchConfigs()
@@ -49,7 +51,7 @@ function App() {
     }
   }
 
-  const handleFieldChange = (fieldId: string, value: unknown) => {
+  const handleFieldChange = (fieldId: string, value: unknown, source?: string) => {
     if (!editableConfig) return
     setEditableConfig(prev => {
       if (!prev) return prev
@@ -58,7 +60,7 @@ function App() {
         step: {
           ...prev.step,
           fields: prev.step.fields.map(field =>
-            field.id === fieldId ? { ...field, current_value: value } : field
+            field.id === fieldId ? { ...field, current_value: value, current_value_source: source } : field
           )
         }
       }
@@ -67,6 +69,22 @@ function App() {
 
   const handleMetadataUpdate = (updatedStep: EditableStep) => {
     setEditableConfig(updatedStep)
+  }
+
+  const handleToggleLock = (fieldId: string, locked: boolean) => {
+    if (!editableConfig) return
+    setEditableConfig(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        step: {
+          ...prev.step,
+          fields: prev.step.fields.map(field =>
+            field.id === fieldId ? { ...field, is_locked: locked } : field
+          )
+        }
+      }
+    })
   }
 
   const navbar = (
@@ -132,7 +150,11 @@ function App() {
         {navbar}
         <main className="min-h-screen bg-gray-50 px-4 py-12">
           <div className="mx-auto max-w-2xl">
-            <ConfigEditorEntry onConfigSelected={setEditableConfig} />
+            <ConfigEditorEntry onConfigSelected={(config, tool, language) => {
+              setEditableConfig(config)
+              setSelectedTool(tool)
+              setSelectedLanguage(language)
+            }} />
             {editableConfig && (
               <div className="mt-8">
                 <ConfigEditor 
@@ -140,6 +162,8 @@ function App() {
                   onFieldChange={handleFieldChange}
                   onToggleLock={handleToggleLock}
                   onMetadataUpdate={handleMetadataUpdate}
+                  tool={selectedTool}
+                  language={selectedLanguage}
                 />
               </div>
             )}

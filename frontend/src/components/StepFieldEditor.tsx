@@ -2,18 +2,15 @@ import React, { useState } from 'react'
 import { Lock, Unlock, AlertCircle, CheckCircle2, ChevronDown, Edit3 } from 'lucide-react'
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
 import { updateFieldMetadata } from '@/api/wizardApi'
+import { PresetManagement } from './PresetManagement'
 
 interface StepFieldEditorProps {
   editableStep: EditableStep
-  onFieldChange?: (fieldId: string, value: unknown) => void
+  onFieldChange?: (fieldId: string, value: unknown, source?: string) => void
   onToggleLock?: (fieldId: string, locked: boolean) => void
   onMetadataUpdate?: (updatedStep: EditableStep) => void
-}
-
-interface StepFieldEditorProps {
-  editableStep: EditableStep
-  onFieldChange?: (fieldId: string, value: unknown) => void
-  onToggleLock?: (fieldId: string, locked: boolean) => void
+  tool: string
+  language: string
 }
 
 type FieldGroup = 'overridden' | 'default' | 'locked' | 'suggested'
@@ -30,6 +27,7 @@ const SOURCE_COLORS: Record<string, string> = {
   tool: 'bg-indigo-100 text-indigo-700',
   language: 'bg-green-100 text-green-700',
   override: 'bg-purple-100 text-purple-700',
+  preset: 'bg-orange-100 text-orange-700',
 }
 
 export function StepFieldEditor({
@@ -37,9 +35,11 @@ export function StepFieldEditor({
   onFieldChange,
   onToggleLock,
   onMetadataUpdate,
+  tool,
+  language,
 }: StepFieldEditorProps) {
   const { step, source_tracking } = editableStep
-  const [expandedGroups, setExpandedGroups] = useState<Record<FieldGroup, boolean>>({ // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [expandedGroups, setExpandedGroups] = useState<Record<FieldGroup, boolean>>({
     overridden: true,
     default: true,
     locked: true,
@@ -48,6 +48,11 @@ export function StepFieldEditor({
   const [editingMetadata, setEditingMetadata] = useState<string | null>(null)
   const [metadataChanges, setMetadataChanges] = useState<Record<string, unknown>>({})
   const [updating, setUpdating] = useState(false)
+  const [showPresetManagement, setShowPresetManagement] = useState<Record<string, boolean>>({})
+
+  const toggleGroup = (group: FieldGroup) => {
+    setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }))
+  }
 
   // Group fields by status for clear organization
   const groupedFields = groupFieldsByStatus(step.fields)
@@ -92,7 +97,21 @@ export function StepFieldEditor({
   }
 
   const getSourceLabel = (field: EditableField): string => {
-    if (field.override_source) return field.override_source
+    // If current value has a specific source (e.g., from preset application)
+    if (field.current_value_source) {
+      return field.current_value_source
+    }
+    
+    // Parse override_source
+    if (field.override_source) {
+      if (field.override_source === 'schema') return 'base'
+      if (field.override_source.startsWith('tool:')) return 'tool'
+      if (field.override_source.startsWith('language:')) return 'language'
+      if (field.override_source.startsWith('override:')) return 'override'
+      return field.override_source
+    }
+    
+    // Fallback to source_file parsing
     if (field.source_file?.includes('tool')) return 'tool'
     if (field.source_file?.includes('language')) return 'language'
     return 'base'
@@ -273,7 +292,18 @@ export function StepFieldEditor({
         {/* Presets Section */}
         {field.presets && field.presets.length > 0 && canEdit && (
           <div className="mt-3 pt-3 border-t border-gray-200">
-            <p className="text-xs font-medium text-gray-600 mb-2">Quick Apply:</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-gray-600">Quick Apply:</p>
+              <button
+                onClick={() => setShowPresetManagement(prev => ({
+                  ...prev,
+                  [field.id]: !prev[field.id]
+                }))}
+                className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+              >
+                Manage Presets
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
               {field.presets.map((preset, idx) => (
                 <button
@@ -283,7 +313,7 @@ export function StepFieldEditor({
                       preset.mode === 'append' && typeof displayValue === 'string'
                         ? displayValue + preset.value
                         : preset.value
-                    onFieldChange?.(field.id, newValue)
+                    onFieldChange?.(field.id, newValue, 'preset')
                   }}
                   className="px-3 py-1 rounded text-xs bg-white border border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
                   title={preset.description}
@@ -292,6 +322,22 @@ export function StepFieldEditor({
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Preset Management */}
+        {showPresetManagement[field.id] && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <PresetManagement
+              tool={tool}
+              language={language}
+              fieldId={field.id}
+              onAssignmentsChange={(assignments) => {
+                // Update the field with new preset assignments
+                // You might need to update the step data here
+                console.log('Preset assignments updated:', assignments)
+              }}
+            />
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep } from '@/types/wizard'
+import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep, Preset, PresetAssignment } from '@/types/wizard'
 
 const BASE = 'http://localhost:8000'
 
@@ -96,4 +96,91 @@ export async function updateFieldMetadata(
   })
   if (!res.ok) throw new Error(`Failed to update field metadata: ${res.statusText}`)
   return res.json() as Promise<EditableStep>
+}
+
+export async function fetchAvailablePresets(tool: string, language: string): Promise<{
+  shared: Preset[]
+  language: Preset[]
+  tool: Preset[]
+}> {
+  const res = await fetch(`${BASE}/api/wizard/presets?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}`)
+  if (!res.ok) throw new Error(`Failed to load presets: ${res.statusText}`)
+  return res.json() as Promise<{
+    shared: Preset[]
+    language: Preset[]
+    tool: Preset[]
+  }>
+}
+
+export async function fetchFieldPresetAssignments(
+  tool: string,
+  language: string,
+  fieldId: string
+): Promise<PresetAssignment[]> {
+  const res = await fetch(`${BASE}/api/wizard/field-presets?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&field_id=${encodeURIComponent(fieldId)}`)
+  if (!res.ok) throw new Error(`Failed to load field preset assignments: ${res.statusText}`)
+  return res.json() as Promise<PresetAssignment[]>
+}
+
+export async function assignPresetToField(
+  tool: string,
+  language: string,
+  fieldId: string,
+  presetId: string,
+  assignmentMode: string,
+  displayOrder: number
+): Promise<PresetAssignment> {
+  const res = await fetch(`${BASE}/api/wizard/field-presets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tool,
+      language,
+      field_id: fieldId,
+      preset_id: presetId,
+      assignment_mode: assignmentMode,
+      display_order: displayOrder,
+    }),
+  })
+  if (!res.ok) throw new Error(`Failed to assign preset: ${res.statusText}`)
+  return res.json() as Promise<PresetAssignment>
+}
+
+export async function updatePresetAssignment(
+  assignmentId: string,
+  changes: Partial<PresetAssignment>
+): Promise<PresetAssignment> {
+  const res = await fetch(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(changes),
+  })
+  if (!res.ok) throw new Error(`Failed to update preset assignment: ${res.statusText}`)
+  return res.json() as Promise<PresetAssignment>
+}
+
+export async function removePresetFromField(assignmentId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error(`Failed to remove preset assignment: ${res.statusText}`)
+}
+
+export async function reorderPresetAssignments(
+  tool: string,
+  language: string,
+  fieldId: string,
+  assignmentIds: string[]
+): Promise<void> {
+  const res = await fetch(`${BASE}/api/wizard/field-presets/reorder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tool,
+      language,
+      field_id: fieldId,
+      assignment_ids: assignmentIds,
+    }),
+  })
+  if (!res.ok) throw new Error(`Failed to reorder preset assignments: ${res.statusText}`)
 }

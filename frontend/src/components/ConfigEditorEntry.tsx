@@ -11,7 +11,7 @@ import {
 } from '@/api/wizardApi'
 
 interface ConfigEditorEntryProps {
-  onConfigSelected: (editableConfig: EditableStep) => void
+  onConfigSelected: (editableConfig: EditableStep, tool: string, language: string) => void
 }
 
 export function ConfigEditorEntry({ onConfigSelected }: ConfigEditorEntryProps) {
@@ -74,7 +74,7 @@ export function ConfigEditorEntry({ onConfigSelected }: ConfigEditorEntryProps) 
     try {
       setLoadingConfig(true)
       const editableConfig = await fetchEditableConfig(selectedTool, selectedLanguage, selectedStep)
-      onConfigSelected(editableConfig)
+      onConfigSelected(editableConfig, selectedTool, selectedLanguage)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load config')
     } finally {

@@ -3,9 +3,11 @@ import type { EditableStep } from '@/types/wizard'
 
 interface ConfigEditorProps {
   editableStep: EditableStep
-  onFieldChange?: (fieldId: string, value: unknown) => void
+  onFieldChange?: (fieldId: string, value: unknown, source?: string) => void
   onToggleLock?: (fieldId: string, locked: boolean) => void
   onMetadataUpdate?: (updatedStep: EditableStep) => void
+  tool: string
+  language: string
 }
 
 export function ConfigEditor({
@@ -13,6 +15,8 @@ export function ConfigEditor({
   onFieldChange,
   onToggleLock,
   onMetadataUpdate,
+  tool,
+  language,
 }: ConfigEditorProps) {
   return (
     <div className="w-full">
@@ -21,6 +25,8 @@ export function ConfigEditor({
         onFieldChange={onFieldChange}
         onToggleLock={onToggleLock}
         onMetadataUpdate={onMetadataUpdate}
+        tool={tool}
+        language={language}
       />
     </div>
   )
