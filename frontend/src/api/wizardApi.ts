@@ -1,6 +1,8 @@
-import type { WizardAnswers, WizardConfig, WizardConfigSummary } from '@/types/wizard'
+import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep } from '@/types/wizard'
 
 const BASE = 'http://localhost:8000'
+
+export type { EditableStep }
 
 export async function fetchConfigs(): Promise<WizardConfigSummary[]> {
   const res = await fetch(`${BASE}/api/wizard/configs`)
@@ -66,11 +68,6 @@ export async function fetchAvailableSteps(tool: string, language: string): Promi
   const res = await fetch(`${BASE}/config/steps?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}`)
   if (!res.ok) throw new Error(`Failed to load steps: ${res.statusText}`)
   return res.json() as Promise<StepOption[]>
-}
-
-export interface EditableStep {
-  step: any // The step definition with enhanced field metadata
-  source_tracking: any // Summary of override sources
 }
 
 export async function fetchEditableConfig(tool: string, language: string, stepId: string): Promise<EditableStep> {

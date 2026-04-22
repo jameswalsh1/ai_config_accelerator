@@ -1,4 +1,4 @@
-import { PlusIcon, Trash2Icon } from 'lucide-react'
+import { PlusIcon } from 'lucide-react'
 import { PresetBar } from '../PresetBar'
 import { CheckboxField } from './CheckboxField'
 import { MultiSelectField } from './MultiSelectField'

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { fetchConfigs, fetchWizardConfig } from '@/api/wizardApi'
-import type { WizardConfig, WizardConfigSummary } from '@/types/wizard'
+import type { WizardConfig, WizardConfigSummary, EditableStep } from '@/types/wizard'
 import { Wizard } from '@/components/Wizard'
 import { ConfigEditorEntry } from '@/components/ConfigEditorEntry'
+import { ConfigEditor } from '@/components/ConfigEditor'
 import { BotIcon, Loader2Icon } from 'lucide-react'
 
 const TARGET_LABELS: Record<string, string> = {
@@ -10,6 +11,7 @@ const TARGET_LABELS: Record<string, string> = {
   cursor: 'Cursor',
   copilot: 'GitHub Copilot',
   all: 'All Tools',
+  
 }
 
 const TARGET_COLORS: Record<string, string> = {
@@ -26,7 +28,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [selectedConfig, setSelectedConfig] = useState<WizardConfig | null>(null)
   const [loadingConfig, setLoadingConfig] = useState<string | null>(null)
-  const [editableConfig, setEditableConfig] = useState<any>(null)
+  const [editableConfig, setEditableConfig] = useState<EditableStep | null>(null)
 
   useEffect(() => {
     fetchConfigs()
@@ -45,6 +47,42 @@ function App() {
     } finally {
       setLoadingConfig(null)
     }
+  }
+
+  const handleFieldChange = (fieldId: string, value: unknown) => {
+    if (!editableConfig) return
+    setEditableConfig(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        step: {
+          ...prev.step,
+          fields: prev.step.fields.map(field =>
+            field.id === fieldId ? { ...field, current_value: value } : field
+          )
+        }
+      }
+    })
+  }
+
+  const handleToggleLock = (fieldId: string, locked: boolean) => {
+    if (!editableConfig) return
+    setEditableConfig(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        step: {
+          ...prev.step,
+          fields: prev.step.fields.map(field =>
+            field.id === fieldId ? { ...field, is_locked: locked } : field
+          )
+        },
+        source_tracking: {
+          ...prev.source_tracking,
+          locked_fields: prev.source_tracking.locked_fields + (locked ? 1 : -1)
+        }
+      }
+    })
   }
 
   const navbar = (
@@ -104,7 +142,6 @@ function App() {
       </>
     )
   }
-
   if (mode === 'config-editor') {
     return (
       <>
@@ -113,11 +150,12 @@ function App() {
           <div className="mx-auto max-w-2xl">
             <ConfigEditorEntry onConfigSelected={setEditableConfig} />
             {editableConfig && (
-              <div className="mt-8 p-4 bg-white rounded-lg shadow-sm border">
-                <h3 className="text-lg font-semibold mb-4">Editable Config Loaded</h3>
-                <pre className="text-xs bg-gray-50 p-4 rounded overflow-auto max-h-96">
-                  {JSON.stringify(editableConfig, null, 2)}
-                </pre>
+              <div className="mt-8">
+                <ConfigEditor 
+                  editableStep={editableConfig} 
+                  onFieldChange={handleFieldChange}
+                  onToggleLock={handleToggleLock}
+                />
               </div>
             )}
           </div>
@@ -125,7 +163,6 @@ function App() {
       </>
     )
   }
-
   return (
     <>
       {navbar}

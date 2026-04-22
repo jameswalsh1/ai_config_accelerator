@@ -89,3 +89,36 @@ export interface WizardConfig extends WizardConfigSummary {
 
 /** shape written to the answers store: stepId -> fieldId -> value */
 export type WizardAnswers = Record<string, Record<string, unknown>>
+
+// Editable Config Types
+export type Editability = 'free' | 'locked' | 'suggested' | 'defaulted'
+
+export interface EditableField extends WizardField {
+  editability: Editability
+  is_locked: boolean
+  is_default: boolean
+  override_source?: string
+  source_file?: string
+  current_value?: unknown
+}
+
+export interface EditableStepData {
+  id: string
+  title: string
+  description?: string
+  fields: EditableField[]
+}
+
+export interface SourceTracking {
+  total_fields: number
+  by_source: Record<string, number>
+  by_editability: Record<Editability, number>
+  locked_fields: number
+  default_fields: number
+  overridden_fields: number
+}
+
+export interface EditableStep {
+  step: EditableStepData
+  source_tracking: SourceTracking
+}
