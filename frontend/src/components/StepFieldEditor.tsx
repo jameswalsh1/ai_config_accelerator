@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { Lock, Unlock, AlertCircle, CheckCircle2, ChevronDown, Edit3 } from 'lucide-react'
+import { Lock, Unlock, AlertCircle, CheckCircle2, ChevronDown, Edit3, RotateCcw } from 'lucide-react'
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
-import { updateFieldMetadata } from '@/api/wizardApi'
+import { updateFieldMetadata, resetFieldToBase } from '@/api/wizardApi'
 import { PresetManagement } from './PresetManagement'
 
 interface StepFieldEditorProps {
@@ -110,6 +110,24 @@ export function StepFieldEditor({
       } finally {
         setUpdating(false)
       }
+    }
+  }
+
+  const handleResetToBase = async (field: EditableField) => {
+    if (!field.override_source) return
+
+    // Parse override_source like "language:python" or "tool:claude"
+    const [scope, target] = field.override_source.split(':', 2)
+    if (!scope || !target) return
+
+    try {
+      setUpdating(true)
+      const updatedStep = await resetFieldToBase(scope, target, step.id, field.id)
+      onMetadataUpdate?.(updatedStep)
+    } catch (error) {
+      console.error('Failed to reset field to base:', error)
+    } finally {
+      setUpdating(false)
     }
   }
 
@@ -232,6 +250,30 @@ export function StepFieldEditor({
                 ) : (
                   <Unlock className="size-4 text-gray-400" />
                 )}
+              </button>
+            )}
+
+            {/* Reset to Base */}
+            {field.override_source && !field.is_default && (
+              <button
+                onClick={() => handleResetToBase(field)}
+                className="p-2 rounded hover:bg-gray-200 transition-colors"
+                title="Reset to base/tool defaults"
+                disabled={updating}
+              >
+                <RotateCcw className="size-4 text-gray-400" />
+              </button>
+            )}
+
+            {/* Reset to Base */}
+            {field.override_source && !field.is_default && (
+              <button
+                onClick={() => handleResetToBase(field)}
+                className="p-2 rounded hover:bg-gray-200 transition-colors"
+                title="Reset to base/tool defaults"
+                disabled={updating}
+              >
+                <RotateCcw className="size-4 text-gray-400" />
               </button>
             )}
           </div>

@@ -19,11 +19,6 @@
       "default": "value2"
     },
     {
-      "field_id": "claude_md.coding_conventions",
-      "default": "PEP8+Black",
-      "lock_reason": "Test reason"
-    },
-    {
       "field_id": "language_selection.language",
       "default": "test_language",
       "editability": "locked"
@@ -202,6 +197,21 @@
     {
       "field_id": "language_selection.language",
       "replace_presets_with": [
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Preset to Remove by Position",
+          "value": "remove_by_pos",
+          "description": "A preset to be removed by position"
+        },
         {
           "label": "Test Preset",
           "value": "test_value",

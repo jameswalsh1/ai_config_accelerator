@@ -8,7 +8,7 @@ from app.services.config_loader_composable import (
     get_available_steps,
 )
 from app.services.config_editor import get_editable_step
-from app.services.config_patcher import update_field_metadata, ConfigNotFoundError, add_preset_to_field, remove_preset_from_field
+from app.services.config_patcher import update_field_metadata, ConfigNotFoundError, add_preset_to_field, remove_preset_from_field, remove_field_override
 from app.services.config_validator import validate_language_override, validate_tool_override
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -219,6 +219,78 @@ def update_field_config(payload: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(
             status_code=500,
             detail=f"Error updating config: {str(e)}"
+        )
+
+
+@router.post("/reset")
+def reset_field_to_base(payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    Reset a field to its base/tool defaults by removing overrides.
+
+    Removes the field override from the specified scope, allowing the field
+    to revert to base schema or tool defaults.
+
+    Payload:
+        {
+            "scope": "language|tool|override",
+            "target": "python|claude|etc",
+            "step_id": "engineering_standards",
+            "field_id": "coding_conventions",
+            "override_type": "metadata"  // optional, defaults to "metadata"
+        }
+
+    Returns:
+        Updated editable config slice for the step
+
+    Raises:
+        HTTPException 400: If validation fails or invalid parameters
+        HTTPException 404: If target file not found
+        HTTPException 500: For internal errors
+    """
+    try:
+        # Extract and validate payload
+        scope = payload.get("scope")
+        target = payload.get("target")
+        step_id = payload.get("step_id")
+        field_id = payload.get("field_id")
+        override_type = payload.get("override_type", "metadata")
+
+        if not all([scope, target, step_id, field_id]):
+            raise ValueError("Missing required fields: scope, target, step_id, field_id")
+
+        if scope not in ["language", "tool", "override"]:
+            raise ValueError("Invalid scope. Must be 'language', 'tool', or 'override'")
+
+        if override_type not in ["metadata", "structure"]:
+            raise ValueError("Invalid override_type. Must be 'metadata' or 'structure'")
+
+        # Remove the override
+        updated_config = remove_field_override(scope, target, step_id, field_id, override_type)
+
+        # Return updated config slice
+        # Assume tool/language for slice - use claude/python as defaults
+        tool = "claude"
+        language = target if scope == "language" else "python"
+
+        resolved_dict = load_composable_config(tool, language)
+        result = get_editable_step(resolved_dict, step_id)
+
+        return result
+
+    except (FileNotFoundError, ConfigNotFoundError) as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Config file not found: {str(e)}"
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error resetting field: {str(e)}"
         )
 
 

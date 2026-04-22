@@ -1,6 +1,6 @@
 import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep, Preset, PresetAssignment } from '@/types/wizard'
 
-const BASE = 'http://localhost:8000'
+const BASE = 'http://localhost:8001'
 
 export type { EditableStep }
 
@@ -95,6 +95,28 @@ export async function updateFieldMetadata(
     }),
   })
   if (!res.ok) throw new Error(`Failed to update field metadata: ${res.statusText}`)
+  return res.json() as Promise<EditableStep>
+}
+
+export async function resetFieldToBase(
+  scope: string,
+  target: string,
+  stepId: string,
+  fieldId: string,
+  overrideType: 'metadata' | 'structure' = 'metadata'
+): Promise<EditableStep> {
+  const res = await fetch(`${BASE}/config/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scope,
+      target,
+      step_id: stepId,
+      field_id: fieldId,
+      override_type: overrideType,
+    }),
+  })
+  if (!res.ok) throw new Error(`Failed to reset field to base: ${res.statusText}`)
   return res.json() as Promise<EditableStep>
 }
 
