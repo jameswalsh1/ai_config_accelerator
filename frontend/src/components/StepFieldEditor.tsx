@@ -7,7 +7,6 @@ import { PresetManagement } from './PresetManagement'
 interface StepFieldEditorProps {
   editableStep: EditableStep
   onFieldChange?: (fieldId: string, value: unknown, source?: string) => void
-  onToggleLock?: (fieldId: string, locked: boolean) => void
   onMetadataUpdate?: (updatedStep: EditableStep) => void
   tool: string
   language: string
@@ -33,7 +32,6 @@ const SOURCE_COLORS: Record<string, string> = {
 export function StepFieldEditor({
   editableStep,
   onFieldChange,
-  onToggleLock,
   onMetadataUpdate,
   tool,
   language,
@@ -79,6 +77,42 @@ export function StepFieldEditor({
     }
   }
 
+  const handleLockToggle = async (field: EditableField) => {
+    if (!field.override_source) return
+
+    const newLockedState = !field.is_locked
+    
+    if (newLockedState) {
+      // When locking, open the metadata editor to allow setting the reason
+      startEditingMetadata(field.id)
+      setMetadataChanges(prev => ({
+        ...prev,
+        editability: 'locked',
+        lock_reason: field.lock_reason || '',
+      }))
+    } else {
+      // When unlocking, directly update without opening editor
+      const changes: Record<string, unknown> = {
+        editability: 'free',
+        lock_reason: '',
+      }
+
+      // Parse override_source like "language:python" or "tool:claude"
+      const [scope, target] = field.override_source.split(':', 2)
+      if (!scope || !target) return
+
+      try {
+        setUpdating(true)
+        const updatedStep = await updateFieldMetadata(scope, target, step.id, field.id, changes)
+        onMetadataUpdate?.(updatedStep)
+      } catch (error) {
+        console.error('Failed to unlock field:', error)
+      } finally {
+        setUpdating(false)
+      }
+    }
+  }
+
   const startEditingMetadata = (fieldId: string) => {
     const field = step.fields.find(f => f.id === fieldId)
     if (!field) return
@@ -88,6 +122,7 @@ export function StepFieldEditor({
       default: field.default,
       editability: field.editability,
       hidden: field.render === false, // Assuming render=false means hidden
+      lock_reason: field.lock_reason || '',
     })
   }
 
@@ -138,7 +173,7 @@ export function StepFieldEditor({
               <h4 className="font-medium text-gray-900">{field.label}</h4>
               {field.required && <span className="text-red-500 text-sm">*</span>}
               {field.is_locked && (
-                <span title="This field is locked">
+                <span title={field.lock_reason ? `Locked: ${field.lock_reason}` : "This field is locked"}>
                   <Lock className="size-4 text-red-500" />
                 </span>
               )}
@@ -188,7 +223,7 @@ export function StepFieldEditor({
             {/* Lock Toggle */}
             {field.editability !== 'locked' && (
               <button
-                onClick={() => onToggleLock?.(field.id, !field.is_locked)}
+                onClick={() => handleLockToggle(field)}
                 className="p-2 rounded hover:bg-gray-200 transition-colors"
                 title={field.is_locked ? 'Unlock field' : 'Lock field'}
               >
@@ -234,18 +269,16 @@ export function StepFieldEditor({
                 </select>
               </div>
 
-              {/* Visibility */}
-              <div className="flex items-center gap-2">
+              {/* Lock Reason */}
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1">Lock Reason</label>
                 <input
-                  type="checkbox"
-                  id={`hidden-${field.id}`}
-                  checked={metadataChanges.hidden as boolean || false}
-                  onChange={e => setMetadataChanges(prev => ({ ...prev, hidden: e.target.checked }))}
-                  className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                  type="text"
+                  value={(metadataChanges.lock_reason as string) || ''}
+                  onChange={e => setMetadataChanges(prev => ({ ...prev, lock_reason: e.target.value }))}
+                  placeholder="Reason for locking this field"
+                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <label htmlFor={`hidden-${field.id}`} className="text-xs font-medium text-blue-700">
-                  Hidden
-                </label>
               </div>
 
               {/* Action Buttons */}
@@ -279,11 +312,18 @@ export function StepFieldEditor({
             <div className="rounded px-3 py-2 bg-white border border-gray-300 text-sm text-gray-700">
               <div className="flex items-start gap-2">
                 {field.is_locked && <AlertCircle className="size-4 text-red-500 mt-0.5 flex-shrink-0" />}
-                <code className="break-all">
-                  {typeof displayValue === 'string'
-                    ? displayValue || '(empty)'
-                    : JSON.stringify(displayValue, null, 2)}
-                </code>
+                <div className="flex-1">
+                  <code className="break-all">
+                    {typeof displayValue === 'string'
+                      ? displayValue || '(empty)'
+                      : JSON.stringify(displayValue, null, 2)}
+                  </code>
+                  {field.is_locked && field.lock_reason && (
+                    <div className="mt-1 text-xs text-red-600 italic">
+                      Locked: {field.lock_reason}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

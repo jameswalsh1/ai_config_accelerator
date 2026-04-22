@@ -113,6 +113,7 @@ export interface EditableField extends WizardField {
   current_value?: unknown
   current_value_source?: string
   preset_assignments?: PresetAssignment[]
+  lock_reason?: string
 }
 
 export interface EditableStepData {

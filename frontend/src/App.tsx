@@ -71,22 +71,6 @@ function App() {
     setEditableConfig(updatedStep)
   }
 
-  const handleToggleLock = (fieldId: string, locked: boolean) => {
-    if (!editableConfig) return
-    setEditableConfig(prev => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        step: {
-          ...prev.step,
-          fields: prev.step.fields.map(field =>
-            field.id === fieldId ? { ...field, is_locked: locked } : field
-          )
-        }
-      }
-    })
-  }
-
   const navbar = (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white shadow-sm">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
@@ -160,7 +144,6 @@ function App() {
                 <ConfigEditor 
                   editableStep={editableConfig} 
                   onFieldChange={handleFieldChange}
-                  onToggleLock={handleToggleLock}
                   onMetadataUpdate={handleMetadataUpdate}
                   tool={selectedTool}
                   language={selectedLanguage}

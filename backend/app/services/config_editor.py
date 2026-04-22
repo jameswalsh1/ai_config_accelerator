@@ -96,6 +96,10 @@ def _enhance_field_with_metadata(field: dict[str, Any]) -> dict[str, Any]:
     enhanced["editability"] = editability
     enhanced["override_source"] = override_source
     
+    # Include lock_reason if present
+    if "lock_reason" in field:
+        enhanced["lock_reason"] = field["lock_reason"]
+    
     return enhanced
 
 

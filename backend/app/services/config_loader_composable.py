@@ -130,7 +130,7 @@ def _apply_metadata_override(field: dict[str, Any], override: dict[str, Any], so
     """
     Apply metadata override to a field dict.
     
-    Metadata overrides change: default, editability, required, hidden.
+    Metadata overrides change: default, editability, required, hidden, lock_reason.
     """
     if "default" in override:
         field["default"] = override["default"]
@@ -143,6 +143,9 @@ def _apply_metadata_override(field: dict[str, Any], override: dict[str, Any], so
     
     if "hidden" in override:
         field["hidden"] = override["hidden"]
+    
+    if "lock_reason" in override:
+        field["lock_reason"] = override["lock_reason"]
     
     # Track where this value came from
     if "override_source" not in field:

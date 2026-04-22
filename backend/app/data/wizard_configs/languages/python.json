@@ -20,7 +20,8 @@
     },
     {
       "field_id": "claude_md.coding_conventions",
-      "default": "PEP8+Black"
+      "default": "PEP8+Black",
+      "lock_reason": "Test reason"
     },
     {
       "field_id": "language_selection.language",

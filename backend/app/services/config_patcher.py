@@ -246,10 +246,10 @@ def update_field_metadata(
         
         # Apply changes to override
         for key, value in changes.items():
-            if key in ["default", "editability", "required", "hidden"]:
+            if key in ["default", "editability", "required", "hidden", "lock_reason"]:
                 override[key] = value
             else:
-                raise PatchError(f"Unknown metadata field: {key}. Use: default, editability, required, hidden")
+                raise PatchError(f"Unknown metadata field: {key}. Use: default, editability, required, hidden, lock_reason")
         
         # Write back
         _write_json_file(target_file, config)
