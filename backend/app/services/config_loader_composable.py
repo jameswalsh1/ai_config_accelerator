@@ -553,3 +553,107 @@ def get_available_steps(tool_id: str, language_id: str) -> list[dict[str, str]]:
         return steps
     except (FileNotFoundError, ValueError):
         return []
+
+
+# ---------------------------------------------------------------------------
+# Coverage matrix
+# ---------------------------------------------------------------------------
+
+def _get_tool_visible_step_ids(tool_data: dict[str, Any], all_step_ids: list[str]) -> set[str]:
+    """Return the set of step IDs visible for a tool (not hidden, excluding language_selection)."""
+    hidden: set[str] = {
+        so.get("step_id")
+        for so in tool_data.get("step_overrides", [])
+        if so.get("hidden")
+    }
+    return {sid for sid in all_step_ids if sid not in hidden and sid != "language_selection"}
+
+
+def get_coverage_matrix() -> dict[str, Any]:
+    """Compute the tool × language coverage matrix.
+
+    For each tool+language pair the response reports:
+    - ``status``: ``'full'`` (≥2 relevant field overrides), ``'partial'`` (1),
+      or ``'none'`` (0)
+    - ``field_count``: number of matching field overrides
+    - ``fields``: list of matching field_id strings
+
+    A field override is *relevant* for a tool when its step prefix
+    (e.g. ``claude_md`` from ``claude_md.tech_stack``) appears in the tool's
+    visible steps (all schema steps minus the tool's hidden ones, and minus
+    the universal ``language_selection`` step).
+
+    Returns:
+        {
+            "tools":     [{"id": ..., "title": ...}, ...],
+            "languages": [{"id": ..., "title": ...}, ...],
+            "matrix":    { tool_id: { language_id: { status, field_count, fields } } }
+        }
+    """
+    schema_path = DATA_DIR / "schema.json"
+    with schema_path.open(encoding="utf-8") as f:
+        schema = json.load(f)
+
+    all_step_ids: list[str] = [
+        s.get("id", s.get("step_id"))
+        for s in schema.get("steps", [])
+        if s.get("id") or s.get("step_id")
+    ]
+
+    tools = get_available_tools()
+    languages = get_available_languages()
+
+    # Pre-compute visible steps per tool
+    tool_visible_steps: dict[str, set[str]] = {}
+    for tool in tools:
+        tool_id = tool["id"]
+        tool_path = DATA_DIR / "tools" / f"{tool_id}.json"
+        try:
+            with tool_path.open(encoding="utf-8") as f:
+                tool_data = json.load(f)
+            tool_visible_steps[tool_id] = _get_tool_visible_step_ids(tool_data, all_step_ids)
+        except (FileNotFoundError, json.JSONDecodeError):
+            tool_visible_steps[tool_id] = set()
+
+    # Pre-compute field overrides per language (step_prefix → [field_ids])
+    lang_step_fields: dict[str, dict[str, list[str]]] = {}
+    for lang in languages:
+        lang_id = lang["id"]
+        lang_path = DATA_DIR / "languages" / f"{lang_id}.json"
+        try:
+            with lang_path.open(encoding="utf-8") as f:
+                lang_data = json.load(f)
+            step_fields: dict[str, list[str]] = {}
+            for fo in lang_data.get("field_overrides", []):
+                field_id: str = fo.get("field_id", "")
+                step_prefix = field_id.split(".")[0] if "." in field_id else field_id
+                step_fields.setdefault(step_prefix, []).append(field_id)
+            lang_step_fields[lang_id] = step_fields
+        except (FileNotFoundError, json.JSONDecodeError):
+            lang_step_fields[lang_id] = {}
+
+    # Build matrix
+    matrix: dict[str, dict[str, dict[str, Any]]] = {}
+    for tool in tools:
+        tool_id = tool["id"]
+        visible = tool_visible_steps[tool_id]
+        matrix[tool_id] = {}
+        for lang in languages:
+            lang_id = lang["id"]
+            step_fields = lang_step_fields.get(lang_id, {})
+            relevant: list[str] = []
+            for step_prefix, fields in step_fields.items():
+                if step_prefix in visible:
+                    relevant.extend(fields)
+            count = len(relevant)
+            matrix[tool_id][lang_id] = {
+                "status": "full" if count >= 2 else ("partial" if count == 1 else "none"),
+                "field_count": count,
+                "fields": relevant,
+            }
+
+    return {
+        "tools": [{"id": t["id"], "title": t["title"]} for t in tools],
+        "languages": [{"id": l["id"], "title": l["title"]} for l in languages],
+        "matrix": matrix,
+    }

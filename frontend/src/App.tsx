@@ -7,6 +7,7 @@ import { ConfigEditor } from '@/components/ConfigEditor'
 import { AuditLog } from '@/components/AuditLog'
 import { SnapshotManager } from '@/components/SnapshotManager'
 import { BotIcon, Loader2Icon } from 'lucide-react'
+import { CoverageMatrix } from '@/components/CoverageMatrix'
 
 const TARGET_LABELS: Record<string, string> = {
   claude: 'Claude',
@@ -24,7 +25,7 @@ const TARGET_COLORS: Record<string, string> = {
 }
 
 function App() {
-  const [mode, setMode] = useState<'config-selection' | 'wizard' | 'config-editor' | 'audit-log'>('config-selection')
+  const [mode, setMode] = useState<'config-selection' | 'wizard' | 'config-editor' | 'audit-log' | 'coverage'>('config-selection')
   const [configs, setConfigs] = useState<WizardConfigSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,6 +35,9 @@ function App() {
   const [selectedTool, setSelectedTool] = useState<string>('')
   const [selectedLanguage, setSelectedLanguage] = useState<string>('')
   const [snapshotReloadTrigger, setSnapshotReloadTrigger] = useState(0)
+  /** Set when navigating from the coverage matrix to pre-select tool/language in the editor. */
+  const [preselectedTool, setPreselectedTool] = useState<string | undefined>()
+  const [preselectedLanguage, setPreselectedLanguage] = useState<string | undefined>()
 
   useEffect(() => {
     fetchConfigs()
@@ -125,6 +129,20 @@ function App() {
           >
             Audit Log
           </button>
+          <button
+            onClick={() => {
+              setMode('coverage')
+              setSelectedConfig(null)
+              setEditableConfig(null)
+            }}
+            className={`px-3 py-1 text-sm rounded ${
+              mode === 'coverage'
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Coverage
+          </button>
         </div>
         <span className="text-xs font-medium uppercase tracking-widest text-gray-400">
           AI Config Accelerator
@@ -140,6 +158,27 @@ function App() {
         <main className="min-h-screen bg-gray-50 px-4 py-10">
           <div className="mx-auto max-w-2xl">
             <Wizard config={selectedConfig} onBack={() => setSelectedConfig(null)} />
+          </div>
+        </main>
+      </>
+    )
+  }
+  if (mode === 'coverage') {
+    return (
+      <>
+        {navbar}
+        <main className="min-h-screen bg-gray-50 px-4 py-12">
+          <div className="mx-auto max-w-5xl">
+            <CoverageMatrix
+              onNavigateToEditor={(toolId, languageId) => {
+                setPreselectedTool(toolId)
+                setPreselectedLanguage(languageId)
+                setSelectedTool(toolId)
+                setSelectedLanguage(languageId)
+                setEditableConfig(null)
+                setMode('config-editor')
+              }}
+            />
           </div>
         </main>
       </>
@@ -163,6 +202,8 @@ function App() {
         {navbar}
         <ConfigEditorEntry
           reloadTrigger={snapshotReloadTrigger}
+          initialTool={preselectedTool}
+          initialLanguage={preselectedLanguage}
           onConfigSelected={(config, tool, language) => {
             setEditableConfig(config)
             setSelectedTool(tool)

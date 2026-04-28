@@ -183,3 +183,126 @@ class TestLanguageSelection:
             for tag in preset.tags:
                 assert isinstance(tag, str)
                 assert tag.islower() or "_" in tag  # e.g., python, typescript, react-typescript
+
+
+class TestCoverageMatrix:
+    """Tests for the tool × language coverage matrix."""
+
+    def test_returns_tools_languages_matrix(self):
+        """get_coverage_matrix returns the three required top-level keys."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        assert set(result.keys()) >= {"tools", "languages", "matrix"}
+
+    def test_tools_list_non_empty(self):
+        """Tools list contains at least the three core tools."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        tool_ids = [t["id"] for t in result["tools"]]
+        assert "claude" in tool_ids
+        assert "copilot" in tool_ids
+        assert "cursor" in tool_ids
+
+    def test_languages_list_non_empty(self):
+        """Languages list contains at least one language."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        assert len(result["languages"]) > 0
+
+    def test_matrix_contains_all_tool_language_pairs(self):
+        """Every tool×language combination has a cell in the matrix."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        for tool in result["tools"]:
+            assert tool["id"] in result["matrix"]
+            for lang in result["languages"]:
+                assert lang["id"] in result["matrix"][tool["id"]]
+
+    def test_cell_structure(self):
+        """Each matrix cell has status, field_count, and fields."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        for tool_id, langs in result["matrix"].items():
+            for lang_id, cell in langs.items():
+                assert "status" in cell, f"{tool_id}×{lang_id} missing status"
+                assert "field_count" in cell, f"{tool_id}×{lang_id} missing field_count"
+                assert "fields" in cell, f"{tool_id}×{lang_id} missing fields"
+                assert cell["status"] in {"full", "partial", "none"}
+                assert isinstance(cell["field_count"], int)
+                assert isinstance(cell["fields"], list)
+
+    def test_status_consistent_with_field_count(self):
+        """Cell status is consistent with field_count."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        for tool_id, langs in result["matrix"].items():
+            for lang_id, cell in langs.items():
+                count = cell["field_count"]
+                status = cell["status"]
+                if count >= 2:
+                    assert status == "full", f"{tool_id}×{lang_id}: count={count} but status={status}"
+                elif count == 1:
+                    assert status == "partial", f"{tool_id}×{lang_id}: count={count} but status={status}"
+                else:
+                    assert status == "none", f"{tool_id}×{lang_id}: count={count} but status={status}"
+
+    def test_field_count_matches_fields_list(self):
+        """field_count equals len(fields)."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        for tool_id, langs in result["matrix"].items():
+            for lang_id, cell in langs.items():
+                assert cell["field_count"] == len(cell["fields"]), (
+                    f"{tool_id}×{lang_id}: field_count={cell['field_count']} but len(fields)={len(cell['fields'])}"
+                )
+
+    def test_claude_has_coverage_for_languages_with_claude_md_overrides(self):
+        """Claude has coverage for any language that overrides claude_md.* fields."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        claude_matrix = result["matrix"].get("claude", {})
+        # angular, dotnet, java, typescript all have 2+ claude_md overrides → full
+        # react-typescript has 1 claude_md override → partial
+        for lang_id in ("angular", "dotnet", "java"):
+            cell = claude_matrix.get(lang_id)
+            if cell:
+                assert cell["status"] in ("full", "partial"), (
+                    f"claude×{lang_id} unexpectedly 'none'"
+                )
+
+    def test_language_selection_step_excluded(self):
+        """language_selection is excluded so universal presets don't inflate counts."""
+        from app.services.config_loader_composable import get_coverage_matrix
+        result = get_coverage_matrix()
+        for tool_id, langs in result["matrix"].items():
+            for lang_id, cell in langs.items():
+                for field_id in cell["fields"]:
+                    assert not field_id.startswith("language_selection."), (
+                        f"language_selection field should be excluded: {field_id}"
+                    )
+
+    def test_coverage_endpoint(self):
+        """GET /config/coverage returns 200 with correct shape."""
+        from fastapi.testclient import TestClient
+        from app.main import app
+        client = TestClient(app)
+        resp = client.get("/config/coverage")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "tools" in data
+        assert "languages" in data
+        assert "matrix" in data
+
+    def test_coverage_endpoint_matrix_correctness(self):
+        """Coverage endpoint matrix has cells for all tool×language pairs."""
+        from fastapi.testclient import TestClient
+        from app.main import app
+        client = TestClient(app)
+        resp = client.get("/config/coverage")
+        assert resp.status_code == 200
+        data = resp.json()
+        for tool in data["tools"]:
+            assert tool["id"] in data["matrix"]
+            for lang in data["languages"]:
+                cell = data["matrix"][tool["id"]][lang["id"]]
+                assert cell["status"] in ("full", "partial", "none")

@@ -461,3 +461,27 @@ export async function deleteSnapshot(
     throw new Error(detail.detail ?? res.statusText)
   }
 }
+
+// ---------------------------------------------------------------------------
+// Coverage matrix
+// ---------------------------------------------------------------------------
+
+export type CoverageStatus = 'full' | 'partial' | 'none'
+
+export interface CoverageCell {
+  status: CoverageStatus
+  field_count: number
+  fields: string[]
+}
+
+export interface CoverageMatrix {
+  tools: Array<{ id: string; title: string }>
+  languages: Array<{ id: string; title: string }>
+  matrix: Record<string, Record<string, CoverageCell>>
+}
+
+export async function fetchCoverageMatrix(): Promise<CoverageMatrix> {
+  const res = await fetch(`${BASE}/config/coverage`)
+  if (!res.ok) throw new Error(`Failed to load coverage matrix: ${res.statusText}`)
+  return res.json() as Promise<CoverageMatrix>
+}

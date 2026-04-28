@@ -6,6 +6,7 @@ from app.services.config_loader_composable import (
     get_available_tools,
     get_available_languages,
     get_available_steps,
+    get_coverage_matrix,
 )
 from app.services.config_editor import get_editable_step
 from app.services.config_patcher import update_field_metadata, ConfigNotFoundError, add_preset_to_field, remove_preset_from_field, remove_field_override
@@ -452,6 +453,28 @@ def remove_preset(payload: dict[str, Any]) -> dict[str, Any]:
 def list_available_tools() -> list[dict[str, str]]:
     """Get list of available tools."""
     return get_available_tools()
+
+
+@router.get("/coverage")
+def get_tool_language_coverage() -> dict[str, Any]:
+    """Return the tool × language coverage matrix.
+
+    Each cell reports whether the language configuration has field overrides
+    relevant to that tool's visible steps.
+
+    Returns:
+        {
+            "tools":     [{"id": ..., "title": ...}, ...],
+            "languages": [{"id": ..., "title": ...}, ...],
+            "matrix":    { tool_id: { language_id: { "status", "field_count", "fields" } } }
+        }
+
+    Status values:
+        - "full":    ≥ 2 relevant field overrides
+        - "partial": exactly 1 relevant field override
+        - "none":    no relevant field overrides
+    """
+    return get_coverage_matrix()
 
 
 @router.get("/languages")
