@@ -43,15 +43,41 @@
           "label": "Preset to Remove by Position",
           "value": "remove_by_pos",
           "description": "A preset to be removed by position"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Preset to Remove by Position",
+          "value": "remove_by_pos",
+          "description": "A preset to be removed by position"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Preset to Remove by Position",
+          "value": "remove_by_pos",
+          "description": "A preset to be removed by position"
         }
       ]
     }
   ],
   "metadata_overrides": [
-    {
-      "field_id": "claude_md.tech_stack",
-      "default": "test_value_xyz"
-    },
     {
       "field_id": "step1.field1",
       "default": "value1"
@@ -64,6 +90,10 @@
       "field_id": "language_selection.language",
       "default": "test_language",
       "editability": "locked"
+    },
+    {
+      "field_id": "claude_md.tech_stack",
+      "default": "test_value_xyz"
     }
   ],
   "step_overrides": [

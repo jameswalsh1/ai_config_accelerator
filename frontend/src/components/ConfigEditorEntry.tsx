@@ -14,9 +14,11 @@ import { CreateLanguageModal } from './CreateLanguageModal'
 
 interface ConfigEditorEntryProps {
   onConfigSelected: (editableConfig: EditableStep, tool: string, language: string) => void
+  /** Increment to trigger a reload of the current step (e.g. after a snapshot restore). */
+  reloadTrigger?: number
 }
 
-export function ConfigEditorEntry({ onConfigSelected }: ConfigEditorEntryProps) {
+export function ConfigEditorEntry({ onConfigSelected, reloadTrigger }: ConfigEditorEntryProps) {
   const [tools, setTools] = useState<ToolOption[]>([])
   const [languages, setLanguages] = useState<LanguageOption[]>([])
   const [steps, setSteps] = useState<StepOption[]>([])
@@ -95,6 +97,14 @@ export function ConfigEditorEntry({ onConfigSelected }: ConfigEditorEntryProps) 
       setLoadingConfig(false)
     }
   }
+
+  // Reload current step when reloadTrigger is incremented (e.g. after snapshot restore)
+  useEffect(() => {
+    if (reloadTrigger && reloadTrigger > 0 && selectedStep) {
+      loadStep(selectedStep)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadTrigger])
 
   const currentStepIndex = steps.findIndex(s => s.id === selectedStep)
 

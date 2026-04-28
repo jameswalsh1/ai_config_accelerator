@@ -384,3 +384,72 @@ export async function reorderPresetAssignments(
   })
   if (!res.ok) throw new Error(`Failed to reorder preset assignments: ${res.statusText}`)
 }
+
+// ---------------------------------------------------------------------------
+// Snapshots
+// ---------------------------------------------------------------------------
+
+export interface SnapshotMeta {
+  snapshot_id: string
+  name: string
+  created_at: string
+  scope: string
+  target: string
+}
+
+export async function createSnapshot(
+  scope: string,
+  target: string,
+  name: string
+): Promise<SnapshotMeta> {
+  const res = await fetch(`${BASE}/config/snapshots`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scope, target, name }),
+  })
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(detail.detail ?? res.statusText)
+  }
+  return res.json() as Promise<SnapshotMeta>
+}
+
+export async function listSnapshots(scope: string, target: string): Promise<SnapshotMeta[]> {
+  const params = new URLSearchParams({ scope, target })
+  const res = await fetch(`${BASE}/config/snapshots?${params}`)
+  if (!res.ok) throw new Error(`Failed to list snapshots: ${res.statusText}`)
+  return res.json() as Promise<SnapshotMeta[]>
+}
+
+export async function restoreSnapshot(
+  scope: string,
+  target: string,
+  snapshotId: string
+): Promise<SnapshotMeta> {
+  const res = await fetch(`${BASE}/config/snapshots/restore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scope, target, snapshot_id: snapshotId }),
+  })
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(detail.detail ?? res.statusText)
+  }
+  return res.json() as Promise<SnapshotMeta>
+}
+
+export async function deleteSnapshot(
+  scope: string,
+  target: string,
+  snapshotId: string
+): Promise<void> {
+  const params = new URLSearchParams({ scope, target })
+  const res = await fetch(
+    `${BASE}/config/snapshots/${encodeURIComponent(snapshotId)}?${params}`,
+    { method: 'DELETE' }
+  )
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(detail.detail ?? res.statusText)
+  }
+}
