@@ -1,7 +1,6 @@
 import { StepFieldEditor } from '@/components/StepFieldEditor'
-import type { EditableStep } from '@/types/wizard'
+import type { EditableField, EditableStep } from '@/types/wizard'
 import { saveFieldValue } from '@/api/wizardApi'
-import { useState } from 'react'
 
 interface ConfigEditorProps {
   editableStep: EditableStep
@@ -18,69 +17,31 @@ export function ConfigEditor({
   tool,
   language,
 }: ConfigEditorProps) {
-  const [saving, setSaving] = useState(false)
-  const [saveMessage, setSaveMessage] = useState<string | null>(null)
-
-  const handleSaveChanges = async () => {
-    setSaving(true)
-    setSaveMessage(null)
-
-    try {
-      // Save all fields that have current values different from defaults
-      const fieldsToSave = editableStep.step.fields.filter(field => 
-        field.current_value !== undefined && 
-        field.current_value !== field.default &&
-        field.editability === 'free'
-      )
-
-      let lastUpdatedStep: EditableStep | null = null
-      for (const field of fieldsToSave) {
-        lastUpdatedStep = await saveFieldValue(tool, language, editableStep.step.id, field.id, field.current_value)
-      }
-
-      if (lastUpdatedStep && onMetadataUpdate) {
-        onMetadataUpdate(lastUpdatedStep)
-      }
-
-      setSaveMessage(`Successfully saved ${fieldsToSave.length} field changes`)
-      
-      setTimeout(() => setSaveMessage(null), 3000)
-    } catch (error) {
-      setSaveMessage(`Error saving changes: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
-      setSaving(false)
+  // Resolve scope/target from the field's override_source so saves go to the right file.
+  // Falls back to language scope when the field has no existing override (base-only).
+  const scopeFromField = (field: EditableField): { scope: string; target: string } => {
+    if (field.override_source && field.override_source !== 'schema') {
+      const [s, t] = field.override_source.split(':', 2)
+      if (s && t) return { scope: s, target: t }
     }
+    return { scope: 'language', target: language }
   }
 
-  const hasUnsavedChanges = editableStep.step.fields.some(field => 
-    field.current_value !== undefined && 
-    field.current_value !== field.default &&
-    field.editability === 'free'
-  )
+  const handleFieldSave = async (fieldId: string, value: unknown) => {
+    const field = editableStep.step.fields.find(f => f.id === fieldId)
+    if (!field) return
+    const { scope, target } = scopeFromField(field)
+    const updated = await saveFieldValue(tool, language, editableStep.step.id, fieldId, value, scope, target)
+    onMetadataUpdate?.(updated)
+  }
 
   return (
     <div className="w-full">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Configuration Editor</h2>
-        <button
-          onClick={handleSaveChanges}
-          disabled={saving || !hasUnsavedChanges}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
-      
-      {saveMessage && (
-        <div className={`mb-4 p-3 rounded-md ${saveMessage.startsWith('Error') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-          {saveMessage}
-        </div>
-      )}
-
       <StepFieldEditor
         editableStep={editableStep}
         onFieldChange={onFieldChange}
         onMetadataUpdate={onMetadataUpdate}
+        onFieldSave={handleFieldSave}
         tool={tool}
         language={language}
       />

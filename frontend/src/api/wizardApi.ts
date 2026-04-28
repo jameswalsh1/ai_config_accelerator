@@ -39,6 +39,26 @@ export async function generateFiles(configId: string, answers: WizardAnswers): P
   URL.revokeObjectURL(url)
 }
 
+export interface PreviewFile {
+  path: string
+  content: string
+  language: string
+}
+
+export interface PreviewResponse {
+  files: PreviewFile[]
+}
+
+export async function previewFiles(configId: string, answers: WizardAnswers): Promise<PreviewResponse> {
+  const res = await fetch(`${BASE}/api/generate/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ config_id: configId, answers }),
+  })
+  if (!res.ok) throw new Error(`Preview failed: ${res.statusText}`)
+  return res.json() as Promise<PreviewResponse>
+}
+
 export interface ToolOption {
   id: string
   title: string
@@ -134,28 +154,19 @@ export async function saveFieldValue(
   language: string,
   stepId: string,
   fieldId: string,
-  value: unknown
+  value: unknown,
+  scope?: string,
+  target?: string
 ): Promise<EditableStep> {
-  // Determine the scope and target based on the tool/language combination
-  // For now, we'll save to the language override if it exists, otherwise tool override
-  let scope = 'language'
-  let target = language
-
-  // Check if language override exists, if not, use tool override
-  try {
-    await fetch(`${BASE}/config/edit?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&step_id=${encodeURIComponent(stepId)}`)
-  } catch {
-    // If language override doesn't work, try tool
-    scope = 'tool'
-    target = tool
-  }
+  const resolvedScope = scope ?? 'language'
+  const resolvedTarget = target ?? language
 
   const res = await fetch(`${BASE}/config/update`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      scope,
-      target,
+      scope: resolvedScope,
+      target: resolvedTarget,
       step_id: stepId,
       field_id: fieldId,
       changes: {
@@ -211,6 +222,104 @@ export async function fetchFieldPresetAssignments(
   const res = await fetch(`${BASE}/api/wizard/field-presets?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&field_id=${encodeURIComponent(fieldId)}`)
   if (!res.ok) throw new Error(`Failed to load field preset assignments: ${res.statusText}`)
   return res.json() as Promise<PresetAssignment[]>
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+export interface AuditEntry {
+  timestamp: string
+  action: 'create' | 'update' | 'delete'
+  scope: string
+  target: string
+  file: string
+  actor: string
+  diff_summary: string
+  diff: AuditDiff
+}
+
+export interface AuditDiff {
+  before_id: string
+  after_id: string
+  has_changes: boolean
+  total_changes: number
+  metadata_changes: {
+    title: string | null
+    description: string | null
+  }
+  steps: {
+    added: string[]
+    removed: string[]
+    modified: AuditStepDiff[]
+  }
+}
+
+export interface AuditStepDiff {
+  step_id: string
+  change_type: string
+  title_changed: boolean
+  before_title: string | null
+  after_title: string | null
+  description_changed: boolean
+  before_description: string | null
+  after_description: string | null
+  fields_added: string[]
+  fields_removed: string[]
+  field_diffs: AuditFieldDiff[]
+}
+
+export interface AuditFieldDiff {
+  field_id: string
+  field_type: string
+  change_type: string
+  value_changed: boolean
+  before_value: unknown
+  after_value: unknown
+  label_changed: boolean
+  before_label: string | null
+  after_label: string | null
+  description_changed: boolean
+  preset_changes: AuditPresetChange[]
+  locking_changes: AuditLockingChange | null
+  hidden_changed: boolean
+  before_hidden: boolean | null
+  after_hidden: boolean | null
+}
+
+export interface AuditPresetChange {
+  change_type: string
+  label: string
+  before_value: unknown
+  after_value: unknown
+}
+
+export interface AuditLockingChange {
+  change_type: string
+  before_state: string | null
+  after_state: string | null
+}
+
+export interface AuditLogResponse {
+  entries: AuditEntry[]
+  total: number
+}
+
+export async function fetchAuditLog(params?: {
+  limit?: number
+  offset?: number
+  scope?: string
+  target?: string
+}): Promise<AuditLogResponse> {
+  const query = new URLSearchParams()
+  if (params?.limit !== undefined) query.set('limit', String(params.limit))
+  if (params?.offset !== undefined) query.set('offset', String(params.offset))
+  if (params?.scope) query.set('scope', params.scope)
+  if (params?.target) query.set('target', params.target)
+  const url = `${BASE}/config/audit${query.toString() ? `?${query}` : ''}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Failed to load audit log: ${res.statusText}`)
+  return res.json() as Promise<AuditLogResponse>
 }
 
 export async function assignPresetToField(

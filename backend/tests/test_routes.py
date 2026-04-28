@@ -223,6 +223,92 @@ class TestGenerateEndpoint:
         assert "unique test project overview string" in content
 
 
+class TestPreviewEndpoint:
+    """Tests for POST /api/generate/preview — returns file contents without zipping."""
+
+    def test_returns_200_for_valid_config(self):
+        response = client.post("/api/generate/preview", json={"config_id": "claude", "answers": {}})
+        assert response.status_code == 200
+
+    def test_returns_json(self):
+        response = client.post("/api/generate/preview", json={"config_id": "claude", "answers": {}})
+        assert "application/json" in response.headers["content-type"]
+
+    def test_response_has_files_list(self):
+        data = client.post("/api/generate/preview", json={"config_id": "claude", "answers": {}}).json()
+        assert "files" in data
+        assert isinstance(data["files"], list)
+        assert len(data["files"]) > 0
+
+    def test_each_file_has_required_fields(self):
+        data = client.post("/api/generate/preview", json={"config_id": "claude", "answers": {}}).json()
+        for f in data["files"]:
+            assert "path" in f
+            assert "content" in f
+            assert "language" in f
+
+    def test_files_are_non_empty(self):
+        data = client.post("/api/generate/preview", json={"config_id": "claude", "answers": {}}).json()
+        for f in data["files"]:
+            assert f["content"].strip(), f"File {f['path']} has empty content"
+
+    def test_known_claude_file_present(self):
+        data = client.post("/api/generate/preview", json={"config_id": "claude", "answers": {}}).json()
+        paths = {f["path"] for f in data["files"]}
+        assert "CLAUDE.md" in paths
+
+    def test_language_hints_assigned(self):
+        data = client.post("/api/generate/preview", json={"config_id": "claude", "answers": {}}).json()
+        by_path = {f["path"]: f for f in data["files"]}
+        assert by_path["CLAUDE.md"]["language"] == "markdown"
+
+    def test_answers_reflected_in_content(self):
+        answers = {"claude_md": {"project_overview": "Preview integration test project."}}
+        data = client.post(
+            "/api/generate/preview",
+            json={"config_id": "claude", "answers": answers},
+        ).json()
+        claude_md = next(f for f in data["files"] if f["path"] == "CLAUDE.md")
+        assert "Preview integration test project" in claude_md["content"]
+
+    def test_returns_404_for_unknown_config(self):
+        response = client.post("/api/generate/preview", json={"config_id": "ghost", "answers": {}})
+        assert response.status_code == 404
+
+    def test_returns_422_for_missing_config_id(self):
+        response = client.post("/api/generate/preview", json={"answers": {}})
+        assert response.status_code == 422
+
+    @pytest.mark.parametrize("config_id", ["claude", "copilot", "cursor"])
+    def test_all_configs_produce_preview(self, config_id):
+        data = client.post(
+            "/api/generate/preview", json={"config_id": config_id, "answers": {}}
+        ).json()
+        assert len(data["files"]) > 0
+
+    def test_json_files_get_json_language_hint(self):
+        data = client.post("/api/generate/preview", json={"config_id": "copilot", "answers": {}}).json()
+        json_files = [f for f in data["files"] if f["path"].endswith(".json")]
+        for f in json_files:
+            assert f["language"] == "json", f"{f['path']} should have language=json"
+
+    def test_preview_and_generate_produce_same_paths(self):
+        """Preview file list should match the ZIP contents."""
+        import io
+        import zipfile
+
+        answers: dict = {}
+        preview = client.post(
+            "/api/generate/preview", json={"config_id": "claude", "answers": answers}
+        ).json()
+        generate = client.post("/api/generate", json={"config_id": "claude", "answers": answers})
+
+        preview_paths = {f["path"] for f in preview["files"]}
+        zf = zipfile.ZipFile(io.BytesIO(generate.content))
+        zip_paths = set(zf.namelist())
+        assert preview_paths == zip_paths
+
+
 class TestEditableConfigEndpoint:
     """Test GET /api/wizard/config/edit endpoint for editable config slices."""
     

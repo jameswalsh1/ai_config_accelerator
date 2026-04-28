@@ -1,15 +1,15 @@
-import React, { useState } from 'react'
-import { Lock, Unlock, CheckCircle2, ChevronDown, Edit3, RotateCcw } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Lock, Unlock, ChevronDown, RotateCcw, Loader2 } from 'lucide-react'
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
 import { updateFieldMetadata, resetFieldToBase } from '@/api/wizardApi'
 import { PresetManagement } from './PresetManagement'
 import { RepeatableGroupField } from './fields/RepeatableGroupField'
-import { FieldDetailsPanel } from './FieldDetailsPanel'
 
 interface StepFieldEditorProps {
   editableStep: EditableStep
   onFieldChange?: (fieldId: string, value: unknown, source?: string) => void
   onMetadataUpdate?: (updatedStep: EditableStep) => void
+  onFieldSave?: (fieldId: string, value: unknown) => Promise<void>
   tool: string
   language: string
 }
@@ -37,6 +37,7 @@ export function StepFieldEditor({
   editableStep,
   onFieldChange,
   onMetadataUpdate,
+  onFieldSave,
   tool,
   language,
 }: StepFieldEditorProps) {
@@ -47,13 +48,36 @@ export function StepFieldEditor({
     locked: true,
     suggested: true,
   })
-  const [editingMetadata, setEditingMetadata] = useState<string | null>(null)
-  const [metadataChanges, setMetadataChanges] = useState<Record<string, unknown>>({})
   const [updating, setUpdating] = useState(false)
   const [showPresetManagement, setShowPresetManagement] = useState<Record<string, boolean>>({})
+  // Per-field inline edit state for default value and lock reason (saved on blur)
+  const [inlineEdits, setInlineEdits] = useState<Record<string, { default?: string; lock_reason?: string }>>({})
+  // Draft values for the live value inputs (so we have stable controlled inputs and only save on blur/change)
+  const [fieldValues, setFieldValues] = useState<Record<string, unknown>>(() =>
+    Object.fromEntries(step.fields.map(f => [f.id, f.current_value ?? f.default ?? '']))
+  )
+  // Which fields are currently being persisted
+  const [savingFields, setSavingFields] = useState<Set<string>>(new Set())
+
+  // When the step changes (new step loaded), reset draft values
+  useEffect(() => {
+    setFieldValues(Object.fromEntries(step.fields.map(f => [f.id, f.current_value ?? f.default ?? ''])))
+    setInlineEdits({})
+  }, [step.id])
 
   const toggleGroup = (group: FieldGroup) => {
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }))
+  }
+
+  // Save a field value to the backend immediately
+  const handleValueSave = async (fieldId: string, value: unknown) => {
+    if (!onFieldSave) return
+    setSavingFields(prev => new Set([...prev, fieldId]))
+    try {
+      await onFieldSave(fieldId, value)
+    } finally {
+      setSavingFields(prev => { const s = new Set(prev); s.delete(fieldId); return s })
+    }
   }
 
   // Group fields by status for clear organization
@@ -71,59 +95,43 @@ export function StepFieldEditor({
       setUpdating(true)
       const updatedStep = await updateFieldMetadata(scope, target, step.id, fieldId, changes)
       onMetadataUpdate?.(updatedStep)
+      // Clear any stale inline edit state for this field
+      setInlineEdits(prev => {
+        const next = { ...prev }
+        delete next[fieldId]
+        return next
+      })
     } catch (error) {
       console.error('Failed to update metadata:', error)
-      // Could add error state here
     } finally {
       setUpdating(false)
-      setEditingMetadata(null)
-      setMetadataChanges({})
     }
   }
 
   const handleLockToggle = async (field: EditableField) => {
     if (!field.override_source) return
-
+    const [scope, target] = field.override_source.split(':', 2)
+    if (!scope || !target) return
     const newLockedState = !field.is_locked
-    
-    if (newLockedState) {
-      // When locking, open the metadata editor to allow setting the reason
-      startEditingMetadata(field.id)
-      setMetadataChanges(prev => ({
-        ...prev,
-        editability: 'locked',
-        lock_reason: field.lock_reason || '',
-      }))
-    } else {
-      // When unlocking, directly update without opening editor
-      const changes: Record<string, unknown> = {
-        editability: 'free',
-        lock_reason: '',
-      }
-
-      // Parse override_source like "language:python" or "tool:claude"
-      const [scope, target] = field.override_source.split(':', 2)
-      if (!scope || !target) return
-
-      try {
-        setUpdating(true)
-        const updatedStep = await updateFieldMetadata(scope, target, step.id, field.id, changes)
-        onMetadataUpdate?.(updatedStep)
-      } catch (error) {
-        console.error('Failed to unlock field:', error)
-      } finally {
-        setUpdating(false)
-      }
+    const changes: Record<string, unknown> = {
+      editability: newLockedState ? 'locked' : 'free',
+      lock_reason: newLockedState ? (field.lock_reason || '') : '',
+    }
+    try {
+      setUpdating(true)
+      const updatedStep = await updateFieldMetadata(scope, target, step.id, field.id, changes)
+      onMetadataUpdate?.(updatedStep)
+    } catch (error) {
+      console.error('Failed to toggle lock:', error)
+    } finally {
+      setUpdating(false)
     }
   }
 
   const handleResetToBase = async (field: EditableField) => {
     if (!field.override_source) return
-
-    // Parse override_source like "language:python" or "tool:claude"
     const [scope, target] = field.override_source.split(':', 2)
     if (!scope || !target) return
-
     try {
       setUpdating(true)
       const updatedStep = await resetFieldToBase(scope, target, step.id, field.id)
@@ -133,24 +141,6 @@ export function StepFieldEditor({
     } finally {
       setUpdating(false)
     }
-  }
-
-  const startEditingMetadata = (fieldId: string) => {
-    const field = step.fields.find(f => f.id === fieldId)
-    if (!field) return
-
-    setEditingMetadata(fieldId)
-    setMetadataChanges({
-      default: field.default,
-      editability: field.editability,
-      hidden: field.render === false, // Assuming render=false means hidden
-      lock_reason: field.lock_reason || '',
-    })
-  }
-
-  const cancelEditingMetadata = () => {
-    setEditingMetadata(null)
-    setMetadataChanges({})
   }
 
   const getSourceLabel = (field: EditableField): string => {
@@ -177,202 +167,215 @@ export function StepFieldEditor({
   const renderField = (field: EditableField) => {
     const sourceLabel = getSourceLabel(field)
     const sourceColor = SOURCE_COLORS[sourceLabel] || SOURCE_COLORS.base
-    // In the Config Editor, SMEs can always edit every field.
-    // field.is_locked / editability reflect what wizard users will experience.
-    const canEdit = true
     const displayValue = field.current_value ?? field.default ?? ''
-    const isEditingMetadata = editingMetadata === field.id
+    const colors = EDITABILITY_COLORS[field.editability] || EDITABILITY_COLORS.free
+    // override_source of 'schema' means base-only; no writes possible
+    const hasOverride = !!field.override_source && field.override_source !== 'schema'
+    const isLocked = field.is_locked
+
+    // Inline edit state for default value and lock reason (save on blur)
+    const fieldEdits = inlineEdits[field.id] || {}
+    const rawDefault = field.default !== undefined
+      ? (typeof field.default === 'string' ? field.default : JSON.stringify(field.default))
+      : ''
+    const localDefault = fieldEdits.default !== undefined ? fieldEdits.default : rawDefault
+    const localLockReason = fieldEdits.lock_reason !== undefined ? fieldEdits.lock_reason : (field.lock_reason || '')
 
     return (
       <div
         key={field.id}
-        className={`flex flex-col gap-4 p-6 rounded-lg border-l-4 transition-all shadow-sm hover:shadow-md ${
-          EDITABILITY_COLORS[field.editability].bg
-        } border-b ${EDITABILITY_COLORS[field.editability].border}`}
+        className={`rounded-lg border border-l-4 shadow-sm overflow-hidden ${colors.bg} ${colors.border}`}
       >
-        {/* Field Header */}
-        <div className="flex items-start justify-between gap-4">
+        {/* ── Header: label + editability dropdown + lock toggle + reset ── */}
+        <div className="flex items-start gap-3 px-4 py-3">
           <div className="flex-1 min-w-0">
-            {/* Field Title */}
-            <div className="flex items-center gap-2 mb-2">
-              <h4 className="font-semibold text-gray-900 text-lg">{field.label}</h4>
-              {field.required && <span className="text-red-500 text-lg font-bold">*</span>}
-              {field.is_locked && (
-                <span
-                  title={`Will be locked for wizard users${field.lock_reason ? ` — ${field.lock_reason}` : ''}`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-medium"
-                >
-                  <Lock className="size-3" />
-                  Locked for users
-                </span>
-              )}
-              {field.is_default && (
-                <span title="Using default value">
-                  <CheckCircle2 className="size-5 text-green-500 flex-shrink-0" />
-                </span>
-              )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h4 className="font-semibold text-gray-900">{field.label}</h4>
+              {field.required && <span className="text-red-500 font-bold leading-none">*</span>}
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${sourceColor}`}
+                title={`Source: ${sourceLabel}`}
+              >
+                {sourceLabel}
+              </span>
             </div>
-
-            {/* Field Description - More Prominent */}
             {field.description && (
-              <p className="text-sm text-gray-700 mb-3 leading-relaxed bg-white bg-opacity-50 px-3 py-2 rounded border-l-2 border-blue-200">
-                {field.description}
-              </p>
+              <p className="text-sm text-gray-600 mt-0.5 leading-snug">{field.description}</p>
             )}
           </div>
 
-          {/* Quick Status Badge */}
-          <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            <span
-              className={`inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${sourceColor}`}
-              title={`Field source: ${sourceLabel}`}
-            >
-              {sourceLabel}
-            </span>
+          {/* Controls: editability select + lock toggle + reset */}
+          <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+            {hasOverride ? (
+              <select
+                value={field.editability}
+                onChange={e => handleMetadataUpdate(field.id, { editability: e.target.value })}
+                disabled={updating}
+                title="How wizard users can interact with this field"
+                className={`text-xs px-2 py-1 rounded border font-medium cursor-pointer bg-white disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-indigo-400 ${colors.border} ${colors.text}`}
+              >
+                <option value="free">Free</option>
+                <option value="suggested">Suggested</option>
+                <option value="defaulted">Defaulted</option>
+                <option value="locked">Locked</option>
+              </select>
+            ) : (
+              <span className={`text-xs px-2 py-1 rounded border font-medium bg-white ${colors.border} ${colors.text}`}>
+                {field.editability}
+              </span>
+            )}
+
+            {hasOverride && (
+              <button
+                onClick={() => handleLockToggle(field)}
+                disabled={updating}
+                title={isLocked ? 'Unlock for wizard users' : 'Lock for wizard users'}
+                className={`p-1.5 rounded border transition-colors disabled:opacity-50 ${
+                  isLocked
+                    ? 'bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200'
+                    : 'bg-white border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                }`}
+              >
+                {isLocked ? <Lock className="size-3.5" /> : <Unlock className="size-3.5" />}
+              </button>
+            )}
+
+            {hasOverride && (
+              <button
+                onClick={() => handleResetToBase(field)}
+                disabled={updating}
+                title="Reset to base configuration"
+                className="p-1.5 rounded border bg-white border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors disabled:opacity-50"
+              >
+                <RotateCcw className="size-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Field Details Panel */}
-        <div className="pt-2 border-t border-opacity-20 border-gray-400">
-          <FieldDetailsPanel
-            field={field}
-            sourceLabel={sourceLabel}
-            onLockToggle={handleLockToggle}
-            onResetToBase={handleResetToBase}
-            onEditMetadata={startEditingMetadata}
-            isUpdating={updating}
-          />
-        </div>
-
-        {/* Metadata Editing Section */}
-        {isEditingMetadata && (
-          <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-            <h5 className="text-sm font-semibold text-blue-900 mb-4">Edit Field Metadata</h5>
-            <div className="space-y-4">
-              {/* Default Value */}
-              <div>
-                <label className="block text-sm font-medium text-blue-900 mb-2">Default Value</label>
-                <input
-                  type="text"
-                  value={(metadataChanges.default as string) || ''}
-                  onChange={e => setMetadataChanges(prev => ({ ...prev, default: e.target.value }))}
-                  placeholder="Enter default value"
-                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Editability */}
-              <div>
-                <label className="block text-sm font-medium text-blue-900 mb-2">Editability</label>
-                <select
-                  value={metadataChanges.editability as string || field.editability}
-                  onChange={e => setMetadataChanges(prev => ({ ...prev, editability: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="free">Free</option>
-                  <option value="locked">Locked</option>
-                  <option value="suggested">Suggested</option>
-                  <option value="defaulted">Defaulted</option>
-                </select>
-              </div>
-
-              {/* Lock Reason */}
-              <div>
-                <label className="block text-sm font-medium text-blue-900 mb-2">Lock Reason</label>
-                <input
-                  type="text"
-                  value={(metadataChanges.lock_reason as string) || ''}
-                  onChange={e => setMetadataChanges(prev => ({ ...prev, lock_reason: e.target.value }))}
-                  placeholder="Reason for locking this field"
-                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-4 border-t border-blue-200">
-                <button
-                  onClick={() => handleMetadataUpdate(field.id, metadataChanges)}
-                  disabled={updating}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {updating ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button
-                  onClick={cancelEditingMetadata}
-                  disabled={updating}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 disabled:opacity-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+        {/* ── Lock reason bar (only when locked) ── */}
+        {isLocked && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-t border-amber-200">
+            <Lock className="size-3.5 text-amber-600 shrink-0" />
+            <span className="text-xs font-medium text-amber-700 shrink-0 w-14">Reason:</span>
+            {hasOverride ? (
+              <input
+                type="text"
+                value={localLockReason}
+                onChange={e =>
+                  setInlineEdits(prev => ({
+                    ...prev,
+                    [field.id]: { ...prev[field.id], lock_reason: e.target.value },
+                  }))
+                }
+                onBlur={() => {
+                  if (localLockReason !== (field.lock_reason || '')) {
+                    handleMetadataUpdate(field.id, { lock_reason: localLockReason })
+                  }
+                }}
+                placeholder="Explain why this field is locked for users…"
+                className="flex-1 text-xs px-2 py-1 bg-white border border-amber-300 rounded focus:outline-none focus:ring-1 focus:ring-amber-400"
+              />
+            ) : (
+              <span className="text-xs text-amber-800 italic">
+                {field.lock_reason || 'No reason specified'}
+              </span>
+            )}
           </div>
         )}
 
-        {/* Field Value Display/Edit - Improved Spacing */}
-        <div className="mt-4 pt-4 border-t border-opacity-20 border-gray-400">
-          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
-            Value
-          </label>
-          {/* SMEs can always edit — is_locked only affects wizard users */}
-          {field.is_locked && (
-            <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
-              <Lock className="size-3.5 flex-shrink-0" />
-              <span>
-                Wizard users will <strong>not</strong> be able to edit this value.
-                {field.lock_reason && <> Reason: <em>{field.lock_reason}</em></>}
+        {/* ── Default value row (inline editable, saves on blur) ── */}
+        {hasOverride && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-white border-t border-gray-100">
+            <span className="text-xs font-medium text-gray-500 w-14 shrink-0">Default:</span>
+            <input
+              type="text"
+              value={localDefault}
+              onChange={e =>
+                setInlineEdits(prev => ({
+                  ...prev,
+                  [field.id]: { ...prev[field.id], default: e.target.value },
+                }))
+              }
+              onBlur={() => {
+                if (localDefault !== rawDefault) {
+                  handleMetadataUpdate(field.id, { default: localDefault })
+                }
+              }}
+              placeholder="No default set"
+              className="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            />
+          </div>
+        )}
+
+        {/* ── Current value (auto-save on blur / change) ── */}
+        <div className="px-4 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Value
+            </label>
+            {savingFields.has(field.id) && (
+              <span className="inline-flex items-center gap-1 text-xs text-indigo-600">
+                <Loader2 className="size-3 animate-spin" />
+                Saving…
               </span>
-            </div>
-          )}
-          {renderEditableInput(field, displayValue, (value) =>
-            onFieldChange?.(field.id, value)
+            )}
+          </div>
+          {renderEditableInput(
+            field,
+            fieldValues[field.id] ?? displayValue,
+            (value) => {
+              setFieldValues(prev => ({ ...prev, [field.id]: value }))
+              onFieldChange?.(field.id, value)
+            },
+            (value) => handleValueSave(field.id, value)
           )}
         </div>
 
-        {/* Presets Section - Improved Spacing */}
+        {/* ── Presets ── */}
         {field.presets && field.presets.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-opacity-20 border-gray-400">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Quick Apply:</p>
-              <button
-                onClick={() => setShowPresetManagement(prev => ({
-                  ...prev,
-                  [field.id]: !prev[field.id]
-                }))}
-                className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors font-medium"
-              >
-                Manage Presets
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
+          <div className="px-4 py-3 border-t border-gray-100 bg-white">
+            <div className="flex items-center flex-wrap gap-2">
+              <span className="text-xs font-medium text-gray-500 shrink-0">Presets:</span>
               {field.presets.map((preset, idx) => (
                 <button
                   key={idx}
                   onClick={() => {
+                    const currentVal = fieldValues[field.id] ?? displayValue
                     const newValue =
-                      preset.mode === 'append' && typeof displayValue === 'string'
-                        ? displayValue + preset.value
+                      preset.mode === 'append' && typeof currentVal === 'string'
+                        ? currentVal + preset.value
                         : preset.value
+                    setFieldValues(prev => ({ ...prev, [field.id]: newValue }))
                     onFieldChange?.(field.id, newValue, 'preset')
+                    handleValueSave(field.id, newValue)
                   }}
-                  className="px-3 py-2 rounded-md text-xs bg-white border border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors font-medium"
                   title={preset.description}
+                  className="px-2.5 py-1 rounded text-xs bg-white border border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors font-medium"
                 >
                   {preset.label}
                 </button>
               ))}
+              <button
+                onClick={() =>
+                  setShowPresetManagement(prev => ({ ...prev, [field.id]: !prev[field.id] }))
+                }
+                className="ml-auto text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded border border-gray-200 hover:bg-gray-200 transition-colors shrink-0"
+              >
+                {showPresetManagement[field.id] ? 'Hide' : 'Manage Presets'}
+              </button>
             </div>
           </div>
         )}
 
-        {/* Preset Management */}
+        {/* Preset Management panel */}
         {showPresetManagement[field.id] && (
-          <div className="mt-4 pt-4 border-t border-opacity-20 border-gray-400">
+          <div className="px-4 py-3 border-t border-gray-200">
             <PresetManagement
               tool={tool}
               language={language}
               fieldId={field.id}
-              onAssignmentsChange={(assignments) => {
+              onAssignmentsChange={assignments => {
                 console.log('Preset assignments updated:', assignments)
               }}
             />
@@ -392,7 +395,8 @@ export function StepFieldEditor({
       fields?: any[]
     },
     value: unknown,
-    onChange: (value: unknown) => void
+    onChange: (value: unknown) => void,
+    onSave: (value: unknown) => void
   ) => {
     const commonClasses =
       'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base shadow-sm transition-shadow hover:shadow-md'
@@ -404,6 +408,7 @@ export function StepFieldEditor({
             type="text"
             value={(value as string) || ''}
             onChange={e => onChange(e.target.value)}
+            onBlur={e => onSave(e.target.value)}
             placeholder={field.placeholder}
             className={commonClasses}
           />
@@ -415,6 +420,7 @@ export function StepFieldEditor({
             type="number"
             value={(value as number) || ''}
             onChange={e => onChange(e.target.value ? Number(e.target.value) : '')}
+            onBlur={e => onSave(e.target.value ? Number(e.target.value) : '')}
             placeholder={field.placeholder}
             className={commonClasses}
           />
@@ -425,6 +431,7 @@ export function StepFieldEditor({
           <textarea
             value={(value as string) || ''}
             onChange={e => onChange(e.target.value)}
+            onBlur={e => onSave(e.target.value)}
             placeholder={field.placeholder}
             rows={field.rows || 4}
             className={`${commonClasses} resize-vertical font-mono text-sm`}
@@ -435,7 +442,7 @@ export function StepFieldEditor({
         return (
           <select
             value={(value as string) || ''}
-            onChange={e => onChange(e.target.value)}
+            onChange={e => { onChange(e.target.value); onSave(e.target.value) }}
             className={commonClasses}
           >
             <option value="">-- Select --</option>
@@ -462,6 +469,7 @@ export function StepFieldEditor({
                       ? [...selectedValues, opt.value]
                       : selectedValues.filter((v: string) => v !== opt.value)
                     onChange(newValues)
+                    onSave(newValues)
                   }}
                   className="mt-1 rounded border-gray-300 w-4 h-4"
                 />
@@ -484,7 +492,7 @@ export function StepFieldEditor({
             <input
               type="checkbox"
               checked={(value as boolean) || false}
-              onChange={e => onChange(e.target.checked)}
+              onChange={e => { onChange(e.target.checked); onSave(e.target.checked) }}
               className="h-5 w-5 rounded border-gray-300 text-indigo-600"
             />
             <span className="text-base text-gray-900 font-medium">Enabled</span>
@@ -497,7 +505,7 @@ export function StepFieldEditor({
           <RepeatableGroupField
             field={field as any}
             value={groupValues}
-            onChange={onChange}
+            onChange={v => { onChange(v); onSave(v) }}
           />
         )
       }

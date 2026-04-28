@@ -176,18 +176,29 @@ def _read_json_file(file_path: Path) -> dict[str, Any]:
         raise PatchError(f"Invalid JSON in {file_path}: {e}")
 
 
-def _write_json_file(file_path: Path, data: dict[str, Any], indent: int = 2) -> None:
+def _write_json_file(
+    file_path: Path,
+    data: dict[str, Any],
+    indent: int = 2,  # kept for API compatibility; save_config uses indent=2 internally
+    context: dict[str, Any] | None = None,
+) -> None:
     """
-    Write a JSON file with formatting.
-    
-    Args:
-        file_path: File to write
-        data: Data to write
-        indent: JSON indentation level
+    Write a JSON file atomically, emitting an audit log entry.
+
+    Routes through save_config so every patch write is atomic and audited.
+    validate=False because the patcher works on raw override files that may
+    not pass the full wizard schema (they're partial by design).
     """
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    with file_path.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=indent)
+    from app.services.config_persistence import save_config
+
+    save_config(
+        file_path,
+        data,
+        validate=False,
+        create_backup=True,
+        verify_reloadable=False,
+        context=context,
+    )
 
 
 def update_field_metadata(
@@ -252,7 +263,7 @@ def update_field_metadata(
                 raise PatchError(f"Unknown metadata field: {key}. Use: default, editability, required, hidden, lock_reason")
         
         # Write back
-        _write_json_file(target_file, config)
+        _write_json_file(target_file, config, context={"scope": scope, "target": target})
         
         return config
         
@@ -329,7 +340,7 @@ def update_field_structure(
             override[key] = value
         
         # Write back
-        _write_json_file(target_file, config)
+        _write_json_file(target_file, config, context={"scope": scope, "target": target})
         
         return config
         
@@ -398,7 +409,7 @@ def update_step_visibility(
             override[key] = value
         
         # Write back
-        _write_json_file(target_file, config)
+        _write_json_file(target_file, config, context={"scope": scope, "target": target})
         
         return config
         
@@ -549,7 +560,7 @@ def remove_field_override(
                 ]
         
         # Write back
-        _write_json_file(target_file, config)
+        _write_json_file(target_file, config, context={"scope": scope, "target": target})
         
         return config
         
@@ -622,7 +633,7 @@ def add_preset_to_field(
         override["replace_presets_with"] = current_presets
         
         # Write back
-        _write_json_file(target_file, config)
+        _write_json_file(target_file, config, context={"scope": scope, "target": target})
         
         return config
         
@@ -705,7 +716,7 @@ def remove_preset_from_field(
         override["replace_presets_with"] = current_presets
         
         # Write back
-        _write_json_file(target_file, config)
+        _write_json_file(target_file, config, context={"scope": scope, "target": target})
         
         return config
         

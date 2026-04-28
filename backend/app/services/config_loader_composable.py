@@ -543,6 +543,8 @@ def get_available_steps(tool_id: str, language_id: str) -> list[dict[str, str]]:
         config = load_composable_config(tool_id, language_id)
         steps = []
         for step in config.get("steps", []):
+            if step.get("hidden", False):
+                continue
             steps.append({
                 "id": step.get("id"),
                 "title": step.get("title", step.get("id")),

@@ -4,6 +4,7 @@ import type { WizardConfig, WizardConfigSummary, EditableStep } from '@/types/wi
 import { Wizard } from '@/components/Wizard'
 import { ConfigEditorEntry } from '@/components/ConfigEditorEntry'
 import { ConfigEditor } from '@/components/ConfigEditor'
+import { AuditLog } from '@/components/AuditLog'
 import { BotIcon, Loader2Icon } from 'lucide-react'
 
 const TARGET_LABELS: Record<string, string> = {
@@ -22,7 +23,7 @@ const TARGET_COLORS: Record<string, string> = {
 }
 
 function App() {
-  const [mode, setMode] = useState<'config-selection' | 'wizard' | 'config-editor'>('config-selection')
+  const [mode, setMode] = useState<'config-selection' | 'wizard' | 'config-editor' | 'audit-log'>('config-selection')
   const [configs, setConfigs] = useState<WizardConfigSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -108,6 +109,20 @@ function App() {
           >
             Config Editor
           </button>
+          <button
+            onClick={() => {
+              setMode('audit-log')
+              setSelectedConfig(null)
+              setEditableConfig(null)
+            }}
+            className={`px-3 py-1 text-sm rounded ${
+              mode === 'audit-log'
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Audit Log
+          </button>
         </div>
         <span className="text-xs font-medium uppercase tracking-widest text-gray-400">
           AI Config Accelerator
@@ -128,26 +143,41 @@ function App() {
       </>
     )
   }
-  if (mode === 'config-editor') {
+  if (mode === 'audit-log') {
     return (
       <>
         {navbar}
         <main className="min-h-screen bg-gray-50 px-4 py-12">
-          <div className="mx-auto max-w-2xl">
-            <ConfigEditorEntry onConfigSelected={(config, tool, language) => {
-              setEditableConfig(config)
-              setSelectedTool(tool)
-              setSelectedLanguage(language)
-            }} />
-            {editableConfig && (
-              <div className="mt-8">
-                <ConfigEditor 
-                  editableStep={editableConfig} 
-                  onFieldChange={handleFieldChange}
-                  onMetadataUpdate={handleMetadataUpdate}
-                  tool={selectedTool}
-                  language={selectedLanguage}
-                />
+          <div className="mx-auto max-w-4xl">
+            <AuditLog />
+          </div>
+        </main>
+      </>
+    )
+  }
+  if (mode === 'config-editor') {
+    return (
+      <>
+        {navbar}
+        <ConfigEditorEntry onConfigSelected={(config, tool, language) => {
+          setEditableConfig(config)
+          setSelectedTool(tool)
+          setSelectedLanguage(language)
+        }} />
+        <main className="min-h-screen bg-gray-50 px-6 py-8">
+          <div className="mx-auto max-w-5xl">
+            {editableConfig ? (
+              <ConfigEditor
+                editableStep={editableConfig}
+                onFieldChange={handleFieldChange}
+                onMetadataUpdate={handleMetadataUpdate}
+                tool={selectedTool}
+                language={selectedLanguage}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-24 text-center text-gray-400">
+                <p className="text-lg font-medium">Select a tool and language above to get started</p>
+                <p className="text-sm mt-1">Steps will load automatically</p>
               </div>
             )}
           </div>
