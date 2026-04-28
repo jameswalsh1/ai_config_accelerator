@@ -49,5 +49,9 @@
       "merge_mode": "append"
     }
   ],
-  "step_overrides": []
+  "step_overrides": [],
+  "metadata": {
+    "title": "TypeScript",
+    "description": "TypeScript with Node.js, Express, or NestJS"
+  }
 }

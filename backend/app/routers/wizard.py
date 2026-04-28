@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Any
 
 from app.models.wizard import WizardConfig, WizardConfigSummary
-from app.services.config_loader import get_all_configs, get_config, get_config_with_language_filter
+from app.services.config_loader import get_all_configs, get_config, get_config_with_language_filter, _strip_hidden_steps
 from app.services.config_loader_composable import load_composable_config, extract_presets_from_config
 from app.services.config_editor import get_editable_step
 
@@ -46,7 +46,7 @@ def get_resolved_config(
     try:
         resolved_dict = load_composable_config(tool, language)
         config = WizardConfig.model_validate(resolved_dict)
-        return config
+        return _strip_hidden_steps(config)
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=404,

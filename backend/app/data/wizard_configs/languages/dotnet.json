@@ -44,5 +44,9 @@
       "merge_mode": "append"
     }
   ],
-  "step_overrides": []
+  "step_overrides": [],
+  "metadata": {
+    "title": ".NET / C#",
+    "description": "ASP.NET Core, C# with .NET 8+"
+  }
 }

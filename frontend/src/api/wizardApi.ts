@@ -70,6 +70,31 @@ export async function fetchAvailableLanguages(): Promise<LanguageOption[]> {
   return res.json() as Promise<LanguageOption[]>
 }
 
+export interface CreateLanguagePayload {
+  language_id: string
+  title: string
+  description?: string
+  based_on?: string
+}
+
+export async function createLanguageConfig(payload: CreateLanguagePayload): Promise<LanguageOption> {
+  const res = await fetch(`${BASE}/config/languages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(detail.detail ?? res.statusText)
+  }
+  const data = await res.json() as { language_id: string; metadata?: { title?: string; description?: string } }
+  return {
+    id: data.language_id,
+    title: data.metadata?.title ?? data.language_id,
+    description: data.metadata?.description ?? '',
+  }
+}
+
 export async function fetchAvailableSteps(tool: string, language: string): Promise<StepOption[]> {
   const res = await fetch(`${BASE}/config/steps?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}`)
   if (!res.ok) throw new Error(`Failed to load steps: ${res.statusText}`)

@@ -3,227 +3,55 @@
   "description": "Unified canonical schema for all wizard configurations (Claude, Copilot, Cursor). Each tool uses a subset of these steps, controlled via step_overrides.",
   "steps": [
     {
-      "id": "agent_definitions",
-      "title": "Subagent Definitions",
-      "description": "Define custom subagents that Claude Code can spawn to handle specialised tasks in your project.",
-      "hint": "Subagents are Claude Code sessions with specialized prompts and restricted tool sets, ideal for parallelizable work: testing, security review, documentation, refactoring. Use Sonnet for most agents; Opus for complex reasoning. Each generates one .md file in .claude/agents/. Give each agent a narrow focus\u2014e.g., test-writer needs Read/Write/Bash; security-reviewer needs Read/Grep\u2014this makes them faster and more reliable.",
-      "output_file": ".claude/agents/",
-      "output_format": "text",
+      "id": "language_selection",
+      "title": "Project Language & Framework",
+      "description": "Select the primary programming language and framework for your project. This will customize recommendations and best practices throughout the remaining steps.",
+      "hint": "Choose the main technology stack. You can work with multiple languages, but select the primary one that will benefit most from Claude Code.",
+      "output_file": "",
       "fields": [
         {
-          "id": "agents",
-          "type": "repeatable_group",
-          "label": "Subagents",
-          "description": "One AGENT.md per entry. Provide a name and role-specific prompt.",
-          "required": false,
-          "fields": [
-            {
-              "id": "agent_name",
-              "type": "text",
-              "label": "Agent name",
-              "required": true
-            },
-            {
-              "id": "agent_role",
-              "type": "text",
-              "label": "Agent role",
-              "required": true
-            },
-            {
-              "id": "agent_prompt",
-              "type": "textarea",
-              "label": "Agent system prompt",
-              "rows": 12,
-              "required": true
-            }
-          ]
-        }
-      ],
-      "_source_tool": "claude"
-    },
-    {
-      "id": "agent_instruction_files",
-      "title": "Agent Instruction Files",
-      "description": "Configure AGENTS.md guidance for agentic workflows. The generator can emit a root AGENTS.md plus optional nested AGENTS.md files; the root file is treated as the primary instruction source and nested files are additional guidance rather than strict overrides.",
-      "hint": "AGENTS.md is specifically relevant to agentic scenarios. Use nested AGENTS.md for subtree-specific additional guidance; the root AGENTS.md is considered primary.",
-      "output_file": "AGENTS.md",
-      "output_format": "markdown",
-      "fields": [
-        {
-          "id": "generate_agent_instructions",
-          "type": "checkbox",
-          "label": "Generate AGENTS.md instruction files",
-          "description": "Enable root and optional subtree AGENTS.md guidance files when custom agents or agentic workflows are required.",
-          "default": false
-        },
-        {
-          "id": "instruction_files",
-          "type": "textarea",
-          "label": "AGENTS.md Content",
-          "description": "Write root AGENTS.md content and optionally describe nested subtree additional guidance for AGENTS.md files.",
-          "placeholder": "# Agent instructions\n- Use the security reviewer for security-related changes.\n- Use the test writer for new or changed code that needs coverage.",
-          "screen_hint": "AGENTS.md is an instruction file, not an agent profile. Keep it concise and focused on agent behavior expectations. If you need reusable agents, use the Custom Agents step instead."
-        }
-      ],
-      "_source_tool": "copilot"
-    },
-    {
-      "id": "agent_skills",
-      "title": "Agent Skills",
-      "description": "Define reusable Copilot skills. Each skill should live in its own directory under .github/skills/ and include a SKILL.md with required frontmatter (name, description).",
-      "supported_surfaces": [
-        "agents",
-        "cli"
-      ],
-      "hint": "Model each skill as a directory with a SKILL.md file; this structured format helps validation and prevents invalid skill blobs.",
-      "output_file": ".github/skills/",
-      "output_format": "text",
-      "fields": [
-        {
-          "id": "skills",
-          "type": "repeatable_group",
-          "label": "Skills",
-          "description": "One entry per skill directory. Each entry produces a <directory>/SKILL.md file under .github/skills/",
-          "required": false,
-          "fields": [
-            {
-              "id": "directory_name",
-              "type": "text",
-              "label": "Directory name",
-              "placeholder": "debug-ci",
-              "required": true,
-              "render": false
-            },
-            {
-              "id": "skill_name",
-              "type": "text",
-              "label": "Skill name",
-              "required": true,
-              "frontmatter": true,
-              "frontmatter_key": "name"
-            },
-            {
-              "id": "skill_description",
-              "type": "text",
-              "label": "Skill description",
-              "frontmatter": true,
-              "frontmatter_key": "description"
-            },
-            {
-              "id": "skill_md",
-              "type": "textarea",
-              "label": "SKILL.md Body",
-              "rows": 12,
-              "required": true
-            }
-          ]
-        }
-      ],
-      "_source_tool": "copilot"
-    },
-    {
-      "id": "agents_guidance",
-      "title": "Agent Guidance (AGENTS.md)",
-      "description": "Configure AGENTS.md for Cursor agent guidance and cross-tool workflow documentation.",
-      "hint": "Use AGENTS.md for broader agent workflow guidance, review processes, and reusable agent behavior expectations.",
-      "output_file": "AGENTS.md",
-      "output_format": "markdown",
-      "fields": [
-        {
-          "id": "agent_guidance",
-          "type": "textarea",
-          "label": "Agent Guidance",
-          "description": "Rules and expectations for agentic workflows, review processes, and cross-tool behavior.",
-          "placeholder": "# Agent guidance\n- Use the security reviewer for security-critical changes.\n- Use the testing agent for new or changed code needing coverage.",
-          "rows": 18,
-          "screen_hint": "Keep AGENTS.md focused on agent behavior and workflow guidance rather than general coding standards."
-        }
-      ],
-      "_source_tool": "cursor"
-    },
-    {
-      "id": "agents_heading",
-      "title": "Agent Instructions - Heading (AGENTS.md)",
-      "description": "Provide the heading for your agent instructions file.",
-      "hint": "This is the top-level heading that will appear at the start of AGENTS.md.",
-      "output_file": "AGENTS.md",
-      "output_format": "markdown",
-      "fields": [
-        {
-          "id": "heading",
-          "type": "text",
-          "label": "File Heading",
-          "description": "Top-level heading for AGENTS.md.",
-          "placeholder": "Agent Instructions",
+          "id": "language",
+          "type": "select",
+          "label": "Primary Language/Framework",
+          "description": "Select your project's primary technology stack",
+          "placeholder": "Choose a language...",
           "required": true,
-          "default": "Agent Instructions"
-        }
-      ],
-      "_source_tool": "cursor"
-    },
-    {
-      "id": "build_test_commands",
-      "title": "Build & Test Commands",
-      "description": "Provide machine-readable commands for the project's install, development, build, test, lint, typecheck, format check, and CI workflows.",
-      "hint": "Structured command fields make these inputs easier to render consistently for CLAUDE.md, project settings, or automation tooling.",
-      "output_file": ".claude/build_test_commands.json",
-      "output_format": "verbatim",
-      "fields": [
-        {
-          "id": "install",
-          "type": "text",
-          "label": "Install command",
-          "placeholder": "npm install",
-          "default": ""
-        },
-        {
-          "id": "dev",
-          "type": "text",
-          "label": "Dev command",
-          "placeholder": "npm run dev",
-          "default": ""
-        },
-        {
-          "id": "build",
-          "type": "text",
-          "label": "Build command",
-          "placeholder": "npm run build",
-          "default": ""
-        },
-        {
-          "id": "test",
-          "type": "text",
-          "label": "Test command",
-          "placeholder": "npm test",
-          "default": ""
-        },
-        {
-          "id": "lint",
-          "type": "text",
-          "label": "Lint command",
-          "placeholder": "npm run lint",
-          "default": ""
-        },
-        {
-          "id": "typecheck",
-          "type": "text",
-          "label": "Typecheck command",
-          "placeholder": "npm run typecheck",
-          "default": ""
-        },
-        {
-          "id": "format_check",
-          "type": "text",
-          "label": "Format check command",
-          "placeholder": "npm run format:check",
-          "default": ""
-        },
-        {
-          "id": "ci",
-          "type": "text",
-          "label": "CI command",
-          "placeholder": "npm run ci",
-          "default": ""
+          "default": "typescript",
+          "options": [
+            {
+              "value": "python",
+              "label": "Python (FastAPI, Django, data science)"
+            },
+            {
+              "value": "typescript",
+              "label": "TypeScript (React, Next.js, Node.js)"
+            },
+            {
+              "value": "react-typescript",
+              "label": "React + TypeScript"
+            },
+            {
+              "value": "dotnet",
+              "label": ".NET / C# (ASP.NET Core)"
+            },
+            {
+              "value": "java",
+              "label": "Java (Spring Boot)"
+            },
+            {
+              "value": "angular",
+              "label": "Angular + TypeScript"
+            },
+            {
+              "value": "multiplatform",
+              "label": "Multiple languages in same project"
+            },
+            {
+              "value": "other",
+              "label": "Other/Undecided"
+            }
+          ],
+          "screen_hint": "This selection will customize language-specific coding standards, architecture recommendations, and testing patterns in subsequent steps."
         }
       ],
       "_source_tool": "claude"
@@ -337,457 +165,6 @@
         }
       ],
       "_source_tool": "claude"
-    },
-    {
-      "id": "claude_settings",
-      "title": "Project Settings (.claude/settings.json)",
-      "description": "Configure .claude/settings.json \u2014 project-level settings for Claude Code, committed for your whole team.",
-      "hint": "Claude Code merges settings in priority order: Managed > CLI args > Local > Project > User. Commit .claude/settings.json to set team defaults. Create .claude/settings.local.json (auto-gitignored) for personal overrides. The secure baseline (deny .env, secrets, keys) is always enforced.",
-      "output_file": ".claude/settings.json",
-      "output_format": "verbatim",
-      "fields": [
-        {
-          "id": "content",
-          "type": "textarea",
-          "label": "Settings JSON",
-          "description": "Edit the JSON for .claude/settings.json. The secure baseline above is always written to the file \u2014 your edits are merged on top.",
-          "rows": 12,
-          "screen_hint": "The secure baseline (deny access to .env, secrets, .pem keys) is always included and cannot be removed. Use this field to grant additional permissions (e.g., allow Docker access, allow writing to specific directories) or set project environment variables. Leave blank if the secure baseline is sufficient.",
-          "locked_value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "default": ""
-        },
-        {
-          "id": "strict_mcp_config",
-          "type": "checkbox",
-          "label": "Strict MCP config (runtime only)",
-          "description": "CLI/runtime policy: when enabled the launcher will invoke Claude Code with --strict-mcp-config to restrict MCP servers to the project-provided list. This is not written into settings.json.",
-          "default": false,
-          "render": false
-        }
-      ],
-      "presets": [
-        {
-          "label": "Secure baseline",
-          "description": "Block .env + disable telemetry",
-          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(./.env)\", \"Read(**/.env.*)\", \"Read(**/secrets/**)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
-        },
-        {
-          "label": "Hardened security",
-          "description": "Block all secrets, keys, and sensitive configs",
-          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\",\n      \"Read(**/*.p12)\",\n      \"Read(**/*.pfx)\",\n      \"Read(**/credentials/**)\",\n      \"Read(**/.aws/**)\",\n      \"Read(**/.ssh/**)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
-        },
-        {
-          "label": "Audit-friendly",
-          "description": "Block secrets + restrict destructive commands",
-          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\",\n      \"Bash(rm -rf*)\",\n      \"Bash(git push*)\",\n      \"Bash(git reset --hard*)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
-        },
-        {
-          "label": "Read-only mode",
-          "description": "Claude can read but not write files",
-          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Write(**)\", \"Edit(**)\", \"MultiEdit(**)\"]\n  }\n}",
-          "mode": "replace"
-        },
-        {
-          "label": "Enable Grading Tools",
-          "description": "Allow Claude to run grading and evaluation tools",
-          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\"\n    ],\n    \"allow\": [\n      \"Bash(npx eslint*)\",\n      \"Bash(python -m pylint*)\",\n      \"Bash(npm run grade*)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
-        },
-        {
-          "label": "Repository boundaries",
-          "description": "Protect generated, vendor, and deployment files at the team level.",
-          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(**/node_modules/**)\", \"Read(**/dist/**)\", \"Read(**/build/**)\", \"Read(**/vendor/**)\", \"Read(**/terraform/**)\", \"Read(**/*.tfstate)\", \"Read(**/*.lock)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
-        },
-        {
-          "label": "Windows compatibility",
-          "description": "Add Windows-friendly path and shell handling for mixed environments.",
-          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(./.env)\", \"Read(**/.env.*)\", \"Read(**/secrets/**)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\",\n    \"SHELL\": \"bash\"\n  },\n  \"platform_notes\": \"For mixed Windows/macOS teams, prefer shell-safe paths and Git Bash-compatible commands.\"\n}",
-          "mode": "replace"
-        }
-      ],
-      "_source_tool": "claude"
-    },
-    {
-      "id": "cursor_ignore",
-      "title": "Cursor Ignore File (.cursorignore)",
-      "description": "Control which files Cursor can access and use for AI features and context. This is a primary repo-level exclusion control, not an absolute enforcement boundary.",
-      "hint": "Committed .cursorignore patterns are shared with all team members. Add secrets, private keys, and sensitive artifacts here. Note that indexing behavior may also be affected by .gitignore.",
-      "output_file": ".cursorignore",
-      "output_format": "verbatim",
-      "fields": [
-        {
-          "id": "content",
-          "type": "textarea",
-          "label": "Ignore Patterns",
-          "description": "One pattern per line. Matches gitignore syntax. Use ! to re-include.",
-          "rows": 15,
-          "screen_hint": "Security-critical patterns (secrets, credentials) are always included. Add additional paths relevant to your project.",
-          "locked_value": "# Secrets and credentials \u2014 primary exclusions\n.env\n.env.*\nsecrets/\n*.pem\n*.key\n*.p12\n*.pfx\n*.jks\n.aws/\n.ssh/\n.docker/config.json",
-          "default": "# Build outputs\ndist/\nbuild/\n.next/\n__pycache__/\nbin/\nobj/\n\n# Dependencies\nnode_modules/\n.venv/\nvenv/\n.cargo/\n\n# IDE\n.idea/\n.vscode/settings.json\n*.swp"
-        }
-      ],
-      "_source_tool": "cursor"
-    },
-    {
-      "id": "cursor_indexing_content",
-      "title": "Indexing Ignore Patterns (.cursorindexingignore)",
-      "description": "Define patterns for files that should not be indexed by Cursor.",
-      "hint": "Use gitignore syntax. Matching files won't be indexed but remain accessible. Do not exclude tests by default.",
-      "output_file": ".cursorindexingignore",
-      "output_format": "verbatim",
-      "fields": [
-        {
-          "id": "content",
-          "type": "textarea",
-          "label": "Indexing Ignore Patterns",
-          "description": "One pattern per line. Gitignore syntax. Matching files won't be indexed but remain accessible.",
-          "rows": 15,
-          "screen_hint": "Do not exclude tests by default \u2014 tests are often valuable context. Use test-specific exclusions only as an advanced opt-in.",
-          "default": "# Large directories that slow indexing\nnode_modules/\n.next/\ndist/\nbuild/\n__pycache__/\n.venv/\n\n# Logs\n*.log\nlogs/"
-        }
-      ],
-      "_source_tool": "cursor"
-    },
-    {
-      "id": "cursor_indexing_strategy",
-      "title": "Indexing Strategy (.cursorindexingignore)",
-      "description": "Choose how Cursor should index files for AI context and search.",
-      "hint": "Select a strategy that matches your repository's balance between indexing speed and context completeness.",
-      "output_file": ".cursorindexingignore",
-      "output_format": "verbatim",
-      "fields": [
-        {
-          "id": "indexing_strategy",
-          "type": "select",
-          "label": "Indexing strategy",
-          "description": "Choose how aggressively Cursor should exclude files from indexing.",
-          "default": "balanced",
-          "options": [
-            {
-              "value": "balanced",
-              "label": "Balanced"
-            },
-            {
-              "value": "aggressive",
-              "label": "Aggressive exclusions"
-            },
-            {
-              "value": "broad",
-              "label": "Broad indexing for discovery"
-            }
-          ],
-          "screen_hint": "Balanced is recommended for most repos. Aggressive exclusions are useful only when indexing noise is a severe problem. Broad indexing is useful when test and generated files are important context."
-        }
-      ],
-      "_source_tool": "cursor"
-    },
-    {
-      "id": "cursor_settings",
-      "title": "Cursor Project Settings",
-      "description": "Configure project-level settings for Cursor behavior and context.",
-      "hint": "Use this to document custom Cursor settings, workspace configuration, or any additional Cursor-specific preferences for your project.",
-      "output_file": ".cursor/settings.json",
-      "output_format": "markdown",
-      "fields": [
-        {
-          "id": "settings_info",
-          "type": "textarea",
-          "label": "Cursor Settings & Configuration",
-          "description": "Document any custom Cursor settings or workspace preferences specific to your project.",
-          "placeholder": "Add any Cursor-specific settings or configuration notes...",
-          "rows": 10,
-          "required": false,
-          "default": "# Cursor Project Settings\n# Document any workspace-specific configuration or preferences here.\n"
-        }
-      ],
-      "_source_tool": "cursor"
-    },
-    {
-      "id": "custom_agents",
-      "title": "Custom Agents",
-      "description": "Define custom Copilot agents with specific roles, tool access, optional MCP server config, and scope.",
-      "hint": "Custom agents are specialist profiles. Use repository-scoped agents for shared team workflows, or user-scoped agents for personal specialist profiles. The renderer will choose output paths based on agent scope.",
-      "output_file": ".github/agents/",
-      "output_format": "text",
-      "fields": [
-        {
-          "id": "agent_scope",
-          "type": "select",
-          "label": "Agent Scope",
-          "description": "Choose whether these agents are shared in the repository or intended for personal user scope.",
-          "default": "project",
-          "options": [
-            {
-              "value": "project",
-              "label": "Project-scoped (shared via .github/agents/)"
-            },
-            {
-              "value": "user",
-              "label": "User-scoped (personal ~/.copilot/agents/)"
-            }
-          ]
-        },
-        {
-          "id": "agents",
-          "type": "repeatable_group",
-          "label": "Copilot Agents",
-          "description": "Define one or more custom agents. Each becomes a separate agent profile file.",
-          "required": false,
-          "fields": [
-            {
-              "id": "agent_name",
-              "type": "text",
-              "label": "Agent name",
-              "required": true
-            },
-            {
-              "id": "agent_role",
-              "type": "text",
-              "label": "Agent role",
-              "description": "Short role description",
-              "required": true
-            },
-            {
-              "id": "agent_system_prompt",
-              "type": "textarea",
-              "label": "System prompt",
-              "rows": 10,
-              "required": true
-            }
-          ]
-        }
-      ],
-      "_source_tool": "copilot"
-    },
-    {
-      "id": "hooks",
-      "title": "Project Hooks (.claude/hooks/)",
-      "description": "Define automation hooks for repository events and edit-time actions. Hooks are used for tasks such as formatting after edits, audit checks, notifications, and reinforcement of context.",
-      "hint": "Hooks are emitted under .claude/hooks/ as JSON or executable scripts depending on the hook type. These are accelerator-emitted artifacts that the project or CI can consume.",
-      "output_file": ".claude/hooks/",
-      "output_format": "text",
-      "fields": [
-        {
-          "id": "hooks",
-          "type": "repeatable_group",
-          "label": "Hooks",
-          "description": "One entry per hook. Provide a name, trigger, and the hook body or JSON configuration.",
-          "required": false,
-          "fields": [
-            {
-              "id": "hook_name",
-              "type": "text",
-              "label": "Hook name",
-              "required": true
-            },
-            {
-              "id": "hook_trigger",
-              "type": "text",
-              "label": "Hook trigger",
-              "required": true
-            },
-            {
-              "id": "hook_body",
-              "type": "textarea",
-              "label": "Hook body",
-              "rows": 8,
-              "required": true
-            }
-          ]
-        }
-      ],
-      "_source_tool": "claude"
-    },
-    {
-      "id": "ignore_verification",
-      "title": "Ignore Verification Checklist",
-      "description": "Generate a short checklist to help verify ignore-file effectiveness and indexing behavior.",
-      "hint": "Cursor ignore files are a primary exclusion control, but actual indexing behavior can depend on .gitignore and project settings. Validate by checking indexing counts and sample file visibility.",
-      "output_file": ".cursor/ignore-verification.md",
-      "output_format": "markdown",
-      "fields": [
-        {
-          "id": "checklist",
-          "type": "textarea",
-          "label": "Verification Checklist",
-          "description": "A short set of verification steps to confirm ignore and indexing behavior.",
-          "rows": 12,
-          "default": "- Confirm .cursorignore contains secrets, private keys, and sensitive artifacts.\n- Confirm .cursorindexingignore excludes large build and dependency directories.\n- Verify .gitignore interaction for files that should not be indexed.\n- Check Cursor indexing counts or workspace reports after updating ignore files.\n- Open a known excluded file and confirm it is not included in automatic AI context.\n- For manual-only rules, verify that they can be invoked explicitly by name."
-        }
-      ],
-      "_source_tool": "cursor"
-    },
-    {
-      "id": "language_selection",
-      "title": "Project Language & Framework",
-      "description": "Select the primary programming language and framework for your project. This will customize recommendations and best practices throughout the remaining steps.",
-      "hint": "Choose the main technology stack. You can work with multiple languages, but select the primary one that will benefit most from Claude Code.",
-      "output_file": "",
-      "fields": [
-        {
-          "id": "language",
-          "type": "select",
-          "label": "Primary Language/Framework",
-          "description": "Select your project's primary technology stack",
-          "placeholder": "Choose a language...",
-          "required": true,
-          "default": "typescript",
-          "options": [
-            {
-              "value": "python",
-              "label": "Python (FastAPI, Django, data science)"
-            },
-            {
-              "value": "typescript",
-              "label": "TypeScript (React, Next.js, Node.js)"
-            },
-            {
-              "value": "react-typescript",
-              "label": "React + TypeScript"
-            },
-            {
-              "value": "dotnet",
-              "label": ".NET / C# (ASP.NET Core)"
-            },
-            {
-              "value": "java",
-              "label": "Java (Spring Boot)"
-            },
-            {
-              "value": "angular",
-              "label": "Angular + TypeScript"
-            },
-            {
-              "value": "multiplatform",
-              "label": "Multiple languages in same project"
-            },
-            {
-              "value": "other",
-              "label": "Other/Undecided"
-            }
-          ],
-          "screen_hint": "This selection will customize language-specific coding standards, architecture recommendations, and testing patterns in subsequent steps."
-        }
-      ],
-      "_source_tool": "claude"
-    },
-    {
-      "id": "mcp_config",
-      "title": "Project MCP Configuration (.mcp.json)",
-      "description": "Configure project-scoped MCP servers shared with your team via version control.",
-      "hint": "Commit .mcp.json to share MCP servers with your team. MCP servers extend Claude Code with external tools: GitHub (PRs/issues), databases, error monitoring, web search, etc. Scope options: --scope local (current project), --scope project (team via git), --scope user (your account, all projects). Within Claude sessions, use /mcp to check status and /mcp auth SERVERNAME to authenticate OAuth. Avoid hardcoding secrets\u2014use environment variables.",
-      "output_file": ".mcp.json",
-      "output_format": "verbatim",
-      "fields": [
-        {
-          "id": "content",
-          "type": "textarea",
-          "label": "MCP Configuration JSON",
-          "description": "Edit the JSON for .mcp.json. Click a server suggestion below to add it \u2014 existing servers are preserved.",
-          "rows": 14,
-          "default": "{\n  \"mcpServers\": {}\n}"
-        }
-      ],
-      "_source_tool": "claude"
-    },
-    {
-      "id": "path_instructions",
-      "title": "Path-Specific Instruction Files",
-      "description": "Create one or more .instructions.md files under .github/instructions/ for path-based guidance. Multiple files may apply and can combine with repo-wide instructions; conflicts are warned.",
-      "supported_surfaces": [
-        "chat",
-        "code_review",
-        "cloud_agent"
-      ],
-      "hint": "Use one file per concern and target via the applyTo frontmatter. The generator will warn on conflicting semantics between path-specific and repo-wide instructions.",
-      "output_file": ".github/instructions/",
-      "output_format": "markdown_frontmatter",
-      "fields": [
-        {
-          "id": "instruction_files",
-          "type": "repeatable_group",
-          "label": "Instruction files",
-          "description": "Define individual .instructions.md files. Each entry becomes a separate file under .github/instructions/",
-          "required": false,
-          "fields": [
-            {
-              "id": "file_name",
-              "type": "text",
-              "label": "File name",
-              "placeholder": "backend.instructions.md",
-              "required": true,
-              "render": false
-            },
-            {
-              "id": "applyTo",
-              "type": "text",
-              "label": "Applies to (glob pattern)",
-              "placeholder": "backend/**, src/**",
-              "frontmatter_key": "applyTo"
-            },
-            {
-              "id": "content",
-              "type": "textarea",
-              "label": "Instructions",
-              "placeholder": "Add path-specific instructions...",
-              "rows": 10,
-              "required": true
-            }
-          ]
-        }
-      ],
-      "_source_tool": "copilot"
-    },
-    {
-      "id": "prompt_files",
-      "title": "Prompt Files",
-      "description": "Create .github/prompts/*.prompt.md files with frontmatter and body. Prompt files are currently in public preview and supported only in VS Code, Visual Studio, and JetBrains IDEs.",
-      "supported_surfaces": [
-        "vscode",
-        "visual-studio",
-        "jetbrains"
-      ],
-      "hint": "Prompt files are in public preview \u2014 generated prompts may not be available across all Copilot surfaces. This step will emit one prompt file per entry.",
-      "output_file": ".github/prompts/",
-      "output_format": "text",
-      "fields": [
-        {
-          "id": "prompt_files",
-          "type": "repeatable_group",
-          "label": "Prompt files",
-          "description": "One prompt file per entry. Each becomes .github/prompts/<filename>",
-          "required": false,
-          "fields": [
-            {
-              "id": "file_name",
-              "type": "text",
-              "label": "File name",
-              "placeholder": "release-note.prompt.md",
-              "required": true,
-              "render": false
-            },
-            {
-              "id": "description",
-              "type": "text",
-              "label": "Description",
-              "frontmatter": true,
-              "frontmatter_key": "description"
-            },
-            {
-              "id": "prompt_body",
-              "type": "textarea",
-              "label": "Prompt Body",
-              "rows": 8,
-              "required": true
-            }
-          ]
-        }
-      ],
-      "_source_tool": "copilot"
     },
     {
       "id": "repo_instructions",
@@ -917,33 +294,6 @@
           "placeholder": "- Review suggestions critically.\n- Keep code changes small and incremental.\n- Validate security-sensitive code and tests before committing.",
           "default": "- Review suggestions critically and refuse anything that does not match project conventions.\n- Keep changes small and incremental; prefer focused pull requests.\n- Use tests to verify behavior before accepting changes.\n- Validate security-sensitive code carefully, including auth, input validation, and secrets handling.",
           "screen_hint": "This field is for stable workflow guidance, not editor-specific shortcuts or transient UI commands. Use it to define engineering habits that apply across surfaces."
-        }
-      ],
-      "_source_tool": "copilot"
-    },
-    {
-      "id": "repo_settings",
-      "title": "Repository Settings (.github/copilot/settings.json)",
-      "description": "Configure repository-level Copilot settings committed for your whole team. Note: many repository keys are ignored by Copilot; unsupported keys will be written but may have no effect.",
-      "hint": "Repository settings are limited. The generator emits selected keys; unsupported or future keys should be provided via the optional field marked for unsupported settings.",
-      "output_file": ".github/copilot/settings.json",
-      "output_format": "verbatim",
-      "fields": [
-        {
-          "id": "company_announcements",
-          "type": "textarea",
-          "label": "Company Announcements",
-          "description": "A short announcement shown in all Copilot contexts for this repo.",
-          "placeholder": "Always run tests before committing.",
-          "default": "Always run tests before committing. Review suggestions critically and validate changes against project conventions."
-        },
-        {
-          "id": "unsupported_or_future_settings_json",
-          "type": "textarea",
-          "label": "Unsupported or Future Settings (JSON)",
-          "description": "Optional JSON blob for unsupported or future repository-level settings. These keys are often ignored by Copilot and may have no effect; use with caution.",
-          "rows": 8,
-          "screen_hint": "Unsupported keys in repository settings are typically ignored by Copilot. Prefer hooks or other supported mechanisms for enforcement."
         }
       ],
       "_source_tool": "copilot"
@@ -1079,6 +429,501 @@
       "_source_tool": "cursor"
     },
     {
+      "id": "build_test_commands",
+      "title": "Build & Test Commands",
+      "description": "Provide machine-readable commands for the project's install, development, build, test, lint, typecheck, format check, and CI workflows.",
+      "hint": "Structured command fields make these inputs easier to render consistently for CLAUDE.md, project settings, or automation tooling.",
+      "output_file": ".claude/build_test_commands.json",
+      "output_format": "verbatim",
+      "fields": [
+        {
+          "id": "install",
+          "type": "text",
+          "label": "Install command",
+          "placeholder": "npm install",
+          "default": ""
+        },
+        {
+          "id": "dev",
+          "type": "text",
+          "label": "Dev command",
+          "placeholder": "npm run dev",
+          "default": ""
+        },
+        {
+          "id": "build",
+          "type": "text",
+          "label": "Build command",
+          "placeholder": "npm run build",
+          "default": ""
+        },
+        {
+          "id": "test",
+          "type": "text",
+          "label": "Test command",
+          "placeholder": "npm test",
+          "default": ""
+        },
+        {
+          "id": "lint",
+          "type": "text",
+          "label": "Lint command",
+          "placeholder": "npm run lint",
+          "default": ""
+        },
+        {
+          "id": "typecheck",
+          "type": "text",
+          "label": "Typecheck command",
+          "placeholder": "npm run typecheck",
+          "default": ""
+        },
+        {
+          "id": "format_check",
+          "type": "text",
+          "label": "Format check command",
+          "placeholder": "npm run format:check",
+          "default": ""
+        },
+        {
+          "id": "ci",
+          "type": "text",
+          "label": "CI command",
+          "placeholder": "npm run ci",
+          "default": ""
+        }
+      ],
+      "_source_tool": "claude"
+    },
+    {
+      "id": "claude_settings",
+      "title": "Project Settings (.claude/settings.json)",
+      "description": "Configure .claude/settings.json \u2014 project-level settings for Claude Code, committed for your whole team.",
+      "hint": "Claude Code merges settings in priority order: Managed > CLI args > Local > Project > User. Commit .claude/settings.json to set team defaults. Create .claude/settings.local.json (auto-gitignored) for personal overrides. The secure baseline (deny .env, secrets, keys) is always enforced.",
+      "output_file": ".claude/settings.json",
+      "output_format": "verbatim",
+      "fields": [
+        {
+          "id": "content",
+          "type": "textarea",
+          "label": "Settings JSON",
+          "description": "Edit the JSON for .claude/settings.json. The secure baseline above is always written to the file \u2014 your edits are merged on top.",
+          "rows": 12,
+          "screen_hint": "The secure baseline (deny access to .env, secrets, .pem keys) is always included and cannot be removed. Use this field to grant additional permissions (e.g., allow Docker access, allow writing to specific directories) or set project environment variables. Leave blank if the secure baseline is sufficient.",
+          "locked_value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
+          "default": ""
+        },
+        {
+          "id": "strict_mcp_config",
+          "type": "checkbox",
+          "label": "Strict MCP config (runtime only)",
+          "description": "CLI/runtime policy: when enabled the launcher will invoke Claude Code with --strict-mcp-config to restrict MCP servers to the project-provided list. This is not written into settings.json.",
+          "default": false,
+          "render": false
+        }
+      ],
+      "presets": [
+        {
+          "label": "Secure baseline",
+          "description": "Block .env + disable telemetry",
+          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(./.env)\", \"Read(**/.env.*)\", \"Read(**/secrets/**)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
+          "mode": "replace"
+        },
+        {
+          "label": "Hardened security",
+          "description": "Block all secrets, keys, and sensitive configs",
+          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\",\n      \"Read(**/*.p12)\",\n      \"Read(**/*.pfx)\",\n      \"Read(**/credentials/**)\",\n      \"Read(**/.aws/**)\",\n      \"Read(**/.ssh/**)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
+          "mode": "replace"
+        },
+        {
+          "label": "Audit-friendly",
+          "description": "Block secrets + restrict destructive commands",
+          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\",\n      \"Bash(rm -rf*)\",\n      \"Bash(git push*)\",\n      \"Bash(git reset --hard*)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
+          "mode": "replace"
+        },
+        {
+          "label": "Read-only mode",
+          "description": "Claude can read but not write files",
+          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Write(**)\", \"Edit(**)\", \"MultiEdit(**)\"]\n  }\n}",
+          "mode": "replace"
+        },
+        {
+          "label": "Enable Grading Tools",
+          "description": "Allow Claude to run grading and evaluation tools",
+          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\"\n    ],\n    \"allow\": [\n      \"Bash(npx eslint*)\",\n      \"Bash(python -m pylint*)\",\n      \"Bash(npm run grade*)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
+          "mode": "replace"
+        },
+        {
+          "label": "Repository boundaries",
+          "description": "Protect generated, vendor, and deployment files at the team level.",
+          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(**/node_modules/**)\", \"Read(**/dist/**)\", \"Read(**/build/**)\", \"Read(**/vendor/**)\", \"Read(**/terraform/**)\", \"Read(**/*.tfstate)\", \"Read(**/*.lock)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
+          "mode": "replace"
+        },
+        {
+          "label": "Windows compatibility",
+          "description": "Add Windows-friendly path and shell handling for mixed environments.",
+          "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(./.env)\", \"Read(**/.env.*)\", \"Read(**/secrets/**)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\",\n    \"SHELL\": \"bash\"\n  },\n  \"platform_notes\": \"For mixed Windows/macOS teams, prefer shell-safe paths and Git Bash-compatible commands.\"\n}",
+          "mode": "replace"
+        }
+      ],
+      "_source_tool": "claude"
+    },
+    {
+      "id": "repo_settings",
+      "title": "Repository Settings (.github/copilot/settings.json)",
+      "description": "Configure repository-level Copilot settings committed for your whole team. Note: many repository keys are ignored by Copilot; unsupported keys will be written but may have no effect.",
+      "hint": "Repository settings are limited. The generator emits selected keys; unsupported or future keys should be provided via the optional field marked for unsupported settings.",
+      "output_file": ".github/copilot/settings.json",
+      "output_format": "verbatim",
+      "fields": [
+        {
+          "id": "company_announcements",
+          "type": "textarea",
+          "label": "Company Announcements",
+          "description": "A short announcement shown in all Copilot contexts for this repo.",
+          "placeholder": "Always run tests before committing.",
+          "default": "Always run tests before committing. Review suggestions critically and validate changes against project conventions."
+        },
+        {
+          "id": "unsupported_or_future_settings_json",
+          "type": "textarea",
+          "label": "Unsupported or Future Settings (JSON)",
+          "description": "Optional JSON blob for unsupported or future repository-level settings. These keys are often ignored by Copilot and may have no effect; use with caution.",
+          "rows": 8,
+          "screen_hint": "Unsupported keys in repository settings are typically ignored by Copilot. Prefer hooks or other supported mechanisms for enforcement."
+        }
+      ],
+      "_source_tool": "copilot"
+    },
+    {
+      "id": "cursor_settings",
+      "title": "Cursor Project Settings",
+      "description": "Configure project-level settings for Cursor behavior and context.",
+      "hint": "Use this to document custom Cursor settings, workspace configuration, or any additional Cursor-specific preferences for your project.",
+      "output_file": ".cursor/settings.json",
+      "output_format": "markdown",
+      "fields": [
+        {
+          "id": "settings_info",
+          "type": "textarea",
+          "label": "Cursor Settings & Configuration",
+          "description": "Document any custom Cursor settings or workspace preferences specific to your project.",
+          "placeholder": "Add any Cursor-specific settings or configuration notes...",
+          "rows": 10,
+          "required": false,
+          "default": "# Cursor Project Settings\n# Document any workspace-specific configuration or preferences here.\n"
+        }
+      ],
+      "_source_tool": "cursor"
+    },
+    {
+      "id": "cursor_ignore",
+      "title": "Cursor Ignore File (.cursorignore)",
+      "description": "Control which files Cursor can access and use for AI features and context. This is a primary repo-level exclusion control, not an absolute enforcement boundary.",
+      "hint": "Committed .cursorignore patterns are shared with all team members. Add secrets, private keys, and sensitive artifacts here. Note that indexing behavior may also be affected by .gitignore.",
+      "output_file": ".cursorignore",
+      "output_format": "verbatim",
+      "fields": [
+        {
+          "id": "content",
+          "type": "textarea",
+          "label": "Ignore Patterns",
+          "description": "One pattern per line. Matches gitignore syntax. Use ! to re-include.",
+          "rows": 15,
+          "screen_hint": "Security-critical patterns (secrets, credentials) are always included. Add additional paths relevant to your project.",
+          "locked_value": "# Secrets and credentials \u2014 primary exclusions\n.env\n.env.*\nsecrets/\n*.pem\n*.key\n*.p12\n*.pfx\n*.jks\n.aws/\n.ssh/\n.docker/config.json",
+          "default": "# Build outputs\ndist/\nbuild/\n.next/\n__pycache__/\nbin/\nobj/\n\n# Dependencies\nnode_modules/\n.venv/\nvenv/\n.cargo/\n\n# IDE\n.idea/\n.vscode/settings.json\n*.swp"
+        }
+      ],
+      "_source_tool": "cursor"
+    },
+    {
+      "id": "cursor_indexing_strategy",
+      "title": "Indexing Strategy (.cursorindexingignore)",
+      "description": "Choose how Cursor should index files for AI context and search.",
+      "hint": "Select a strategy that matches your repository's balance between indexing speed and context completeness.",
+      "output_file": ".cursorindexingignore",
+      "output_format": "verbatim",
+      "fields": [
+        {
+          "id": "indexing_strategy",
+          "type": "select",
+          "label": "Indexing strategy",
+          "description": "Choose how aggressively Cursor should exclude files from indexing.",
+          "default": "balanced",
+          "options": [
+            {
+              "value": "balanced",
+              "label": "Balanced"
+            },
+            {
+              "value": "aggressive",
+              "label": "Aggressive exclusions"
+            },
+            {
+              "value": "broad",
+              "label": "Broad indexing for discovery"
+            }
+          ],
+          "screen_hint": "Balanced is recommended for most repos. Aggressive exclusions are useful only when indexing noise is a severe problem. Broad indexing is useful when test and generated files are important context."
+        }
+      ],
+      "_source_tool": "cursor"
+    },
+    {
+      "id": "cursor_indexing_content",
+      "title": "Indexing Ignore Patterns (.cursorindexingignore)",
+      "description": "Define patterns for files that should not be indexed by Cursor.",
+      "hint": "Use gitignore syntax. Matching files won't be indexed but remain accessible. Do not exclude tests by default.",
+      "output_file": ".cursorindexingignore",
+      "output_format": "verbatim",
+      "fields": [
+        {
+          "id": "content",
+          "type": "textarea",
+          "label": "Indexing Ignore Patterns",
+          "description": "One pattern per line. Gitignore syntax. Matching files won't be indexed but remain accessible.",
+          "rows": 15,
+          "screen_hint": "Do not exclude tests by default \u2014 tests are often valuable context. Use test-specific exclusions only as an advanced opt-in.",
+          "default": "# Large directories that slow indexing\nnode_modules/\n.next/\ndist/\nbuild/\n__pycache__/\n.venv/\n\n# Logs\n*.log\nlogs/"
+        }
+      ],
+      "_source_tool": "cursor"
+    },
+    {
+      "id": "ignore_verification",
+      "title": "Ignore Verification Checklist",
+      "description": "Generate a short checklist to help verify ignore-file effectiveness and indexing behavior.",
+      "hint": "Cursor ignore files are a primary exclusion control, but actual indexing behavior can depend on .gitignore and project settings. Validate by checking indexing counts and sample file visibility.",
+      "output_file": ".cursor/ignore-verification.md",
+      "output_format": "markdown",
+      "fields": [
+        {
+          "id": "checklist",
+          "type": "textarea",
+          "label": "Verification Checklist",
+          "description": "A short set of verification steps to confirm ignore and indexing behavior.",
+          "rows": 12,
+          "default": "- Confirm .cursorignore contains secrets, private keys, and sensitive artifacts.\n- Confirm .cursorindexingignore excludes large build and dependency directories.\n- Verify .gitignore interaction for files that should not be indexed.\n- Check Cursor indexing counts or workspace reports after updating ignore files.\n- Open a known excluded file and confirm it is not included in automatic AI context.\n- For manual-only rules, verify that they can be invoked explicitly by name."
+        }
+      ],
+      "_source_tool": "cursor"
+    },
+    {
+      "id": "path_instructions",
+      "title": "Path-Specific Instruction Files",
+      "description": "Create one or more .instructions.md files under .github/instructions/ for path-based guidance. Multiple files may apply and can combine with repo-wide instructions; conflicts are warned.",
+      "supported_surfaces": [
+        "chat",
+        "code_review",
+        "cloud_agent"
+      ],
+      "hint": "Use one file per concern and target via the applyTo frontmatter. The generator will warn on conflicting semantics between path-specific and repo-wide instructions.",
+      "output_file": ".github/instructions/",
+      "output_format": "markdown_frontmatter",
+      "fields": [
+        {
+          "id": "instruction_files",
+          "type": "repeatable_group",
+          "label": "Instruction files",
+          "description": "Define individual .instructions.md files. Each entry becomes a separate file under .github/instructions/",
+          "required": false,
+          "fields": [
+            {
+              "id": "file_name",
+              "type": "text",
+              "label": "File name",
+              "placeholder": "backend.instructions.md",
+              "required": true,
+              "render": false
+            },
+            {
+              "id": "applyTo",
+              "type": "text",
+              "label": "Applies to (glob pattern)",
+              "placeholder": "backend/**, src/**",
+              "frontmatter_key": "applyTo"
+            },
+            {
+              "id": "content",
+              "type": "textarea",
+              "label": "Instructions",
+              "placeholder": "Add path-specific instructions...",
+              "rows": 10,
+              "required": true
+            }
+          ]
+        }
+      ],
+      "_source_tool": "copilot"
+    },
+    {
+      "id": "prompt_files",
+      "title": "Prompt Files",
+      "description": "Create .github/prompts/*.prompt.md files with frontmatter and body. Prompt files are currently in public preview and supported only in VS Code, Visual Studio, and JetBrains IDEs.",
+      "supported_surfaces": [
+        "vscode",
+        "visual-studio",
+        "jetbrains"
+      ],
+      "hint": "Prompt files are in public preview \u2014 generated prompts may not be available across all Copilot surfaces. This step will emit one prompt file per entry.",
+      "output_file": ".github/prompts/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "prompt_files",
+          "type": "repeatable_group",
+          "label": "Prompt files",
+          "description": "One prompt file per entry. Each becomes .github/prompts/<filename>",
+          "required": false,
+          "fields": [
+            {
+              "id": "file_name",
+              "type": "text",
+              "label": "File name",
+              "placeholder": "release-note.prompt.md",
+              "required": true,
+              "render": false
+            },
+            {
+              "id": "description",
+              "type": "text",
+              "label": "Description",
+              "frontmatter": true,
+              "frontmatter_key": "description"
+            },
+            {
+              "id": "prompt_body",
+              "type": "textarea",
+              "label": "Prompt Body",
+              "rows": 8,
+              "required": true
+            }
+          ]
+        }
+      ],
+      "_source_tool": "copilot"
+    },
+    {
+      "id": "agent_definitions",
+      "title": "Subagent Definitions",
+      "description": "Define custom subagents that Claude Code can spawn to handle specialised tasks in your project.",
+      "hint": "Subagents are Claude Code sessions with specialized prompts and restricted tool sets, ideal for parallelizable work: testing, security review, documentation, refactoring. Use Sonnet for most agents; Opus for complex reasoning. Each generates one .md file in .claude/agents/. Give each agent a narrow focus\u2014e.g., test-writer needs Read/Write/Bash; security-reviewer needs Read/Grep\u2014this makes them faster and more reliable.",
+      "output_file": ".claude/agents/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "agents",
+          "type": "repeatable_group",
+          "label": "Subagents",
+          "description": "One AGENT.md per entry. Provide a name and role-specific prompt.",
+          "required": false,
+          "fields": [
+            {
+              "id": "agent_name",
+              "type": "text",
+              "label": "Agent name",
+              "required": true
+            },
+            {
+              "id": "agent_role",
+              "type": "text",
+              "label": "Agent role",
+              "required": true
+            },
+            {
+              "id": "agent_prompt",
+              "type": "textarea",
+              "label": "Agent system prompt",
+              "rows": 12,
+              "required": true
+            }
+          ]
+        }
+      ],
+      "_source_tool": "claude"
+    },
+    {
+      "id": "agent_instruction_files",
+      "title": "Agent Instruction Files",
+      "description": "Configure AGENTS.md guidance for agentic workflows. The generator can emit a root AGENTS.md plus optional nested AGENTS.md files; the root file is treated as the primary instruction source and nested files are additional guidance rather than strict overrides.",
+      "hint": "AGENTS.md is specifically relevant to agentic scenarios. Use nested AGENTS.md for subtree-specific additional guidance; the root AGENTS.md is considered primary.",
+      "output_file": "AGENTS.md",
+      "output_format": "markdown",
+      "fields": [
+        {
+          "id": "generate_agent_instructions",
+          "type": "checkbox",
+          "label": "Generate AGENTS.md instruction files",
+          "description": "Enable root and optional subtree AGENTS.md guidance files when custom agents or agentic workflows are required.",
+          "default": false
+        },
+        {
+          "id": "instruction_files",
+          "type": "textarea",
+          "label": "AGENTS.md Content",
+          "description": "Write root AGENTS.md content and optionally describe nested subtree additional guidance for AGENTS.md files.",
+          "placeholder": "# Agent instructions\n- Use the security reviewer for security-related changes.\n- Use the test writer for new or changed code that needs coverage.",
+          "screen_hint": "AGENTS.md is an instruction file, not an agent profile. Keep it concise and focused on agent behavior expectations. If you need reusable agents, use the Custom Agents step instead."
+        }
+      ],
+      "_source_tool": "copilot"
+    },
+    {
+      "id": "agent_skills",
+      "title": "Agent Skills",
+      "description": "Define reusable Copilot skills. Each skill should live in its own directory under .github/skills/ and include a SKILL.md with required frontmatter (name, description).",
+      "supported_surfaces": [
+        "agents",
+        "cli"
+      ],
+      "hint": "Model each skill as a directory with a SKILL.md file; this structured format helps validation and prevents invalid skill blobs.",
+      "output_file": ".github/skills/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "skills",
+          "type": "repeatable_group",
+          "label": "Skills",
+          "description": "One entry per skill directory. Each entry produces a <directory>/SKILL.md file under .github/skills/",
+          "required": false,
+          "fields": [
+            {
+              "id": "directory_name",
+              "type": "text",
+              "label": "Directory name",
+              "placeholder": "debug-ci",
+              "required": true,
+              "render": false
+            },
+            {
+              "id": "skill_name",
+              "type": "text",
+              "label": "Skill name",
+              "required": true,
+              "frontmatter": true,
+              "frontmatter_key": "name"
+            },
+            {
+              "id": "skill_description",
+              "type": "text",
+              "label": "Skill description",
+              "frontmatter": true,
+              "frontmatter_key": "description"
+            },
+            {
+              "id": "skill_md",
+              "type": "textarea",
+              "label": "SKILL.md Body",
+              "rows": 12,
+              "required": true
+            }
+          ]
+        }
+      ],
+      "_source_tool": "copilot"
+    },
+    {
       "id": "skill_definitions",
       "title": "Skill Definitions (.claude/skills/)",
       "description": "Define reusable skills. Each skill becomes a SKILL.md under .claude/skills/.",
@@ -1116,6 +961,161 @@
         }
       ],
       "_source_tool": "claude"
+    },
+    {
+      "id": "custom_agents",
+      "title": "Custom Agents",
+      "description": "Define custom Copilot agents with specific roles, tool access, optional MCP server config, and scope.",
+      "hint": "Custom agents are specialist profiles. Use repository-scoped agents for shared team workflows, or user-scoped agents for personal specialist profiles. The renderer will choose output paths based on agent scope.",
+      "output_file": ".github/agents/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "agent_scope",
+          "type": "select",
+          "label": "Agent Scope",
+          "description": "Choose whether these agents are shared in the repository or intended for personal user scope.",
+          "default": "project",
+          "options": [
+            {
+              "value": "project",
+              "label": "Project-scoped (shared via .github/agents/)"
+            },
+            {
+              "value": "user",
+              "label": "User-scoped (personal ~/.copilot/agents/)"
+            }
+          ]
+        },
+        {
+          "id": "agents",
+          "type": "repeatable_group",
+          "label": "Copilot Agents",
+          "description": "Define one or more custom agents. Each becomes a separate agent profile file.",
+          "required": false,
+          "fields": [
+            {
+              "id": "agent_name",
+              "type": "text",
+              "label": "Agent name",
+              "required": true
+            },
+            {
+              "id": "agent_role",
+              "type": "text",
+              "label": "Agent role",
+              "description": "Short role description",
+              "required": true
+            },
+            {
+              "id": "agent_system_prompt",
+              "type": "textarea",
+              "label": "System prompt",
+              "rows": 10,
+              "required": true
+            }
+          ]
+        }
+      ],
+      "_source_tool": "copilot"
+    },
+    {
+      "id": "mcp_config",
+      "title": "Project MCP Configuration (.mcp.json)",
+      "description": "Configure project-scoped MCP servers shared with your team via version control.",
+      "hint": "Commit .mcp.json to share MCP servers with your team. MCP servers extend Claude Code with external tools: GitHub (PRs/issues), databases, error monitoring, web search, etc. Scope options: --scope local (current project), --scope project (team via git), --scope user (your account, all projects). Within Claude sessions, use /mcp to check status and /mcp auth SERVERNAME to authenticate OAuth. Avoid hardcoding secrets\u2014use environment variables.",
+      "output_file": ".mcp.json",
+      "output_format": "verbatim",
+      "fields": [
+        {
+          "id": "content",
+          "type": "textarea",
+          "label": "MCP Configuration JSON",
+          "description": "Edit the JSON for .mcp.json. Click a server suggestion below to add it \u2014 existing servers are preserved.",
+          "rows": 14,
+          "default": "{\n  \"mcpServers\": {}\n}"
+        }
+      ],
+      "_source_tool": "claude"
+    },
+    {
+      "id": "hooks",
+      "title": "Project Hooks (.claude/hooks/)",
+      "description": "Define automation hooks for repository events and edit-time actions. Hooks are used for tasks such as formatting after edits, audit checks, notifications, and reinforcement of context.",
+      "hint": "Hooks are emitted under .claude/hooks/ as JSON or executable scripts depending on the hook type. These are accelerator-emitted artifacts that the project or CI can consume.",
+      "output_file": ".claude/hooks/",
+      "output_format": "text",
+      "fields": [
+        {
+          "id": "hooks",
+          "type": "repeatable_group",
+          "label": "Hooks",
+          "description": "One entry per hook. Provide a name, trigger, and the hook body or JSON configuration.",
+          "required": false,
+          "fields": [
+            {
+              "id": "hook_name",
+              "type": "text",
+              "label": "Hook name",
+              "required": true
+            },
+            {
+              "id": "hook_trigger",
+              "type": "text",
+              "label": "Hook trigger",
+              "required": true
+            },
+            {
+              "id": "hook_body",
+              "type": "textarea",
+              "label": "Hook body",
+              "rows": 8,
+              "required": true
+            }
+          ]
+        }
+      ],
+      "_source_tool": "claude"
+    },
+    {
+      "id": "agents_guidance",
+      "title": "Agent Guidance (AGENTS.md)",
+      "description": "Configure AGENTS.md for Cursor agent guidance and cross-tool workflow documentation.",
+      "hint": "Use AGENTS.md for broader agent workflow guidance, review processes, and reusable agent behavior expectations.",
+      "output_file": "AGENTS.md",
+      "output_format": "markdown",
+      "fields": [
+        {
+          "id": "agent_guidance",
+          "type": "textarea",
+          "label": "Agent Guidance",
+          "description": "Rules and expectations for agentic workflows, review processes, and cross-tool behavior.",
+          "placeholder": "# Agent guidance\n- Use the security reviewer for security-critical changes.\n- Use the testing agent for new or changed code needing coverage.",
+          "rows": 18,
+          "screen_hint": "Keep AGENTS.md focused on agent behavior and workflow guidance rather than general coding standards."
+        }
+      ],
+      "_source_tool": "cursor"
+    },
+    {
+      "id": "agents_heading",
+      "title": "Agent Instructions - Heading (AGENTS.md)",
+      "description": "Provide the heading for your agent instructions file.",
+      "hint": "This is the top-level heading that will appear at the start of AGENTS.md.",
+      "output_file": "AGENTS.md",
+      "output_format": "markdown",
+      "fields": [
+        {
+          "id": "heading",
+          "type": "text",
+          "label": "File Heading",
+          "description": "Top-level heading for AGENTS.md.",
+          "placeholder": "Agent Instructions",
+          "required": true,
+          "default": "Agent Instructions"
+        }
+      ],
+      "_source_tool": "cursor"
     },
     {
       "id": "verification_policy",

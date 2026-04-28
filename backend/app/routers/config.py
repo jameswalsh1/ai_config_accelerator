@@ -10,6 +10,7 @@ from app.services.config_loader_composable import (
 from app.services.config_editor import get_editable_step
 from app.services.config_patcher import update_field_metadata, ConfigNotFoundError, add_preset_to_field, remove_preset_from_field, remove_field_override
 from app.services.config_validator import validate_language_override, validate_tool_override
+from app.services.config_persistence import create_language_config, ValidationError as PersistenceValidationError
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -449,6 +450,51 @@ def list_available_tools() -> list[dict[str, str]]:
 def list_available_languages() -> list[dict[str, str]]:
     """Get list of available languages."""
     return get_available_languages()
+
+
+@router.post("/languages")
+def create_language(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Create a new language configuration.
+
+    Payload:
+        {
+            "language_id": "python-datascience",
+            "title": "Python – Data Science",
+            "description": "NumPy, pandas, PyTorch stack",
+            "based_on": "python"  // optional — copy overrides from existing language
+        }
+
+    Returns:
+        The newly created language config dict.
+
+    Raises:
+        HTTPException 400: language_id invalid or already exists
+        HTTPException 500: Write failure
+    """
+    language_id = payload.get("language_id", "").strip()
+    title = payload.get("title", "").strip()
+    description = payload.get("description", "").strip()
+    based_on = payload.get("based_on") or None
+
+    if not language_id:
+        raise HTTPException(status_code=400, detail="language_id is required")
+    if not title:
+        raise HTTPException(status_code=400, detail="title is required")
+
+    try:
+        new_config = create_language_config(
+            language_id=language_id,
+            title=title,
+            description=description,
+            based_on=based_on,
+        )
+        return new_config
+    except PersistenceValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create language: {e}")
 
 
 @router.get("/steps")

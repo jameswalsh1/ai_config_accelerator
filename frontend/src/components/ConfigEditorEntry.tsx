@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 import {
   fetchAvailableTools,
   fetchAvailableLanguages,
@@ -9,6 +10,7 @@ import {
   type StepOption,
   type EditableStep,
 } from '@/api/wizardApi'
+import { CreateLanguageModal } from './CreateLanguageModal'
 
 interface ConfigEditorEntryProps {
   onConfigSelected: (editableConfig: EditableStep, tool: string, language: string) => void
@@ -25,6 +27,7 @@ export function ConfigEditorEntry({ onConfigSelected }: ConfigEditorEntryProps) 
   const [loadingSteps, setLoadingSteps] = useState(false)
   const [loadingConfig, setLoadingConfig] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showCreateLanguage, setShowCreateLanguage] = useState(false)
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -136,9 +139,19 @@ export function ConfigEditorEntry({ onConfigSelected }: ConfigEditorEntryProps) 
 
         {/* Language Selection */}
         <div>
-          <label htmlFor="language-select" className="block text-sm font-medium text-gray-700 mb-2">
-            Language
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="language-select" className="block text-sm font-medium text-gray-700">
+              Language
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowCreateLanguage(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors"
+            >
+              <Plus className="size-3" />
+              New Language
+            </button>
+          </div>
           <select
             id="language-select"
             value={selectedLanguage}
@@ -198,6 +211,18 @@ export function ConfigEditorEntry({ onConfigSelected }: ConfigEditorEntryProps) 
           </button>
         </div>
       </div>
+
+      {showCreateLanguage && (
+        <CreateLanguageModal
+          existingLanguages={languages}
+          onCreated={(newLang) => {
+            setLanguages(prev => [...prev, newLang].sort((a, b) => a.title.localeCompare(b.title)))
+            setSelectedLanguage(newLang.id)
+            setShowCreateLanguage(false)
+          }}
+          onClose={() => setShowCreateLanguage(false)}
+        />
+      )}
     </div>
   )
 }

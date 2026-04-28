@@ -5,6 +5,92 @@
   "target": "all",
   "steps": [
     {
+      "id": "language_config",
+      "title": "Language & Technology",
+      "description": "Select your primary language first\u2014this shapes all subsequent recommendations",
+      "hint": "This selection is crucial\u2014it personalizes suggestions, locked fields, and presets throughout the wizard. The AI assistant will also tailor its behavior based on your language-specific best practices.",
+      "output_file": "project.config",
+      "fields": [
+        {
+          "id": "primary_language",
+          "type": "select",
+          "label": "Primary Language",
+          "description": "The main programming language used in this project",
+          "required": true,
+          "options": [
+            {
+              "value": "typescript",
+              "label": "TypeScript"
+            },
+            {
+              "value": "javascript",
+              "label": "JavaScript"
+            },
+            {
+              "value": "python",
+              "label": "Python"
+            },
+            {
+              "value": "go",
+              "label": "Go"
+            },
+            {
+              "value": "rust",
+              "label": "Rust"
+            },
+            {
+              "value": "java",
+              "label": "Java"
+            }
+          ]
+        },
+        {
+          "id": "frameworks",
+          "type": "multi_select",
+          "label": "Frameworks & Libraries",
+          "description": "Select every framework your project uses. Hold Ctrl / \u2318 to select multiple.",
+          "required": false,
+          "options": [
+            {
+              "value": "react",
+              "label": "React"
+            },
+            {
+              "value": "nextjs",
+              "label": "Next.js"
+            },
+            {
+              "value": "vue",
+              "label": "Vue 3"
+            },
+            {
+              "value": "fastapi",
+              "label": "FastAPI"
+            },
+            {
+              "value": "django",
+              "label": "Django"
+            },
+            {
+              "value": "express",
+              "label": "Express"
+            },
+            {
+              "value": "nestjs",
+              "label": "NestJS"
+            }
+          ]
+        },
+        {
+          "id": "use_strict_mode",
+          "type": "checkbox",
+          "label": "Enable Strict Mode",
+          "description": "Instructs the AI to enforce strict type checking, linting rules, and safe coding patterns",
+          "default": true
+        }
+      ]
+    },
+    {
       "id": "project_setup",
       "title": "Project Setup",
       "description": "Basic information about your project",
@@ -24,7 +110,7 @@
           "type": "textarea",
           "label": "Project Description",
           "description": "A brief summary of what your project does. This will appear as a comment in the config file.",
-          "placeholder": "Describe your project in 1–3 sentences…",
+          "placeholder": "Describe your project in 1\u20133 sentences\u2026",
           "required": false
         },
         {
@@ -34,58 +120,27 @@
           "description": "Select the category that best fits your project",
           "required": true,
           "options": [
-            { "value": "web", "label": "Web Application", "description": "Browser-based single-page or server-rendered app" },
-            { "value": "api", "label": "API / Backend", "description": "REST or GraphQL API, microservice, or worker" },
-            { "value": "cli", "label": "CLI Tool", "description": "Command-line utility or developer tool" },
-            { "value": "library", "label": "Library / SDK", "description": "Reusable package published to a registry" }
+            {
+              "value": "web",
+              "label": "Web Application",
+              "description": "Browser-based single-page or server-rendered app"
+            },
+            {
+              "value": "api",
+              "label": "API / Backend",
+              "description": "REST or GraphQL API, microservice, or worker"
+            },
+            {
+              "value": "cli",
+              "label": "CLI Tool",
+              "description": "Command-line utility or developer tool"
+            },
+            {
+              "value": "library",
+              "label": "Library / SDK",
+              "description": "Reusable package published to a registry"
+            }
           ]
-        }
-      ]
-    },
-    {
-      "id": "language_config",
-      "title": "Language & Technology",
-      "description": "Choose your primary language and frameworks",
-      "hint": "The AI assistant uses these selections to tailor its suggestions — for example recommending async patterns for Python FastAPI projects or React hooks for TypeScript React projects.",
-      "output_file": "project.config",
-      "fields": [
-        {
-          "id": "primary_language",
-          "type": "select",
-          "label": "Primary Language",
-          "description": "The main programming language used in this project",
-          "required": true,
-          "options": [
-            { "value": "typescript", "label": "TypeScript" },
-            { "value": "javascript", "label": "JavaScript" },
-            { "value": "python", "label": "Python" },
-            { "value": "go", "label": "Go" },
-            { "value": "rust", "label": "Rust" },
-            { "value": "java", "label": "Java" }
-          ]
-        },
-        {
-          "id": "frameworks",
-          "type": "multi_select",
-          "label": "Frameworks & Libraries",
-          "description": "Select every framework your project uses. Hold Ctrl / ⌘ to select multiple.",
-          "required": false,
-          "options": [
-            { "value": "react", "label": "React" },
-            { "value": "nextjs", "label": "Next.js" },
-            { "value": "vue", "label": "Vue 3" },
-            { "value": "fastapi", "label": "FastAPI" },
-            { "value": "django", "label": "Django" },
-            { "value": "express", "label": "Express" },
-            { "value": "nestjs", "label": "NestJS" }
-          ]
-        },
-        {
-          "id": "use_strict_mode",
-          "type": "checkbox",
-          "label": "Enable Strict Mode",
-          "description": "Instructs the AI to enforce strict type checking, linting rules, and safe coding patterns",
-          "default": true
         }
       ]
     },
@@ -104,9 +159,21 @@
           "required": true,
           "default": "balanced",
           "options": [
-            { "value": "concise", "label": "Concise", "description": "Short, to-the-point answers with no extra prose" },
-            { "value": "balanced", "label": "Balanced", "description": "Moderate detail with brief explanations" },
-            { "value": "detailed", "label": "Detailed", "description": "In-depth explanations and illustrative examples" }
+            {
+              "value": "concise",
+              "label": "Concise",
+              "description": "Short, to-the-point answers with no extra prose"
+            },
+            {
+              "value": "balanced",
+              "label": "Balanced",
+              "description": "Moderate detail with brief explanations"
+            },
+            {
+              "value": "detailed",
+              "label": "Detailed",
+              "description": "In-depth explanations and illustrative examples"
+            }
           ]
         },
         {
@@ -116,11 +183,31 @@
           "description": "Topics the AI should proactively raise in suggestions",
           "required": false,
           "options": [
-            { "value": "security", "label": "Security", "description": "Flag insecure patterns and suggest OWASP best practices" },
-            { "value": "performance", "label": "Performance", "description": "Recommend efficient algorithms and avoid bottlenecks" },
-            { "value": "readability", "label": "Readability", "description": "Prefer clear, self-documenting code over clever one-liners" },
-            { "value": "testing", "label": "Testing", "description": "Encourage unit tests and edge-case coverage" },
-            { "value": "documentation", "label": "Documentation", "description": "Suggest inline JSDoc / docstring comments" }
+            {
+              "value": "security",
+              "label": "Security",
+              "description": "Flag insecure patterns and suggest OWASP best practices"
+            },
+            {
+              "value": "performance",
+              "label": "Performance",
+              "description": "Recommend efficient algorithms and avoid bottlenecks"
+            },
+            {
+              "value": "readability",
+              "label": "Readability",
+              "description": "Prefer clear, self-documenting code over clever one-liners"
+            },
+            {
+              "value": "testing",
+              "label": "Testing",
+              "description": "Encourage unit tests and edge-case coverage"
+            },
+            {
+              "value": "documentation",
+              "label": "Documentation",
+              "description": "Suggest inline JSDoc / docstring comments"
+            }
           ]
         },
         {
@@ -128,7 +215,7 @@
           "type": "textarea",
           "label": "Custom Instructions",
           "description": "Any additional instructions you want the AI to follow across your entire project",
-          "placeholder": "e.g. Always prefer async/await over callbacks. Never use any. Use named exports only…"
+          "placeholder": "e.g. Always prefer async/await over callbacks. Never use any. Use named exports only\u2026"
         }
       ]
     }

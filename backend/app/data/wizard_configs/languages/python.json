@@ -1,15 +1,31 @@
 {
   "language_id": "python",
   "version": "1.0",
+  "metadata": {
+    "title": "Python",
+    "description": "Python 3.13+ \u2014 FastAPI, Django, or data science"
+  },
   "applies_to": {
     "languages": [
       "python"
-    ],
-    "tools": [
-      "claude"
     ]
   },
   "field_overrides": [
+    {
+      "field_id": "claude_md.coding_conventions",
+      "merge_presets": [
+        {
+          "label": "Python conventions",
+          "description": "Python style and best practices",
+          "value": "- Follow PEP 8 and use ruff or black for formatting.\n- Use type hints throughout; run mypy or pyright in strict mode.\n- Prefer dataclasses or Pydantic models over plain dicts for structured data.\n- Use async/await for I/O-bound work; avoid blocking calls in async context.",
+          "mode": "append",
+          "tags": [
+            "python"
+          ]
+        }
+      ],
+      "merge_mode": "append"
+    },
     {
       "field_id": "language_selection.language",
       "replace_presets_with": [

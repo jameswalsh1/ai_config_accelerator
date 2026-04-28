@@ -516,19 +516,24 @@ def get_available_languages() -> list[dict[str, str]]:
             try:
                 with lang_file.open(encoding="utf-8") as f:
                     lang_data = json.load(f)
-                
+
                 language_id = lang_data.get("language_id")
+                if not language_id:
+                    continue
+
                 metadata = lang_data.get("metadata", {})
-                
-                if language_id:
-                    languages.append({
-                        "id": language_id,
-                        "title": metadata.get("title", language_id),
-                        "description": metadata.get("description", ""),
-                    })
+                # Fall back to capitalised id when no title stored
+                title = metadata.get("title") or language_id.replace("-", " ").title()
+                description = metadata.get("description", "")
+
+                languages.append({
+                    "id": language_id,
+                    "title": title,
+                    "description": description,
+                })
             except (json.JSONDecodeError, KeyError):
                 continue
-    
+
     return languages
 
 

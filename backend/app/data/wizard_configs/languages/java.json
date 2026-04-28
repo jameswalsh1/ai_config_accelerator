@@ -10,6 +10,10 @@
     {
       "field_id": "language_selection.language_choice",
       "editability": "locked"
+    },
+    {
+      "field_id": "ignore_verification.checklist",
+      "default": "- Confirm .cursorignore contains secrets, private keys, and sensitive artifacts.\n- Confirm .cursorindexingignore excludes large build and dependency directories.\n- Verify .gitignore interaction for files that should not be indexed.\n- Check Cursor indexing counts or workspace reports after updating ignore files.\n- Open a known excluded file and confirm it is not included in automatic AI context.\n- For manual-only rules, verify that they can be invoked explicitly by name.\n- test config"
     }
   ],
   "field_overrides": [
@@ -44,5 +48,9 @@
       "merge_mode": "append"
     }
   ],
-  "step_overrides": []
+  "step_overrides": [],
+  "metadata": {
+    "title": "Java",
+    "description": "Java 21+ with Spring Boot and Maven/Gradle"
+  }
 }

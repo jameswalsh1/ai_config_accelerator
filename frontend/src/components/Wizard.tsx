@@ -39,11 +39,19 @@ export function Wizard({ config, onBack }: WizardProps) {
   useEffect(() => {
     if (languageLoaded) return
 
-    // Check if language_selection step exists and has been answered
-    const languageSelectionStep = currentConfig.steps.find(s => s.id === 'language_selection')
-    if (!languageSelectionStep) return
+    // Look for language selection in any step containing primary_language or language field
+    let selectedLanguage: string | undefined
+    for (const step of currentConfig.steps) {
+      // Check for primary_language field (demo.json)
+      const langField = step.fields.find(f => f.id === 'primary_language' || f.id === 'language')
+      if (langField) {
+        selectedLanguage = (answers[step.id]?.[langField.id] as string | undefined)
+        if (selectedLanguage) {
+          break
+        }
+      }
+    }
 
-    const selectedLanguage = answers[languageSelectionStep.id]?.language as string | undefined
     if (!selectedLanguage) return
 
     // Language selected - refetch config with language filter

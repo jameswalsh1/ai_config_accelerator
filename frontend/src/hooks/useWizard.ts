@@ -11,6 +11,7 @@ function buildScreens(config: WizardConfig): Screen[] {
   const screens: Screen[] = []
   for (let si = 0; si < config.steps.length; si++) {
     const step = config.steps[si]
+    if (step.hidden) continue
     screens.push({ stepIndex: si, step, fields: step.fields })
   }
   return screens

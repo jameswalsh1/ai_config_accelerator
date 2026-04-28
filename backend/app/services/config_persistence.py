@@ -376,6 +376,95 @@ def verify_changes_reloadable(tool_id: str, language_id: str) -> bool:
         )
 
 
+def create_language_config(
+    language_id: str,
+    title: str,
+    description: str = "",
+    based_on: str | None = None,
+) -> dict[str, Any]:
+    """
+    Create a new language configuration file.
+
+    Scaffolds a valid languages/{language_id}.json, optionally copying
+    field_overrides from an existing language as a starting point.
+
+    Args:
+        language_id: Unique identifier (e.g. 'python-datascience', 'haskell').
+                     Must be lowercase, alphanumeric, hyphens allowed.
+        title: Human-readable display name (e.g. 'Python – Data Science').
+        description: Optional description shown in the UI.
+        based_on: Optional existing language_id to copy overrides from.
+
+    Returns:
+        The newly created config dict.
+
+    Raises:
+        ValidationError: If language_id already exists or is invalid.
+        PersistenceError: If the file cannot be written.
+    """
+    import re
+
+    if not re.fullmatch(r"[a-z0-9][a-z0-9\-]*", language_id):
+        raise ValidationError(
+            "language_id must be lowercase alphanumeric with hyphens only "
+            f"(e.g. 'python-datascience'). Got: {language_id!r}"
+        )
+
+    languages_dir = DATA_DIR / "languages"
+    target_path = languages_dir / f"{language_id}.json"
+
+    if target_path.exists():
+        raise ValidationError(
+            f"Language '{language_id}' already exists. "
+            "Choose a different id or edit the existing config."
+        )
+
+    # Build scaffold — start empty, optionally copy from base language
+    field_overrides: list[dict[str, Any]] = []
+    metadata_overrides: list[dict[str, Any]] = []
+
+    if based_on:
+        based_on_path = languages_dir / f"{based_on}.json"
+        if not based_on_path.exists():
+            raise ValidationError(f"Base language '{based_on}' not found.")
+        with based_on_path.open(encoding="utf-8") as f:
+            base_data = json.load(f)
+        # Deep-copy the override lists — do NOT copy metadata like language_id/applies_to
+        field_overrides = deepcopy(base_data.get("field_overrides", []))
+        metadata_overrides = deepcopy(base_data.get("metadata_overrides", []))
+        # Re-tag any presets that carried the base language tag
+        for fo in field_overrides:
+            for preset in fo.get("merge_presets", []):
+                tags: list[str] = preset.get("tags", [])
+                if based_on in tags:
+                    preset["tags"] = [language_id if t == based_on else t for t in tags]
+
+    new_config: dict[str, Any] = {
+        "language_id": language_id,
+        "version": "1.0",
+        "metadata": {
+            "title": title,
+            "description": description,
+        },
+        "applies_to": {
+            "languages": [language_id],
+        },
+        "field_overrides": field_overrides,
+        "metadata_overrides": metadata_overrides,
+        "step_overrides": [],
+    }
+
+    save_config(
+        target_path,
+        new_config,
+        validate=True,
+        create_backup=False,   # Nothing to back up — file is brand new
+        verify_reloadable=False,
+    )
+
+    return new_config
+
+
 def save_patch_result(
     scope: str,
     target: str,

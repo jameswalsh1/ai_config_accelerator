@@ -24,5 +24,9 @@
       "merge_mode": "append"
     }
   ],
-  "step_overrides": []
+  "step_overrides": [],
+  "metadata": {
+    "title": "React + TypeScript",
+    "description": "React 19 with TypeScript and Vite or Next.js"
+  }
 }

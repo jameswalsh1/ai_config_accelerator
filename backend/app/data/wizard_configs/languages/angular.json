@@ -39,5 +39,9 @@
       "merge_mode": "append"
     }
   ],
-  "step_overrides": []
+  "step_overrides": [],
+  "metadata": {
+    "title": "Angular + TypeScript",
+    "description": "Angular 17+ with TypeScript and Angular CLI"
+  }
 }

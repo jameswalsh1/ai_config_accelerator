@@ -77,6 +77,7 @@ class WizardStep(BaseModel):
     output_file: str
     output_format: OutputFormat = OutputFormat.text
     supported_surfaces: list[str] | None = None
+    hidden: bool = False
 
 
 class WizardConfigSummary(BaseModel):

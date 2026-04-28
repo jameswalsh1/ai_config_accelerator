@@ -82,6 +82,7 @@ export interface WizardStep {
   output_file: string
   output_format?: OutputFormat
   supported_surfaces?: string[]
+  hidden?: boolean
 }
 
 export interface WizardConfigSummary {

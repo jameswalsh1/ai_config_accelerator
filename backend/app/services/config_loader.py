@@ -210,10 +210,16 @@ def get_all_configs() -> list[WizardConfigSummary]:
     ]
 
 
+def _strip_hidden_steps(config: WizardConfig) -> WizardConfig:
+    """Return a copy of config with steps marked hidden=True removed."""
+    visible = [s for s in config.steps if not s.hidden]
+    return config.model_copy(update={"steps": visible})
+
+
 def get_config(config_id: str) -> WizardConfig | None:
     for config in _load_all():
         if config.id == config_id:
-            return config
+            return _strip_hidden_steps(config)
     return None
 
 
@@ -239,6 +245,9 @@ def get_config_with_language_filter(config_id: str, language: str) -> WizardConf
         if not config:
             return None
     
+    # Strip hidden steps first
+    config = _strip_hidden_steps(config)
+
     # Deep copy to avoid modifying cached config
     config_copy = deepcopy(config)
     
