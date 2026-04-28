@@ -1,4 +1,4 @@
-export type FieldType = 'text' | 'textarea' | 'select' | 'multi_select' | 'checkbox' | 'agent_list' | 'repeatable_group'
+export type FieldType = 'text' | 'textarea' | 'select' | 'multi_select' | 'multiselect' | 'checkbox' | 'boolean' | 'agent_list' | 'repeatable_group' | 'number'
 
 export type OutputFormat = 'text' | 'markdown' | 'markdown_frontmatter' | 'verbatim'
 

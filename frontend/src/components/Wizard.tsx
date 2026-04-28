@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { generateFiles } from '@/api/wizardApi'
+import { useState, useEffect } from 'react'
+import { generateFiles, fetchWizardConfig } from '@/api/wizardApi'
 import type { WizardConfig } from '@/types/wizard'
 import { useWizard } from '@/hooks/useWizard'
 import { WizardComplete } from './WizardComplete'
@@ -13,6 +13,9 @@ interface WizardProps {
 }
 
 export function Wizard({ config, onBack }: WizardProps) {
+  const [currentConfig, setCurrentConfig] = useState<WizardConfig>(config)
+  const [languageLoaded, setLanguageLoaded] = useState(false)
+  
   const {
     screens,
     currentScreenIndex,
@@ -26,13 +29,36 @@ export function Wizard({ config, onBack }: WizardProps) {
     nextScreen,
     prevScreen,
     reset,
-  } = useWizard(config)
+  } = useWizard(currentConfig)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isDone, setIsDone] = useState(false)
 
-  const stepsFieldCounts = config.steps.map(s => s.fields.length)
+  // Detect when language is selected and refetch config with language filter
+  useEffect(() => {
+    if (languageLoaded) return
+
+    // Check if language_selection step exists and has been answered
+    const languageSelectionStep = currentConfig.steps.find(s => s.id === 'language_selection')
+    if (!languageSelectionStep) return
+
+    const selectedLanguage = answers[languageSelectionStep.id]?.language as string | undefined
+    if (!selectedLanguage) return
+
+    // Language selected - refetch config with language filter
+    setLanguageLoaded(true)
+    fetchWizardConfig(currentConfig.id, selectedLanguage)
+      .then(filteredConfig => {
+        setCurrentConfig(filteredConfig)
+      })
+      .catch(err => {
+        console.error('Failed to fetch language-filtered config:', err)
+        // Continue with unfiltered config if fetch fails
+      })
+  }, [answers, currentConfig.id, currentConfig.steps, languageLoaded])
+
+  const stepsFieldCounts = currentConfig.steps.map(s => s.fields.length)
 
   const handleSubmit = async () => {
     const canProceed = nextScreen()
@@ -41,7 +67,7 @@ export function Wizard({ config, onBack }: WizardProps) {
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      await generateFiles(config.id, answers)
+      await generateFiles(currentConfig.id, answers)
       setIsDone(true)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'An unexpected error occurred')
@@ -67,9 +93,9 @@ export function Wizard({ config, onBack }: WizardProps) {
           ← Back to configs
         </button>
         <span className="text-gray-300">|</span>
-        <h1 className="text-lg font-semibold text-gray-900">{config.title}</h1>
+        <h1 className="text-lg font-semibold text-gray-900">{currentConfig.title}</h1>
         <span className="ml-auto rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 capitalize">
-          {config.target}
+          {currentConfig.target}
         </span>
       </div>
 
@@ -85,14 +111,14 @@ export function Wizard({ config, onBack }: WizardProps) {
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         {isDone ? (
-          <WizardComplete configTitle={config.title} onReset={handleReset} />
+          <WizardComplete configTitle={currentConfig.title} onReset={handleReset} />
         ) : (
           <>
             <WizardFieldScreen
               screen={currentScreen}
               answers={answers}
               activeTags={activeTags}
-              targetTag={config.target}
+              targetTag={currentConfig.target}
               fieldError={fieldError}
               onFieldChange={(fieldId, value) =>
                 setFieldValue(currentScreen.step.id, fieldId, value)

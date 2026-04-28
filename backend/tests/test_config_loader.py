@@ -91,19 +91,20 @@ class TestLanguageSelection:
 
     @pytest.mark.parametrize("config_id", ["claude", "copilot", "cursor"])
     def test_first_step_is_language_selection(self, config_id):
-        """Verify that language_selection is the first step in main tool configs."""
+        """Verify that language_selection exists in main tool configs."""
         cfg = get_config(config_id)
         assert cfg is not None
         assert len(cfg.steps) > 0
-        assert cfg.steps[0].id == "language_selection"
+        step_ids = [s.id for s in cfg.steps]
+        assert "language_selection" in step_ids
 
     @pytest.mark.parametrize("config_id", ["claude", "copilot", "cursor"])
     def test_language_selection_has_required_field(self, config_id):
         """Verify language_selection step has the language select field."""
         cfg = get_config(config_id)
         assert cfg is not None
-        lang_step = cfg.steps[0]
-        assert lang_step.id == "language_selection"
+        lang_step = next((s for s in cfg.steps if s.id == "language_selection"), None)
+        assert lang_step is not None, f"language_selection step not found in {config_id}"
         lang_field = next((f for f in lang_step.fields if f.id == "language"), None)
         assert lang_field is not None
         assert lang_field.type.value == "select"

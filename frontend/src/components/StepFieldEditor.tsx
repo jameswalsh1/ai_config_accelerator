@@ -3,6 +3,7 @@ import { Lock, Unlock, AlertCircle, CheckCircle2, ChevronDown, Edit3, RotateCcw 
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
 import { updateFieldMetadata, resetFieldToBase } from '@/api/wizardApi'
 import { PresetManagement } from './PresetManagement'
+import { RepeatableGroupField } from './fields/RepeatableGroupField'
 
 interface StepFieldEditorProps {
   editableStep: EditableStep
@@ -427,7 +428,14 @@ export function StepFieldEditor({
   }
 
   const renderEditableInput = (
-    field: EditableField,
+    field: {
+      type: string
+      placeholder?: string
+      rows?: number
+      options?: { value: string; label: string; description?: string }[]
+      description?: string
+      fields?: any[]
+    },
     value: unknown,
     onChange: (value: unknown) => void
   ) => {
@@ -441,6 +449,17 @@ export function StepFieldEditor({
             type="text"
             value={(value as string) || ''}
             onChange={e => onChange(e.target.value)}
+            placeholder={field.placeholder}
+            className={commonClasses}
+          />
+        )
+
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={(value as number) || ''}
+            onChange={e => onChange(e.target.value ? Number(e.target.value) : '')}
             placeholder={field.placeholder}
             className={commonClasses}
           />
@@ -473,7 +492,8 @@ export function StepFieldEditor({
           </select>
         )
 
-      case 'multi_select': {
+      case 'multi_select':
+      case 'multiselect': {
         const selectedValues = Array.isArray(value) ? value : []
         return (
           <div className="space-y-2">
@@ -501,6 +521,7 @@ export function StepFieldEditor({
       }
 
       case 'checkbox':
+      case 'boolean':
         return (
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -512,6 +533,17 @@ export function StepFieldEditor({
             <span className="text-sm text-gray-700">Enabled</span>
           </label>
         )
+
+      case 'repeatable_group': {
+        const groupValues = Array.isArray(value) ? value : []
+        return (
+          <RepeatableGroupField
+            field={field as any}
+            value={groupValues}
+            onChange={onChange}
+          />
+        )
+      }
 
       default:
         return (

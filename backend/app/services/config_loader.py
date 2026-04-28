@@ -121,30 +121,25 @@ def _load_all() -> list[WizardConfig]:
         for tool_file in sorted(tools_dir.glob("*.json")):
             tool_id = tool_file.stem
             
-            # Try each language
-            languages_dir = DATA_DIR / "languages"
-            if languages_dir.exists():
-                for lang_file in sorted(languages_dir.glob("*.json")):
-                    lang_id = lang_file.stem
-                    
-                    try:
-                        # Load composable config
-                        config_data = load_composable_config(tool_id, lang_id)
-                        
-                        # The composable loader already sets id, title, target, description
-                        # from tool_metadata, so no need to override here
-                        
-                        config = WizardConfig.model_validate(config_data)
-                        configs.append(config)
-                        config_id = config_data.get("id")
-                        if config_id:
-                            loaded_ids.add(config_id)
-                    except FileNotFoundError:
-                        # Schema or override file not found, skip
-                        pass
-                    except Exception as e:
-                        print(f"Error loading {tool_id} + {lang_id}: {e}")
-                        pass
+            try:
+                # Load composable config with no language filter (base tool config only)
+                # This loads schema + tool overrides without language-specific customizations
+                config_data = load_composable_config(tool_id, "")
+                
+                # The composable loader already sets id, title, target, description
+                # from tool_metadata, so no need to override here
+                
+                config = WizardConfig.model_validate(config_data)
+                configs.append(config)
+                config_id = config_data.get("id")
+                if config_id:
+                    loaded_ids.add(config_id)
+            except FileNotFoundError:
+                # Schema file not found, skip
+                pass
+            except Exception as e:
+                print(f"Error loading {tool_id}: {e}")
+                pass
     
     # Fall back to old modular system if no configs were loaded
     if not configs:
@@ -231,9 +226,18 @@ def get_config_with_language_filter(config_id: str, language: str) -> WizardConf
     
     This allows the frontend to show language-aware preset suggestions.
     """
-    config = get_config(config_id)
-    if not config or not language:
-        return config
+    if not language:
+        return get_config(config_id)
+    
+    # Load config with language-specific overrides applied
+    try:
+        config_data = load_composable_config(config_id, language)
+        config = WizardConfig.model_validate(config_data)
+    except Exception:
+        # Fall back to base config if language-specific loading fails
+        config = get_config(config_id)
+        if not config:
+            return None
     
     # Deep copy to avoid modifying cached config
     config_copy = deepcopy(config)

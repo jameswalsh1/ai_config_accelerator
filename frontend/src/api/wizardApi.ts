@@ -1,6 +1,6 @@
 import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep, Preset, PresetAssignment } from '@/types/wizard'
 
-const BASE = 'http://localhost:8001'
+const BASE = 'http://localhost:8000'
 
 export type { EditableStep }
 
@@ -10,8 +10,14 @@ export async function fetchConfigs(): Promise<WizardConfigSummary[]> {
   return res.json() as Promise<WizardConfigSummary[]>
 }
 
-export async function fetchWizardConfig(id: string): Promise<WizardConfig> {
-  const res = await fetch(`${BASE}/api/wizard/config/${encodeURIComponent(id)}`)
+export async function fetchWizardConfig(id: string, language?: string): Promise<WizardConfig> {
+  const params = new URLSearchParams()
+  if (language) params.append('language', language)
+  const query = params.toString()
+  const url = query 
+    ? `${BASE}/api/wizard/config/${encodeURIComponent(id)}?${query}`
+    : `${BASE}/api/wizard/config/${encodeURIComponent(id)}`
+  const res = await fetch(url)
   if (!res.ok) throw new Error(`Failed to load config '${id}': ${res.statusText}`)
   return res.json() as Promise<WizardConfig>
 }
@@ -95,6 +101,44 @@ export async function updateFieldMetadata(
     }),
   })
   if (!res.ok) throw new Error(`Failed to update field metadata: ${res.statusText}`)
+  return res.json() as Promise<EditableStep>
+}
+
+export async function saveFieldValue(
+  tool: string,
+  language: string,
+  stepId: string,
+  fieldId: string,
+  value: unknown
+): Promise<EditableStep> {
+  // Determine the scope and target based on the tool/language combination
+  // For now, we'll save to the language override if it exists, otherwise tool override
+  let scope = 'language'
+  let target = language
+
+  // Check if language override exists, if not, use tool override
+  try {
+    await fetch(`${BASE}/config/edit?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&step_id=${encodeURIComponent(stepId)}`)
+  } catch {
+    // If language override doesn't work, try tool
+    scope = 'tool'
+    target = tool
+  }
+
+  const res = await fetch(`${BASE}/config/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scope,
+      target,
+      step_id: stepId,
+      field_id: fieldId,
+      changes: {
+        default: value,
+      },
+    }),
+  })
+  if (!res.ok) throw new Error(`Failed to save field value: ${res.statusText}`)
   return res.json() as Promise<EditableStep>
 }
 
