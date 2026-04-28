@@ -192,6 +192,7 @@ def save_config(
     validate: bool = True,
     create_backup: bool = True,
     verify_reloadable: bool = False,
+    context: dict[str, Any] | None = None,
 ) -> None:
     """
     Save configuration data to file atomically and safely.
@@ -202,6 +203,7 @@ def save_config(
     3. Write to temporary file
     4. Atomically replace original with temp file
     5. Verify reloadability (optional)
+    6. Emit audit log entry (non-fatal)
     
     Args:
         file_path: Path to save to
@@ -209,6 +211,8 @@ def save_config(
         validate: Whether to validate data against schema
         create_backup: Whether to create .backup file
         verify_reloadable: Whether to verify config can be reloaded
+        context: Optional metadata for the audit log (e.g. scope, target, actor).
+                 Does not affect the save operation itself.
     
     Raises:
         ValidationError: If validation fails
@@ -226,6 +230,15 @@ def save_config(
             validate_config_file(file_path, data)
         except SchemaValidationError as e:
             raise ValidationError(f"Configuration validation failed: {e}")
+    
+    # Read current file content for the audit diff BEFORE any mutation
+    before_data: dict[str, Any] | None = None
+    if file_path.exists():
+        try:
+            with file_path.open("r", encoding="utf-8") as f:
+                before_data = json.load(f)
+        except Exception:
+            before_data = None  # Treat unreadable existing file as a new file
     
     # Create backup
     backup_path = None
@@ -302,6 +315,20 @@ def save_config(
                     except BackupError:
                         pass
                 raise ReloadError(f"Config not reloadable after save: {e}")
+
+        # Emit audit log entry — non-fatal: a log failure must never block a save
+        try:
+            from app.services.audit_log import append_audit_entry, build_audit_entry
+            entry = build_audit_entry(
+                file_path=file_path,
+                before_data=before_data,
+                after_data=data,
+                context=context,
+                actor=(context or {}).get("actor", "system"),
+            )
+            append_audit_entry(entry)
+        except Exception as audit_exc:  # noqa: BLE001
+            print(f"[audit] WARNING: failed to write audit entry: {audit_exc}", file=__import__('sys').stderr)
     
     except Exception:
         # Cleanup temp file if it exists
@@ -497,7 +524,8 @@ def save_patch_result(
         data,
         validate=True,
         create_backup=True,
-        verify_reloadable=False,  # Reloadability check is expensive for patches
+        verify_reloadable=False,
+        context={"scope": scope, "target": target},
     )
 
 

@@ -11,6 +11,7 @@ from app.services.config_editor import get_editable_step
 from app.services.config_patcher import update_field_metadata, ConfigNotFoundError, add_preset_to_field, remove_preset_from_field, remove_field_override
 from app.services.config_validator import validate_language_override, validate_tool_override
 from app.services.config_persistence import create_language_config, ValidationError as PersistenceValidationError
+from app.services.audit_log import read_audit_log
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -504,3 +505,36 @@ def list_available_steps(
 ) -> list[dict[str, str]]:
     """Get list of available steps for a tool/language combination."""
     return get_available_steps(tool, language)
+
+
+@router.get("/audit")
+def get_audit_log(
+    limit: int = Query(default=50, ge=1, le=500, description="Max entries to return"),
+    offset: int = Query(default=0, ge=0, description="Entries to skip (pagination)"),
+    scope: str | None = Query(default=None, description="Filter by scope (language|tool|override)"),
+    target: str | None = Query(default=None, description="Filter by target (e.g. 'python', 'claude')"),
+) -> dict[str, Any]:
+    """Return a paginated, newest-first view of the audit log.
+
+    Each entry records what config file changed, who changed it, when,
+    and a full structured diff of what was different.
+
+    Returns:
+        {
+            "entries": [
+                {
+                    "timestamp": "2026-04-28T14:30:00Z",
+                    "action":    "update",
+                    "scope":     "language",
+                    "target":    "python",
+                    "file":      "backend/app/data/wizard_configs/languages/python.json",
+                    "actor":     "system",
+                    "diff_summary": "step 'claude_md': 1 field(s) modified",
+                    "diff":      { ... }
+                },
+                ...
+            ],
+            "total": 42
+        }
+    """
+    return read_audit_log(limit=limit, offset=offset, scope=scope, target=target)

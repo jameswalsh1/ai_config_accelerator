@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Lock, Unlock, AlertCircle, CheckCircle2, ChevronDown, Edit3, RotateCcw } from 'lucide-react'
+import { Lock, Unlock, CheckCircle2, ChevronDown, Edit3, RotateCcw } from 'lucide-react'
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
 import { updateFieldMetadata, resetFieldToBase } from '@/api/wizardApi'
 import { PresetManagement } from './PresetManagement'
@@ -18,7 +18,9 @@ type FieldGroup = 'overridden' | 'default' | 'locked' | 'suggested'
 
 const EDITABILITY_COLORS: Record<Editability, { bg: string; border: string; text: string }> = {
   free: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
-  locked: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
+  // 'locked' in the editor means the field will be locked for wizard users — amber, not red,
+  // because the SME here can always edit it.
+  locked: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
   suggested: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
   defaulted: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700' },
 }
@@ -175,7 +177,9 @@ export function StepFieldEditor({
   const renderField = (field: EditableField) => {
     const sourceLabel = getSourceLabel(field)
     const sourceColor = SOURCE_COLORS[sourceLabel] || SOURCE_COLORS.base
-    const canEdit = field.editability === 'free' && !field.is_locked
+    // In the Config Editor, SMEs can always edit every field.
+    // field.is_locked / editability reflect what wizard users will experience.
+    const canEdit = true
     const displayValue = field.current_value ?? field.default ?? ''
     const isEditingMetadata = editingMetadata === field.id
 
@@ -194,8 +198,12 @@ export function StepFieldEditor({
               <h4 className="font-semibold text-gray-900 text-lg">{field.label}</h4>
               {field.required && <span className="text-red-500 text-lg font-bold">*</span>}
               {field.is_locked && (
-                <span title={field.lock_reason ? `Locked: ${field.lock_reason}` : "This field is locked"}>
-                  <Lock className="size-5 text-red-500 flex-shrink-0" />
+                <span
+                  title={`Will be locked for wizard users${field.lock_reason ? ` — ${field.lock_reason}` : ''}`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-medium"
+                >
+                  <Lock className="size-3" />
+                  Locked for users
                 </span>
               )}
               {field.is_default && (
@@ -233,7 +241,6 @@ export function StepFieldEditor({
             onResetToBase={handleResetToBase}
             onEditMetadata={startEditingMetadata}
             isUpdating={updating}
-            canEdit={canEdit}
           />
         </div>
 
@@ -307,33 +314,23 @@ export function StepFieldEditor({
           <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
             Value
           </label>
-          {canEdit ? (
-            renderEditableInput(field, displayValue, (value) =>
-              onFieldChange?.(field.id, value)
-            )
-          ) : (
-            <div className="rounded-lg px-4 py-3 bg-white border border-gray-300 text-sm text-gray-700 shadow-sm">
-              <div className="flex items-start gap-3">
-                {field.is_locked && <AlertCircle className="size-5 text-red-500 mt-0.5 flex-shrink-0" />}
-                <div className="flex-1 min-w-0">
-                  <code className="break-all text-xs bg-gray-50 px-2 py-1 rounded block">
-                    {typeof displayValue === 'string'
-                      ? displayValue || '(empty)'
-                      : JSON.stringify(displayValue, null, 2)}
-                  </code>
-                  {field.is_locked && field.lock_reason && (
-                    <div className="mt-2 text-xs text-red-600 italic bg-red-50 px-3 py-2 rounded">
-                      <strong>Locked:</strong> {field.lock_reason}
-                    </div>
-                  )}
-                </div>
-              </div>
+          {/* SMEs can always edit — is_locked only affects wizard users */}
+          {field.is_locked && (
+            <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
+              <Lock className="size-3.5 flex-shrink-0" />
+              <span>
+                Wizard users will <strong>not</strong> be able to edit this value.
+                {field.lock_reason && <> Reason: <em>{field.lock_reason}</em></>}
+              </span>
             </div>
+          )}
+          {renderEditableInput(field, displayValue, (value) =>
+            onFieldChange?.(field.id, value)
           )}
         </div>
 
         {/* Presets Section - Improved Spacing */}
-        {field.presets && field.presets.length > 0 && canEdit && (
+        {field.presets && field.presets.length > 0 && (
           <div className="mt-4 pt-4 border-t border-opacity-20 border-gray-400">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Quick Apply:</p>

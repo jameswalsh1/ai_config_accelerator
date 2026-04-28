@@ -9,7 +9,6 @@ interface FieldDetailsPanelProps {
   onResetToBase: (field: EditableField) => void
   onEditMetadata: (fieldId: string) => void
   isUpdating: boolean
-  canEdit: boolean
 }
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -34,7 +33,6 @@ export function FieldDetailsPanel({
   onResetToBase,
   onEditMetadata,
   isUpdating,
-  canEdit,
 }: FieldDetailsPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const sourceColor = SOURCE_COLORS[sourceLabel] || SOURCE_COLORS.base
@@ -89,14 +87,19 @@ export function FieldDetailsPanel({
             )}
           </div>
 
-          {/* Lock Information */}
-          {field.is_locked && field.lock_reason && (
-            <div className="space-y-2 bg-red-50 border border-red-200 rounded-md p-3">
+          {/* Lock Information — shows what wizard users will see */}
+          {field.is_locked && (
+            <div className="space-y-2 bg-amber-50 border border-amber-200 rounded-md p-3">
               <div className="flex items-center gap-2">
-                <Lock className="size-4 text-red-600" />
-                <h4 className="text-xs font-semibold text-red-900">Lock Reason</h4>
+                <Lock className="size-4 text-amber-700" />
+                <h4 className="text-xs font-semibold text-amber-900">Locked for wizard users</h4>
               </div>
-              <p className="text-xs text-red-800">{field.lock_reason}</p>
+              {field.lock_reason && (
+                <p className="text-xs text-amber-800">{field.lock_reason}</p>
+              )}
+              {!field.lock_reason && (
+                <p className="text-xs text-amber-700 italic">No reason specified — consider adding one so users understand why.</p>
+              )}
             </div>
           )}
 
@@ -163,8 +166,8 @@ export function FieldDetailsPanel({
               Copy Value
             </button>
 
-            {/* Edit Metadata Button */}
-            {!field.is_locked && field.override_source && (
+            {/* Edit Metadata Button — always shown for the SME, even if locked for users */}
+            {field.override_source && (
               <button
                 onClick={() => onEditMetadata(field.id)}
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors border border-indigo-200"
@@ -176,26 +179,27 @@ export function FieldDetailsPanel({
               </button>
             )}
 
-            {/* Lock Toggle Button */}
-            {field.editability !== 'locked' && (
+            {/* Lock/Unlock for wizard users — SMEs control whether end users can edit */}
+            {field.override_source && (
               <button
                 onClick={() => onLockToggle(field)}
                 className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
                   field.is_locked
-                    ? 'bg-red-50 text-red-700 hover:bg-red-100 border-red-200'
+                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-300'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-300'
                 }`}
-                title={field.is_locked ? 'Unlock field' : 'Lock field'}
+                title={field.is_locked ? 'Allow wizard users to edit this field' : 'Prevent wizard users from editing this field'}
+                disabled={isUpdating}
               >
                 {field.is_locked ? (
                   <>
                     <Unlock className="size-3" />
-                    Unlock
+                    Unlock for users
                   </>
                 ) : (
                   <>
                     <Lock className="size-3" />
-                    Lock
+                    Lock for users
                   </>
                 )}
               </button>
