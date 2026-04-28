@@ -10,7 +10,7 @@ from app.services.config_loader_composable import (
 from app.services.config_editor import get_editable_step
 from app.services.config_patcher import update_field_metadata, ConfigNotFoundError, add_preset_to_field, remove_preset_from_field, remove_field_override
 from app.services.config_validator import validate_language_override, validate_tool_override
-from app.services.config_persistence import create_language_config, ValidationError as PersistenceValidationError
+from app.services.config_persistence import create_language_config, get_language_tags, ValidationError as PersistenceValidationError
 from app.services.config_persistence import (
     create_snapshot,
     list_snapshots,
@@ -485,11 +485,14 @@ def create_language(
     title = payload.get("title", "").strip()
     description = payload.get("description", "").strip()
     based_on = payload.get("based_on") or None
+    tag_remap_raw = payload.get("tag_remap")  # dict[str, str] or None
 
     if not language_id:
         raise HTTPException(status_code=400, detail="language_id is required")
     if not title:
         raise HTTPException(status_code=400, detail="title is required")
+    if tag_remap_raw is not None and not isinstance(tag_remap_raw, dict):
+        raise HTTPException(status_code=400, detail="tag_remap must be an object mapping old tags to new tags")
 
     try:
         new_config = create_language_config(
@@ -497,12 +500,33 @@ def create_language(
             title=title,
             description=description,
             based_on=based_on,
+            tag_remap=tag_remap_raw or None,
         )
         return new_config
     except PersistenceValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create language: {e}")
+
+
+@router.get("/languages/{language_id}/tags")
+def get_language_tag_list(
+    language_id: str,
+) -> list[str]:
+    """Return the unique tags used in presets for a language config.
+
+    Useful for pre-populating a tag-remap UI when cloning a language.
+
+    Returns:
+        Sorted list of unique tag strings.
+
+    Raises:
+        HTTPException 404: Language not found.
+    """
+    try:
+        return get_language_tags(language_id)
+    except PersistenceValidationError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/steps")

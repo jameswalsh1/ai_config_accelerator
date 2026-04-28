@@ -403,17 +403,62 @@ def verify_changes_reloadable(tool_id: str, language_id: str) -> bool:
         )
 
 
+def _apply_tag_remap(presets: list[dict[str, Any]], tag_remap: dict[str, str]) -> None:
+    """Replace tags in a list of presets according to a remap dictionary (in-place)."""
+    for preset in presets:
+        old_tags: list[str] = preset.get("tags", [])
+        if old_tags:
+            preset["tags"] = [tag_remap.get(t, t) for t in old_tags]
+
+
+def get_language_tags(language_id: str) -> list[str]:
+    """
+    Return the set of unique tags used across all presets in a language config.
+
+    Inspects ``merge_presets`` and ``replace_presets_with`` lists inside
+    ``field_overrides``.
+
+    Args:
+        language_id: Existing language identifier.
+
+    Returns:
+        Sorted list of unique tag strings.
+
+    Raises:
+        ValidationError: If the language file does not exist.
+    """
+    lang_path = DATA_DIR / "languages" / f"{language_id}.json"
+    if not lang_path.exists():
+        raise ValidationError(f"Language '{language_id}' not found.")
+    with lang_path.open(encoding="utf-8") as f:
+        data = json.load(f)
+    tags: set[str] = set()
+    for fo in data.get("field_overrides", []):
+        for preset in fo.get("merge_presets", []):
+            tags.update(preset.get("tags", []))
+        for preset in fo.get("replace_presets_with", []):
+            tags.update(preset.get("tags", []))
+    return sorted(tags)
+
+
 def create_language_config(
     language_id: str,
     title: str,
     description: str = "",
     based_on: str | None = None,
+    tag_remap: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """
     Create a new language configuration file.
 
-    Scaffolds a valid languages/{language_id}.json, optionally copying
-    field_overrides from an existing language as a starting point.
+    Scaffolds a valid languages/{language_id}.json, optionally copying all
+    override sections from an existing language as a starting point.
+
+    When ``based_on`` is set and no ``tag_remap`` is supplied, any preset tags
+    equal to ``based_on`` are automatically renamed to ``language_id``
+    (the previous implicit behaviour).  Pass an explicit ``tag_remap`` dict to
+    control exactly which tags are renamed (e.g. ``{"python": "django",
+    "py": "dj"}``).
 
     Args:
         language_id: Unique identifier (e.g. 'python-datascience', 'haskell').
@@ -421,6 +466,8 @@ def create_language_config(
         title: Human-readable display name (e.g. 'Python – Data Science').
         description: Optional description shown in the UI.
         based_on: Optional existing language_id to copy overrides from.
+        tag_remap: Optional mapping of old tag → new tag applied to every
+                   preset in all override sections.
 
     Returns:
         The newly created config dict.
@@ -449,6 +496,7 @@ def create_language_config(
     # Build scaffold — start empty, optionally copy from base language
     field_overrides: list[dict[str, Any]] = []
     metadata_overrides: list[dict[str, Any]] = []
+    step_overrides: list[dict[str, Any]] = []
 
     if based_on:
         based_on_path = languages_dir / f"{based_on}.json"
@@ -456,15 +504,17 @@ def create_language_config(
             raise ValidationError(f"Base language '{based_on}' not found.")
         with based_on_path.open(encoding="utf-8") as f:
             base_data = json.load(f)
-        # Deep-copy the override lists — do NOT copy metadata like language_id/applies_to
+        # Deep-copy ALL override sections — do NOT copy metadata like language_id/applies_to
         field_overrides = deepcopy(base_data.get("field_overrides", []))
         metadata_overrides = deepcopy(base_data.get("metadata_overrides", []))
-        # Re-tag any presets that carried the base language tag
-        for fo in field_overrides:
-            for preset in fo.get("merge_presets", []):
-                tags: list[str] = preset.get("tags", [])
-                if based_on in tags:
-                    preset["tags"] = [language_id if t == based_on else t for t in tags]
+        step_overrides = deepcopy(base_data.get("step_overrides", []))
+
+        # Build the effective tag remap: default is based_on → language_id
+        effective_remap: dict[str, str] = tag_remap if tag_remap is not None else {based_on: language_id}
+        if effective_remap:
+            for fo in field_overrides:
+                _apply_tag_remap(fo.get("merge_presets", []), effective_remap)
+                _apply_tag_remap(fo.get("replace_presets_with", []), effective_remap)
 
     new_config: dict[str, Any] = {
         "language_id": language_id,
@@ -478,7 +528,7 @@ def create_language_config(
         },
         "field_overrides": field_overrides,
         "metadata_overrides": metadata_overrides,
-        "step_overrides": [],
+        "step_overrides": step_overrides,
     }
 
     save_config(

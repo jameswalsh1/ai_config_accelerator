@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Lock, Unlock, ChevronDown, RotateCcw, Loader2 } from 'lucide-react'
+import { Lock, Unlock, ChevronDown, RotateCcw, Loader2, AlertCircle } from 'lucide-react'
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
 import { updateFieldMetadata, resetFieldToBase } from '@/api/wizardApi'
 import { PresetManagement } from './PresetManagement'
@@ -58,11 +58,14 @@ export function StepFieldEditor({
   )
   // Which fields are currently being persisted
   const [savingFields, setSavingFields] = useState<Set<string>>(new Set())
+  // Per-field inline validation errors (e.g. malformed JSON)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  // When the step changes (new step loaded), reset draft values
+  // When the step changes (new step loaded), reset draft values and errors
   useEffect(() => {
     setFieldValues(Object.fromEntries(step.fields.map(f => [f.id, f.current_value ?? f.default ?? ''])))
     setInlineEdits({})
+    setFieldErrors({})
   }, [step.id])
 
   const toggleGroup = (group: FieldGroup) => {
@@ -143,8 +146,61 @@ export function StepFieldEditor({
     }
   }
 
-  const getSourceLabel = (field: EditableField): string => {
-    // If current value has a specific source (e.g., from preset application)
+  // ---------------------------------------------------------------------------
+  // Inline validation helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Try to parse `raw` as JSON. Returns an error string on failure, null on success.
+   * Empty / whitespace-only strings are always considered valid (field is just blank).
+   */
+  const validateJson = (raw: string): string | null => {
+    const trimmed = raw.trim()
+    if (!trimmed) return null
+    try {
+      JSON.parse(trimmed)
+      return null
+    } catch (e) {
+      return e instanceof SyntaxError ? e.message : 'Invalid JSON'
+    }
+  }
+
+  /**
+   * Decide whether a text/textarea field's value should be validated as JSON.
+   * Rules (in priority order):
+   *   1. Field id contains "json"  →  always validate as JSON
+   *   2. Trimmed value starts with { or [  →  opportunistic: user clearly intends JSON
+   */
+  const shouldValidateAsJson = (fieldId: string, value: string): boolean => {
+    if (/_?json_?/i.test(fieldId)) return true
+    const t = value.trim()
+    return t.startsWith('{') || t.startsWith('[')
+  }
+
+  const handleFieldBlurValidation = (fieldId: string, value: string) => {
+    if (!shouldValidateAsJson(fieldId, value)) {
+      // Clear any stale error if the value no longer looks like JSON
+      setFieldErrors(prev => {
+        if (!prev[fieldId]) return prev
+        const next = { ...prev }
+        delete next[fieldId]
+        return next
+      })
+      return
+    }
+    const err = validateJson(value)
+    setFieldErrors(prev => {
+      if (!err) {
+        if (!prev[fieldId]) return prev
+        const next = { ...prev }
+        delete next[fieldId]
+        return next
+      }
+      return { ...prev, [fieldId]: err }
+    })
+  }
+
+  const getSourceLabel = (field: EditableField): string => {    // If current value has a specific source (e.g., from preset application)
     if (field.current_value_source) {
       return field.current_value_source
     }
@@ -286,25 +342,48 @@ export function StepFieldEditor({
 
         {/* ── Default value row (inline editable, saves on blur) ── */}
         {hasOverride && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-white border-t border-gray-100">
-            <span className="text-xs font-medium text-gray-500 w-14 shrink-0">Default:</span>
-            <input
-              type="text"
-              value={localDefault}
-              onChange={e =>
-                setInlineEdits(prev => ({
-                  ...prev,
-                  [field.id]: { ...prev[field.id], default: e.target.value },
-                }))
-              }
-              onBlur={() => {
-                if (localDefault !== rawDefault) {
-                  handleMetadataUpdate(field.id, { default: localDefault })
+          <div className="flex items-start gap-2 px-4 py-2 bg-white border-t border-gray-100">
+            <span className="text-xs font-medium text-gray-500 w-14 shrink-0 mt-1.5">Default:</span>
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                value={localDefault}
+                onChange={e =>
+                  setInlineEdits(prev => ({
+                    ...prev,
+                    [field.id]: { ...prev[field.id], default: e.target.value },
+                  }))
                 }
-              }}
-              placeholder="No default set"
-              className="flex-1 text-xs px-2 py-1.5 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
-            />
+                onBlur={() => {
+                  // Validate JSON if needed before saving
+                  const jsonErr = shouldValidateAsJson(field.id, localDefault)
+                    ? validateJson(localDefault)
+                    : null
+                  const errorKey = `${field.id}__default`
+                  setFieldErrors(prev => {
+                    if (!jsonErr) {
+                      const next = { ...prev }; delete next[errorKey]; return next
+                    }
+                    return { ...prev, [errorKey]: jsonErr }
+                  })
+                  if (!jsonErr && localDefault !== rawDefault) {
+                    handleMetadataUpdate(field.id, { default: localDefault })
+                  }
+                }}
+                placeholder="No default set"
+                className={`w-full text-xs px-2 py-1.5 border rounded focus:outline-none focus:ring-1 ${
+                  fieldErrors[`${field.id}__default`]
+                    ? 'border-red-400 focus:ring-red-400 bg-red-50'
+                    : 'border-gray-200 focus:ring-indigo-400'
+                }`}
+              />
+              {fieldErrors[`${field.id}__default`] && (
+                <p className="flex items-center gap-1 mt-1 text-xs text-red-600">
+                  <AlertCircle className="size-3 shrink-0" />
+                  {fieldErrors[`${field.id}__default`]}
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -387,6 +466,7 @@ export function StepFieldEditor({
 
   const renderEditableInput = (
     field: {
+      id: string
       type: string
       placeholder?: string
       rows?: number
@@ -398,20 +478,36 @@ export function StepFieldEditor({
     onChange: (value: unknown) => void,
     onSave: (value: unknown) => void
   ) => {
-    const commonClasses =
-      'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base shadow-sm transition-shadow hover:shadow-md'
+    const fieldId = field.id
+    const validationError = fieldErrors[fieldId]
+    const baseClasses =
+      'w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-base shadow-sm transition-shadow hover:shadow-md'
+    const validClasses = `${baseClasses} border-gray-300 focus:ring-indigo-500`
+    const errorClasses = `${baseClasses} border-red-400 focus:ring-red-400 bg-red-50`
+    const commonClasses = validationError ? errorClasses : validClasses
 
     switch (field.type) {
       case 'text':
         return (
-          <input
-            type="text"
-            value={(value as string) || ''}
-            onChange={e => onChange(e.target.value)}
-            onBlur={e => onSave(e.target.value)}
-            placeholder={field.placeholder}
-            className={commonClasses}
-          />
+          <div>
+            <input
+              type="text"
+              value={(value as string) || ''}
+              onChange={e => onChange(e.target.value)}
+              onBlur={e => {
+                handleFieldBlurValidation(fieldId, e.target.value)
+                onSave(e.target.value)
+              }}
+              placeholder={field.placeholder}
+              className={commonClasses}
+            />
+            {validationError && (
+              <p className="flex items-center gap-1.5 mt-1.5 text-sm text-red-600">
+                <AlertCircle className="size-4 shrink-0" />
+                {validationError}
+              </p>
+            )}
+          </div>
         )
 
       case 'number':
@@ -428,14 +524,25 @@ export function StepFieldEditor({
 
       case 'textarea':
         return (
-          <textarea
-            value={(value as string) || ''}
-            onChange={e => onChange(e.target.value)}
-            onBlur={e => onSave(e.target.value)}
-            placeholder={field.placeholder}
-            rows={field.rows || 4}
-            className={`${commonClasses} resize-vertical font-mono text-sm`}
-          />
+          <div>
+            <textarea
+              value={(value as string) || ''}
+              onChange={e => onChange(e.target.value)}
+              onBlur={e => {
+                handleFieldBlurValidation(fieldId, e.target.value)
+                onSave(e.target.value)
+              }}
+              placeholder={field.placeholder}
+              rows={field.rows || 4}
+              className={`${commonClasses} resize-vertical font-mono text-sm`}
+            />
+            {validationError && (
+              <p className="flex items-center gap-1.5 mt-1.5 text-sm text-red-600">
+                <AlertCircle className="size-4 shrink-0" />
+                {validationError}
+              </p>
+            )}
+          </div>
         )
 
       case 'select':

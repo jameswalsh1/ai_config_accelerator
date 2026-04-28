@@ -12,6 +12,39 @@
   },
   "field_overrides": [
     {
+      "field_id": "claude_md.tech_stack",
+      "merge_presets": [
+        {
+          "label": "FastAPI",
+          "description": "Modern async Python web framework",
+          "value": "FastAPI, Pydantic v2, uvicorn, SQLAlchemy 2.x",
+          "mode": "replace",
+          "tags": [
+            "python"
+          ]
+        },
+        {
+          "label": "Django",
+          "description": "Full-featured Python web framework",
+          "value": "Django 5.x, Django REST Framework, Celery",
+          "mode": "replace",
+          "tags": [
+            "python"
+          ]
+        },
+        {
+          "label": "Data Science",
+          "description": "Data science and ML stack",
+          "value": "NumPy, Pandas, scikit-learn, Jupyter",
+          "mode": "replace",
+          "tags": [
+            "python"
+          ]
+        }
+      ],
+      "merge_mode": "append"
+    },
+    {
       "field_id": "claude_md.coding_conventions",
       "merge_presets": [
         {
@@ -29,41 +62,6 @@
     {
       "field_id": "language_selection.language",
       "replace_presets_with": [
-        {
-          "label": "Positioned Preset",
-          "value": "positioned_value",
-          "description": "A positioned preset"
-        },
-        {
-          "label": "Test Preset",
-          "value": "test_value",
-          "description": "A test preset"
-        },
-        {
-          "label": "Test Preset",
-          "value": "test_value",
-          "description": "A test preset"
-        },
-        {
-          "label": "Preset to Remove by Position",
-          "value": "remove_by_pos",
-          "description": "A preset to be removed by position"
-        },
-        {
-          "label": "Test Preset",
-          "value": "test_value",
-          "description": "A test preset"
-        },
-        {
-          "label": "Test Preset",
-          "value": "test_value",
-          "description": "A test preset"
-        },
-        {
-          "label": "Preset to Remove by Position",
-          "value": "remove_by_pos",
-          "description": "A preset to be removed by position"
-        },
         {
           "label": "Test Preset",
           "value": "test_value",
@@ -84,27 +82,10 @@
   ],
   "metadata_overrides": [
     {
-      "field_id": "step1.field1",
-      "default": "value1"
-    },
-    {
-      "field_id": "step2.field2",
-      "default": "value2"
-    },
-    {
       "field_id": "language_selection.language",
       "default": "test_language",
       "editability": "locked"
-    },
-    {
-      "field_id": "claude_md.tech_stack",
-      "default": "test_value_xyz"
     }
   ],
-  "step_overrides": [
-    {
-      "step_id": "language_selection",
-      "title_override": "Python Settings"
-    }
-  ]
+  "step_overrides": []
 }

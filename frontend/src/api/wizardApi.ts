@@ -95,6 +95,8 @@ export interface CreateLanguagePayload {
   title: string
   description?: string
   based_on?: string
+  /** Optional tag remapping applied to all presets: { oldTag: newTag } */
+  tag_remap?: Record<string, string>
 }
 
 export async function createLanguageConfig(payload: CreateLanguagePayload): Promise<LanguageOption> {
@@ -113,6 +115,12 @@ export async function createLanguageConfig(payload: CreateLanguagePayload): Prom
     title: data.metadata?.title ?? data.language_id,
     description: data.metadata?.description ?? '',
   }
+}
+
+export async function fetchLanguageTags(languageId: string): Promise<string[]> {
+  const res = await fetch(`${BASE}/config/languages/${encodeURIComponent(languageId)}/tags`)
+  if (!res.ok) throw new Error(`Failed to load tags: ${res.statusText}`)
+  return res.json() as Promise<string[]>
 }
 
 export async function fetchAvailableSteps(tool: string, language: string): Promise<StepOption[]> {
