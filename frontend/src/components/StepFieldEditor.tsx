@@ -4,6 +4,7 @@ import type { EditableField, EditableStep, Editability } from '@/types/wizard'
 import { updateFieldMetadata, resetFieldToBase } from '@/api/wizardApi'
 import { PresetManagement } from './PresetManagement'
 import { RepeatableGroupField } from './fields/RepeatableGroupField'
+import { FieldDetailsPanel } from './FieldDetailsPanel'
 
 interface StepFieldEditorProps {
   editableStep: EditableStep
@@ -181,129 +182,85 @@ export function StepFieldEditor({
     return (
       <div
         key={field.id}
-        className={`flex flex-col gap-3 p-4 rounded-lg border-l-4 transition-colors ${
+        className={`flex flex-col gap-4 p-6 rounded-lg border-l-4 transition-all shadow-sm hover:shadow-md ${
           EDITABILITY_COLORS[field.editability].bg
         } border-b ${EDITABILITY_COLORS[field.editability].border}`}
       >
         {/* Field Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-medium text-gray-900">{field.label}</h4>
-              {field.required && <span className="text-red-500 text-sm">*</span>}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            {/* Field Title */}
+            <div className="flex items-center gap-2 mb-2">
+              <h4 className="font-semibold text-gray-900 text-lg">{field.label}</h4>
+              {field.required && <span className="text-red-500 text-lg font-bold">*</span>}
               {field.is_locked && (
                 <span title={field.lock_reason ? `Locked: ${field.lock_reason}` : "This field is locked"}>
-                  <Lock className="size-4 text-red-500" />
+                  <Lock className="size-5 text-red-500 flex-shrink-0" />
                 </span>
               )}
               {field.is_default && (
                 <span title="Using default value">
-                  <CheckCircle2 className="size-4 text-gray-400" />
+                  <CheckCircle2 className="size-5 text-green-500 flex-shrink-0" />
                 </span>
               )}
             </div>
 
+            {/* Field Description - More Prominent */}
             {field.description && (
-              <p className="text-xs text-gray-600 mb-2">{field.description}</p>
-            )}
-
-            {/* Metadata Row */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${sourceColor}`}>
-                {sourceLabel}
-              </span>
-              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                EDITABILITY_COLORS[field.editability].text
-              } bg-white border ${EDITABILITY_COLORS[field.editability].border}`}>
-                {field.editability}
-              </span>
-              {field.source_file && (
-                <span className="text-xs text-gray-500 italic">
-                  {field.source_file}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            {/* Edit Metadata Button */}
-            {!field.is_locked && field.override_source && (
-              <button
-                onClick={() => isEditingMetadata ? cancelEditingMetadata() : startEditingMetadata(field.id)}
-                className="p-2 rounded hover:bg-gray-200 transition-colors"
-                title={isEditingMetadata ? 'Cancel editing metadata' : 'Edit field metadata'}
-                disabled={updating}
-              >
-                <Edit3 className={`size-4 ${isEditingMetadata ? 'text-blue-500' : 'text-gray-400'}`} />
-              </button>
-            )}
-
-            {/* Lock Toggle */}
-            {field.editability !== 'locked' && (
-              <button
-                onClick={() => handleLockToggle(field)}
-                className="p-2 rounded hover:bg-gray-200 transition-colors"
-                title={field.is_locked ? 'Unlock field' : 'Lock field'}
-              >
-                {field.is_locked ? (
-                  <Lock className="size-4 text-red-500" />
-                ) : (
-                  <Unlock className="size-4 text-gray-400" />
-                )}
-              </button>
-            )}
-
-            {/* Reset to Base */}
-            {field.override_source && !field.is_default && (
-              <button
-                onClick={() => handleResetToBase(field)}
-                className="p-2 rounded hover:bg-gray-200 transition-colors"
-                title="Reset to base/tool defaults"
-                disabled={updating}
-              >
-                <RotateCcw className="size-4 text-gray-400" />
-              </button>
-            )}
-
-            {/* Reset to Base */}
-            {field.override_source && !field.is_default && (
-              <button
-                onClick={() => handleResetToBase(field)}
-                className="p-2 rounded hover:bg-gray-200 transition-colors"
-                title="Reset to base/tool defaults"
-                disabled={updating}
-              >
-                <RotateCcw className="size-4 text-gray-400" />
-              </button>
+              <p className="text-sm text-gray-700 mb-3 leading-relaxed bg-white bg-opacity-50 px-3 py-2 rounded border-l-2 border-blue-200">
+                {field.description}
+              </p>
             )}
           </div>
+
+          {/* Quick Status Badge */}
+          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${sourceColor}`}
+              title={`Field source: ${sourceLabel}`}
+            >
+              {sourceLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Field Details Panel */}
+        <div className="pt-2 border-t border-opacity-20 border-gray-400">
+          <FieldDetailsPanel
+            field={field}
+            sourceLabel={sourceLabel}
+            onLockToggle={handleLockToggle}
+            onResetToBase={handleResetToBase}
+            onEditMetadata={startEditingMetadata}
+            isUpdating={updating}
+            canEdit={canEdit}
+          />
         </div>
 
         {/* Metadata Editing Section */}
         {isEditingMetadata && (
-          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <h5 className="text-sm font-medium text-blue-900 mb-3">Edit Field Metadata</h5>
-            <div className="space-y-3">
+          <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+            <h5 className="text-sm font-semibold text-blue-900 mb-4">Edit Field Metadata</h5>
+            <div className="space-y-4">
               {/* Default Value */}
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">Default Value</label>
+                <label className="block text-sm font-medium text-blue-900 mb-2">Default Value</label>
                 <input
                   type="text"
                   value={(metadataChanges.default as string) || ''}
                   onChange={e => setMetadataChanges(prev => ({ ...prev, default: e.target.value }))}
                   placeholder="Enter default value"
-                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               {/* Editability */}
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">Editability</label>
+                <label className="block text-sm font-medium text-blue-900 mb-2">Editability</label>
                 <select
                   value={metadataChanges.editability as string || field.editability}
                   onChange={e => setMetadataChanges(prev => ({ ...prev, editability: e.target.value }))}
-                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="free">Free</option>
                   <option value="locked">Locked</option>
@@ -314,29 +271,29 @@ export function StepFieldEditor({
 
               {/* Lock Reason */}
               <div>
-                <label className="block text-xs font-medium text-blue-700 mb-1">Lock Reason</label>
+                <label className="block text-sm font-medium text-blue-900 mb-2">Lock Reason</label>
                 <input
                   type="text"
                   value={(metadataChanges.lock_reason as string) || ''}
                   onChange={e => setMetadataChanges(prev => ({ ...prev, lock_reason: e.target.value }))}
                   placeholder="Reason for locking this field"
-                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-4 border-t border-blue-200">
                 <button
                   onClick={() => handleMetadataUpdate(field.id, metadataChanges)}
                   disabled={updating}
-                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {updating ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button
                   onClick={cancelEditingMetadata}
                   disabled={updating}
-                  className="px-3 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400 disabled:opacity-50"
+                  className="px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 disabled:opacity-50 transition-colors"
                 >
                   Cancel
                 </button>
@@ -345,25 +302,28 @@ export function StepFieldEditor({
           </div>
         )}
 
-        {/* Field Value Display/Edit */}
-        <div className="mt-2">
+        {/* Field Value Display/Edit - Improved Spacing */}
+        <div className="mt-4 pt-4 border-t border-opacity-20 border-gray-400">
+          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
+            Value
+          </label>
           {canEdit ? (
             renderEditableInput(field, displayValue, (value) =>
               onFieldChange?.(field.id, value)
             )
           ) : (
-            <div className="rounded px-3 py-2 bg-white border border-gray-300 text-sm text-gray-700">
-              <div className="flex items-start gap-2">
-                {field.is_locked && <AlertCircle className="size-4 text-red-500 mt-0.5 flex-shrink-0" />}
-                <div className="flex-1">
-                  <code className="break-all">
+            <div className="rounded-lg px-4 py-3 bg-white border border-gray-300 text-sm text-gray-700 shadow-sm">
+              <div className="flex items-start gap-3">
+                {field.is_locked && <AlertCircle className="size-5 text-red-500 mt-0.5 flex-shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <code className="break-all text-xs bg-gray-50 px-2 py-1 rounded block">
                     {typeof displayValue === 'string'
                       ? displayValue || '(empty)'
                       : JSON.stringify(displayValue, null, 2)}
                   </code>
                   {field.is_locked && field.lock_reason && (
-                    <div className="mt-1 text-xs text-red-600 italic">
-                      Locked: {field.lock_reason}
+                    <div className="mt-2 text-xs text-red-600 italic bg-red-50 px-3 py-2 rounded">
+                      <strong>Locked:</strong> {field.lock_reason}
                     </div>
                   )}
                 </div>
@@ -372,17 +332,17 @@ export function StepFieldEditor({
           )}
         </div>
 
-        {/* Presets Section */}
+        {/* Presets Section - Improved Spacing */}
         {field.presets && field.presets.length > 0 && canEdit && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-gray-600">Quick Apply:</p>
+          <div className="mt-4 pt-4 border-t border-opacity-20 border-gray-400">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Quick Apply:</p>
               <button
                 onClick={() => setShowPresetManagement(prev => ({
                   ...prev,
                   [field.id]: !prev[field.id]
                 }))}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors font-medium"
               >
                 Manage Presets
               </button>
@@ -398,7 +358,7 @@ export function StepFieldEditor({
                         : preset.value
                     onFieldChange?.(field.id, newValue, 'preset')
                   }}
-                  className="px-3 py-1 rounded text-xs bg-white border border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+                  className="px-3 py-2 rounded-md text-xs bg-white border border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors font-medium"
                   title={preset.description}
                 >
                   {preset.label}
@@ -410,14 +370,12 @@ export function StepFieldEditor({
 
         {/* Preset Management */}
         {showPresetManagement[field.id] && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
+          <div className="mt-4 pt-4 border-t border-opacity-20 border-gray-400">
             <PresetManagement
               tool={tool}
               language={language}
               fieldId={field.id}
               onAssignmentsChange={(assignments) => {
-                // Update the field with new preset assignments
-                // You might need to update the step data here
                 console.log('Preset assignments updated:', assignments)
               }}
             />
@@ -440,7 +398,7 @@ export function StepFieldEditor({
     onChange: (value: unknown) => void
   ) => {
     const commonClasses =
-      'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+      'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base shadow-sm transition-shadow hover:shadow-md'
 
     switch (field.type) {
       case 'text':
@@ -472,7 +430,7 @@ export function StepFieldEditor({
             onChange={e => onChange(e.target.value)}
             placeholder={field.placeholder}
             rows={field.rows || 4}
-            className={commonClasses}
+            className={`${commonClasses} resize-vertical font-mono text-sm`}
           />
         )
 
@@ -496,9 +454,9 @@ export function StepFieldEditor({
       case 'multiselect': {
         const selectedValues = Array.isArray(value) ? value : []
         return (
-          <div className="space-y-2">
+          <div className="space-y-3 bg-white border border-gray-300 rounded-lg p-4">
             {field.options?.map(opt => (
-              <label key={opt.value} className="flex items-center gap-2">
+              <label key={opt.value} className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors">
                 <input
                   type="checkbox"
                   checked={selectedValues.includes(opt.value)}
@@ -508,12 +466,14 @@ export function StepFieldEditor({
                       : selectedValues.filter((v: string) => v !== opt.value)
                     onChange(newValues)
                   }}
-                  className="rounded border-gray-300"
+                  className="mt-1 rounded border-gray-300 w-4 h-4"
                 />
-                <span className="text-sm">{opt.label}</span>
-                {opt.description && (
-                  <span className="text-xs text-gray-500">({opt.description})</span>
-                )}
+                <div className="flex-1">
+                  <div className="text-base font-medium text-gray-900">{opt.label}</div>
+                  {opt.description && (
+                    <div className="text-sm text-gray-600 mt-1">{opt.description}</div>
+                  )}
+                </div>
               </label>
             ))}
           </div>
@@ -523,14 +483,14 @@ export function StepFieldEditor({
       case 'checkbox':
       case 'boolean':
         return (
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer p-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors w-fit">
             <input
               type="checkbox"
               checked={(value as boolean) || false}
               onChange={e => onChange(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+              className="h-5 w-5 rounded border-gray-300 text-indigo-600"
             />
-            <span className="text-sm text-gray-700">Enabled</span>
+            <span className="text-base text-gray-900 font-medium">Enabled</span>
           </label>
         )
 
@@ -547,7 +507,7 @@ export function StepFieldEditor({
 
       default:
         return (
-          <div className="text-sm text-gray-500 italic">
+          <div className="text-base text-gray-500 italic bg-gray-50 px-4 py-3 rounded-lg">
             Unsupported field type: {field.type}
           </div>
         )
@@ -555,50 +515,54 @@ export function StepFieldEditor({
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-4xl">
+    <div className="flex flex-col gap-8 max-w-5xl">
       {/* Step Header */}
-      <div className="border-b border-gray-200 pb-4">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">{step.title}</h2>
+      <div className="border-b border-gray-200 pb-6">
+        <h2 className="text-3xl font-bold text-gray-900 mb-3">{step.title}</h2>
         {step.description && (
-          <p className="text-sm text-gray-600 mb-3">{step.description}</p>
+          <p className="text-base text-gray-600 mb-6 leading-relaxed">{step.description}</p>
         )}
 
-        {/* Stats Bar */}
-        <div className="flex flex-wrap gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">Total Fields:</span>
-            <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">
-              {source_tracking.total_fields}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">Overridden:</span>
-            <span className="px-2 py-1 rounded bg-indigo-100 text-indigo-700">
-              {source_tracking.overridden_fields}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">Locked:</span>
-            <span className="px-2 py-1 rounded bg-red-100 text-red-700">
-              {source_tracking.locked_fields}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">Using Defaults:</span>
-            <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">
-              {source_tracking.default_fields}
-            </span>
+        {/* Stats Bar - Improved Styling */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100 shadow-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Fields</span>
+              <span className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 font-bold text-lg">
+                {source_tracking.total_fields}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Overridden</span>
+              <span className="px-3 py-2 rounded-lg bg-indigo-100 text-indigo-900 font-bold text-lg border border-indigo-200">
+                {source_tracking.overridden_fields}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Locked</span>
+              <span className="px-3 py-2 rounded-lg bg-red-100 text-red-900 font-bold text-lg border border-red-200">
+                {source_tracking.locked_fields}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Using Defaults</span>
+              <span className="px-3 py-2 rounded-lg bg-gray-100 text-gray-900 font-bold text-lg border border-gray-200">
+                {source_tracking.default_fields}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Source Breakdown */}
-        <div className="mt-3 text-xs text-gray-600">
-          <p className="font-medium mb-1">Fields by Source:</p>
+        <div className="mt-6">
+          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Fields by Source</p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(source_tracking.by_source).map(([source, count]) => (
               <span
                 key={source}
-                className={`px-2 py-1 rounded ${SOURCE_COLORS[source] || SOURCE_COLORS.base}`}
+                className={`px-4 py-2 rounded-lg font-medium text-sm shadow-sm ${
+                  SOURCE_COLORS[source] || SOURCE_COLORS.base
+                }`}
               >
                 {source}: {count}
               </span>
@@ -607,8 +571,8 @@ export function StepFieldEditor({
         </div>
       </div>
 
-      {/* Field Groups */}
-      <div className="space-y-4">
+      {/* Field Groups - Improved Spacing */}
+      <div className="space-y-6">
         {/* Overridden Fields */}
         {groupedFields.overridden.length > 0 && (
           <FieldGroup
@@ -618,7 +582,7 @@ export function StepFieldEditor({
             onToggle={() => toggleGroup('overridden')}
             icon="indigo"
           >
-            <div className="space-y-3">
+            <div className="space-y-4">
               {groupedFields.overridden.map(field => renderField(field))}
             </div>
           </FieldGroup>
@@ -633,7 +597,7 @@ export function StepFieldEditor({
             onToggle={() => toggleGroup('locked')}
             icon="red"
           >
-            <div className="space-y-3">
+            <div className="space-y-4">
               {groupedFields.locked.map(field => renderField(field))}
             </div>
           </FieldGroup>
@@ -648,7 +612,7 @@ export function StepFieldEditor({
             onToggle={() => toggleGroup('suggested')}
             icon="amber"
           >
-            <div className="space-y-3">
+            <div className="space-y-4">
               {groupedFields.suggested.map(field => renderField(field))}
             </div>
           </FieldGroup>
@@ -663,7 +627,7 @@ export function StepFieldEditor({
             onToggle={() => toggleGroup('default')}
             icon="gray"
           >
-            <div className="space-y-3">
+            <div className="space-y-4">
               {groupedFields.default.map(field => renderField(field))}
             </div>
           </FieldGroup>
@@ -671,8 +635,8 @@ export function StepFieldEditor({
 
         {/* Empty State */}
         {Object.values(groupedFields).every(g => g.length === 0) && (
-          <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500">
-            <p>No fields available for this step.</p>
+          <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center text-gray-500 bg-gray-50">
+            <p className="text-lg font-medium">No fields available for this step.</p>
           </div>
         )}
       </div>
@@ -698,32 +662,47 @@ function FieldGroup({ title, count, isExpanded, onToggle, icon, children }: Fiel
     gray: 'bg-gray-100 text-gray-700',
   }
 
+  const borderColors = {
+    indigo: 'border-l-indigo-600',
+    red: 'border-l-red-600',
+    amber: 'border-l-amber-600',
+    gray: 'border-l-gray-400',
+  }
+
   return (
-    <div className={`rounded-lg border overflow-hidden ${
-      isExpanded ? 'border-gray-300' : 'border-gray-200'
-    }`}>
+    <div
+      className={`rounded-lg border-l-4 overflow-hidden shadow transition-all ${
+        borderColors[icon]
+      } ${isExpanded ? 'shadow-md border-gray-200' : 'shadow-sm border-gray-100 hover:shadow-md'}`}
+    >
       <button
         onClick={onToggle}
-        className={`w-full flex items-center justify-between p-4 transition-colors ${
-          isExpanded ? 'bg-gray-50 border-b border-gray-200' : 'hover:bg-gray-50'
+        className={`w-full flex items-center justify-between px-6 py-4 transition-colors ${
+          isExpanded ? 'bg-gradient-to-r from-gray-50 to-white border-b border-gray-200' : 'hover:bg-gray-50 bg-white'
         }`}
       >
-        <div className="flex items-center gap-3">
-          <h3 className="font-semibold text-gray-900">{title}</h3>
-          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-            iconColors[icon]
-          }`}>
+        <div className="flex items-center gap-4">
+          <h3 className="font-semibold text-gray-900 text-lg">{title}</h3>
+          <span
+            className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+              iconColors[icon]
+            }`}
+          >
             {count}
           </span>
         </div>
         <ChevronDown
-          className={`size-5 text-gray-500 transition-transform ${
+          className={`size-5 text-gray-500 transition-transform flex-shrink-0 ${
             isExpanded ? 'rotate-180' : ''
           }`}
         />
       </button>
 
-      {isExpanded && <div className="p-4">{children}</div>}
+      {isExpanded && (
+        <div className="px-6 py-4 space-y-4 bg-gradient-to-b from-white to-gray-50">
+          {children}
+        </div>
+      )}
     </div>
   )
 }
