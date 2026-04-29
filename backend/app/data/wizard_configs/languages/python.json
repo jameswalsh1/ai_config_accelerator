@@ -91,6 +91,21 @@
           "label": "Preset to Remove by Position",
           "value": "remove_by_pos",
           "description": "A preset to be removed by position"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Test Preset",
+          "value": "test_value",
+          "description": "A test preset"
+        },
+        {
+          "label": "Preset to Remove by Position",
+          "value": "remove_by_pos",
+          "description": "A preset to be removed by position"
         }
       ]
     }

@@ -52,7 +52,7 @@ class TestPatchEngine:
     def test_get_target_file_invalid_scope(self):
         """Test that invalid scope raises error."""
         with pytest.raises(PatchError):
-            _get_target_file("invalid", "python")
+            _get_target_file("invalid", "python")  # type: ignore[arg-type]
 
     def test_get_field_override_index_found(self):
         """Test finding field override by ID."""

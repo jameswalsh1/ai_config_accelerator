@@ -23,7 +23,7 @@ class SchemaLoadError(Exception):
 class _SchemaCache:
     """Caches loaded JSON schemas to avoid repeated file I/O."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self._cache: dict[str, dict[str, Any]] = {}
     
     def get(self, schema_name: str) -> dict[str, Any]:
@@ -44,7 +44,7 @@ class _SchemaCache:
         
         return self._cache[schema_name]
     
-    def clear(self):
+    def clear(self) -> None:
         """Clear the cache."""
         self._cache.clear()
 

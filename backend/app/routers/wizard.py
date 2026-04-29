@@ -69,7 +69,7 @@ def get_editable_config(
     tool: str = Query(..., description="Tool ID (e.g., 'claude', 'copilot', 'cursor')"),
     language: str = Query(..., description="Language ID (e.g., 'python', 'java', 'javascript')"),
     step_id: str = Query(..., description="Step ID to fetch editable portion for"),
-) -> dict:
+) -> dict[str, Any]:
     """Get editable configuration slice for a specific step + language.
     
     Fetches the editable portion of config for a specific step, including:

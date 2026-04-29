@@ -10,6 +10,7 @@ Tests validation of all configuration file types:
 
 import json
 import pytest
+from typing import Any
 from pathlib import Path
 
 from app.services.config_validator import (
@@ -48,7 +49,7 @@ class TestWizardSchemaValidation:
     
     def test_wizard_missing_required_schema_version(self):
         """Test that missing schema_version raises error."""
-        data = {"steps": []}
+        data: dict[str, Any] = {"steps": []}
         
         with pytest.raises(SchemaValidationError):
             validate_wizard_schema(data)
@@ -116,7 +117,7 @@ class TestToolOverrideValidation:
     
     def test_tool_override_missing_tool_id(self):
         """Test that missing tool_id raises error."""
-        data = {"tool_metadata": {}}
+        data: dict[str, Any] = {"tool_metadata": {}}
         
         with pytest.raises(SchemaValidationError):
             validate_tool_override(data)

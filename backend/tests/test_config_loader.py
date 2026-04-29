@@ -137,6 +137,7 @@ class TestLanguageSelection:
         """Verify language filtering reduces preset count for specific languages."""
         config_full = get_config("claude")
         config_filtered = get_config_with_language_filter("claude", language)
+        assert config_full is not None
         assert config_filtered is not None
 
         # Compare preset counts

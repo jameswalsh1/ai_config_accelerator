@@ -11,6 +11,7 @@ Tests safe, atomic configuration persistence with:
 
 import json
 import pytest
+from typing import Any
 from pathlib import Path
 from copy import deepcopy
 
@@ -66,7 +67,7 @@ class TestOverrideSchemaValidation:
     def test_validate_not_dict(self):
         """Test that non-dict raises error."""
         with pytest.raises(ValidationError):
-            _validate_override_schema(["item"], "language")
+            _validate_override_schema(["item"], "language")  # type: ignore[arg-type]
 
     def test_validate_metadata_overrides_not_list(self):
         """Test that metadata_overrides must be list."""
@@ -88,7 +89,7 @@ class TestOverrideSchemaValidation:
 
     def test_validate_field_overrides_missing_field_id(self):
         """Test that field override requires field_id."""
-        data = {
+        data: dict[str, Any] = {
             "field_overrides": [
                 {"merge_presets": []}  # Missing field_id
             ]
@@ -258,7 +259,7 @@ class TestAtomicWrite:
         target_file = tmp_path / "config.json"
         
         # Create initial content
-        original = {
+        original: dict[str, Any] = {
             "language_id": "python",
             "metadata_overrides": [
                 {"field_id": "step.field", "default": "original"}
@@ -457,8 +458,6 @@ class TestConfigTransaction:
 
 class TestCreateLanguageConfig:
     """Tests for create_language_config and get_language_tags."""
-
-    from app.services.config_persistence import create_language_config, get_language_tags
 
     LANGUAGES_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs" / "languages"
 

@@ -1,9 +1,9 @@
 import json
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from app.models.wizard import WizardConfig, WizardConfigSummary
+from app.models.wizard import WizardConfig, WizardConfigSummary, WizardField
 from app.services.config_loader_composable import load_composable_config
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
@@ -92,7 +92,7 @@ def _load_modular_config(config_id: str) -> dict[str, Any] | None:
     
     # Load base config
     with base_file.open(encoding="utf-8") as f:
-        base_config = json.load(f)
+        base_config: dict[str, Any] = json.load(f)
     
     # Load and merge language-specific configs
     languages_dir = config_dir / "languages"
@@ -223,7 +223,7 @@ def get_config(config_id: str) -> WizardConfig | None:
     return None
 
 
-def get_config_with_language_filter(config_id: str, language: str) -> WizardConfig | None:
+def get_config_with_language_filter(config_id: str, language: str | None) -> WizardConfig | None:
     """Get a config with presets filtered based on the selected language.
     
     Presets are filtered to include only those with:
@@ -241,9 +241,10 @@ def get_config_with_language_filter(config_id: str, language: str) -> WizardConf
         config = WizardConfig.model_validate(config_data)
     except Exception:
         # Fall back to base config if language-specific loading fails
-        config = get_config(config_id)
-        if not config:
+        config_or_none = get_config(config_id)
+        if not config_or_none:
             return None
+        config = config_or_none
     
     # Strip hidden steps first
     config = _strip_hidden_steps(config)
@@ -267,7 +268,7 @@ def get_config_with_language_filter(config_id: str, language: str) -> WizardConf
     return config_copy
 
 
-def _filter_nested_presets(fields: list, language: str) -> None:
+def _filter_nested_presets(fields: list[WizardField], language: str) -> None:
     """Helper to recursively filter presets in nested field structures."""
     for field in fields:
         if field.presets:

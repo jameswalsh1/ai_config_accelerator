@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from typing import Any
+from typing import Any, Literal, cast
 
 from app.services.config_loader_composable import (
     load_composable_config,
@@ -160,11 +160,16 @@ def update_field_config(payload: dict[str, Any]) -> dict[str, Any]:
         if not all([scope, target, step_id, field_id]):
             raise ValueError("Missing required fields: scope, target, step_id, field_id")
 
-        if scope not in ["language", "tool", "override"]:
+        scope_str: str = str(scope)
+        target_str: str = str(target)
+        step_id_str: str = str(step_id)
+        field_id_str: str = str(field_id)
+
+        if scope_str not in ["language", "tool", "override"]:
             raise ValueError("Invalid scope. Must be 'language', 'tool', or 'override'")
 
         # Transform changes: map 'editable' to 'editability'
-        transformed_changes = {}
+        transformed_changes: dict[str, Any] = {}
         for key, value in changes.items():
             if key == "editable":
                 # Map boolean to editability string
@@ -173,10 +178,10 @@ def update_field_config(payload: dict[str, Any]) -> dict[str, Any]:
                 transformed_changes[key] = value
 
         # Update the override file
-        updated_config = update_field_metadata(scope, target, step_id, field_id, transformed_changes)
+        updated_config = update_field_metadata(cast(Literal["tool", "language", "override"], scope_str), target_str, step_id_str, field_id_str, transformed_changes)
 
         # Validate the updated config
-        if scope == "language":
+        if scope_str == "language":
             validate_language_override(updated_config)
         elif scope == "tool":
             validate_tool_override(updated_config)
@@ -205,13 +210,13 @@ def update_field_config(payload: dict[str, Any]) -> dict[str, Any]:
         # So perhaps tool = "claude", language = "python"
 
         tool = "claude"  # Assuming based on applies_to
-        language = target if scope == "language" else "python"  # Assuming
+        language: str = target_str if scope_str == "language" else "python"  # Assuming
 
         # Load fully resolved config
         resolved_dict = load_composable_config(tool, language)
 
         # Extract editable step with metadata
-        result = get_editable_step(resolved_dict, step_id)
+        result = get_editable_step(resolved_dict, step_id_str)
 
         return result
 
@@ -268,22 +273,28 @@ def reset_field_to_base(payload: dict[str, Any]) -> dict[str, Any]:
         if not all([scope, target, step_id, field_id]):
             raise ValueError("Missing required fields: scope, target, step_id, field_id")
 
-        if scope not in ["language", "tool", "override"]:
+        scope_str: str = str(scope)
+        target_str: str = str(target)
+        step_id_str: str = str(step_id)
+        field_id_str: str = str(field_id)
+        override_type_str: str = str(override_type) if override_type else "metadata"
+
+        if scope_str not in ["language", "tool", "override"]:
             raise ValueError("Invalid scope. Must be 'language', 'tool', or 'override'")
 
-        if override_type not in ["metadata", "structure"]:
+        if override_type_str not in ["metadata", "structure"]:
             raise ValueError("Invalid override_type. Must be 'metadata' or 'structure'")
 
         # Remove the override
-        updated_config = remove_field_override(scope, target, step_id, field_id, override_type)
+        updated_config = remove_field_override(cast(Literal["tool", "language", "override"], scope_str), target_str, step_id_str, field_id_str, cast(Literal["metadata", "structure"], override_type_str))
 
         # Return updated config slice
         # Assume tool/language for slice - use claude/python as defaults
         tool = "claude"
-        language = target if scope == "language" else "python"
+        language: str = target_str if scope_str == "language" else "python"
 
         resolved_dict = load_composable_config(tool, language)
-        result = get_editable_step(resolved_dict, step_id)
+        result = get_editable_step(resolved_dict, step_id_str)
 
         return result
 
@@ -345,19 +356,25 @@ def add_preset(payload: dict[str, Any]) -> dict[str, Any]:
         if not all([scope, target, step_id, field_id, preset]):
             raise ValueError("Missing required fields: scope, target, step_id, field_id, preset")
 
-        if scope not in ["language", "tool", "override"]:
+        scope_str: str = str(scope)
+        target_str: str = str(target)
+        step_id_str: str = str(step_id)
+        field_id_str: str = str(field_id)
+        preset_dict: dict[str, Any] = dict(preset) if isinstance(preset, dict) else {}
+
+        if scope_str not in ["language", "tool", "override"]:
             raise ValueError("Invalid scope. Must be 'language', 'tool', or 'override'")
 
         # Add the preset
-        updated_config = add_preset_to_field(scope, target, step_id, field_id, preset, position)
+        updated_config = add_preset_to_field(cast(Literal["tool", "language", "override"], scope_str), target_str, step_id_str, field_id_str, preset_dict, position)
 
         # Return updated config slice
         # Assume tool/language for slice - use claude/python as defaults
         tool = "claude"
-        language = target if scope == "language" else "python"
+        language: str = target_str if scope_str == "language" else "python"
 
         resolved_dict = load_composable_config(tool, language)
-        result = get_editable_step(resolved_dict, step_id)
+        result = get_editable_step(resolved_dict, step_id_str)
 
         return result
 
@@ -413,22 +430,27 @@ def remove_preset(payload: dict[str, Any]) -> dict[str, Any]:
         if not all([scope, target, step_id, field_id]):
             raise ValueError("Missing required fields: scope, target, step_id, field_id")
 
-        if scope not in ["language", "tool", "override"]:
+        scope_str: str = str(scope)
+        target_str: str = str(target)
+        step_id_str: str = str(step_id)
+        field_id_str: str = str(field_id)
+
+        if scope_str not in ["language", "tool", "override"]:
             raise ValueError("Invalid scope. Must be 'language', 'tool', or 'override'")
 
         if preset_label is None and position is None:
             raise ValueError("Must specify either preset_label or position")
 
         # Remove the preset
-        updated_config = remove_preset_from_field(scope, target, step_id, field_id, preset_label, position)
+        updated_config = remove_preset_from_field(cast(Literal["tool", "language", "override"], scope_str), target_str, step_id_str, field_id_str, preset_label, position)
 
         # Return updated config slice
         # Assume tool/language for slice - use claude/python as defaults
         tool = "claude"
-        language = target if scope == "language" else "python"
+        language: str = target_str if scope_str == "language" else "python"
 
         resolved_dict = load_composable_config(tool, language)
-        result = get_editable_step(resolved_dict, step_id)
+        result = get_editable_step(resolved_dict, step_id_str)
 
         return result
 

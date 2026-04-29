@@ -12,7 +12,7 @@ Implements safe, atomic persistence of configuration changes with:
 import json
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from copy import deepcopy
 
 from app.services.config_loader_composable import load_composable_config
@@ -81,7 +81,7 @@ def _validate_override_schema(data: dict[str, Any], file_type: str) -> None:
     Raises:
         ValidationError: If structure is invalid
     """
-    required_fields = {
+    required_fields: dict[str, list[str]] = {
         "tool": [],  # Tool files have flexible structure
         "language": [],  # Language files have flexible structure
         "override": [],  # Override files have flexible structure
@@ -304,9 +304,15 @@ def save_config(
             )
         
         # Verify reloadability if needed
-        if verify_reloadable and file_type != "unknown":
+        inferred_file_type = (
+            "tool" if "/tools/" in str(file_path)
+            else "language" if "/languages/" in str(file_path)
+            else "override" if "/overrides/" in str(file_path)
+            else "unknown"
+        )
+        if verify_reloadable and inferred_file_type != "unknown":
             try:
-                _verify_config_reloadable(file_path, file_type)
+                _verify_config_reloadable(file_path, inferred_file_type)
             except Exception as e:
                 # Attempt rollback
                 if backup_path:
@@ -594,14 +600,14 @@ class ConfigTransaction:
         ```
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.changes: dict[str, dict[str, Any]] = {}  # file_path -> data
         self.backups: dict[Path, Path] = {}  # file_path -> backup_path
     
-    def __enter__(self):
+    def __enter__(self) -> "ConfigTransaction":
         return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
         if exc_type is not None:
             # Rollback on exception
             self.rollback()
@@ -881,7 +887,7 @@ def restore_snapshot(scope: str, target: str, snapshot_id: str) -> dict[str, Any
         },
     )
 
-    return snapshot["meta"]
+    return cast(dict[str, Any], snapshot["meta"])
 
 
 def delete_snapshot(scope: str, target: str, snapshot_id: str) -> None:

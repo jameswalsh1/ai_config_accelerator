@@ -1,6 +1,7 @@
 """Tests for the FastAPI HTTP routes."""
 
 import pytest
+from typing import Any
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -297,7 +298,7 @@ class TestPreviewEndpoint:
         import io
         import zipfile
 
-        answers: dict = {}
+        answers: dict[str, Any] = {}
         preview = client.post(
             "/api/generate/preview", json={"config_id": "claude", "answers": answers}
         ).json()

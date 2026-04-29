@@ -12,6 +12,7 @@ Tests the diff comparison functionality including:
 import json
 import pytest
 from pathlib import Path
+from typing import Any
 
 from app.services.config_diff import (
     compare_configs,
@@ -125,7 +126,7 @@ class TestFieldComparison:
     
     def test_field_added(self):
         """Test detection of added field."""
-        before = {}
+        before: dict[str, Any] = {}
         after = {
             "id": "new_field",
             "type": "text",
@@ -145,7 +146,7 @@ class TestFieldComparison:
             "type": "text",
             "label": "Old Field",
         }
-        after = {}
+        after: dict[str, Any] = {}
         
         diff = compare_fields(before, after)
         assert diff.change_type == ChangeType.REMOVED
@@ -318,7 +319,7 @@ class TestStepComparison:
     
     def test_step_added(self):
         """Test detection of added step."""
-        before = {}
+        before: dict[str, Any] = {}
         after = {
             "id": "new_step",
             "title": "New Step",
@@ -340,7 +341,7 @@ class TestStepComparison:
             "output_file": "output.md",
             "fields": [],
         }
-        after = {}
+        after: dict[str, Any] = {}
         
         diff = compare_steps(before, after)
         assert diff.change_type == ChangeType.REMOVED

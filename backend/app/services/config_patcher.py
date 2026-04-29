@@ -11,7 +11,7 @@ Implements ID-based targeted updates to configuration files with:
 import json
 import time
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from copy import deepcopy
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
@@ -171,7 +171,7 @@ def _read_json_file(file_path: Path) -> dict[str, Any]:
     
     try:
         with file_path.open(encoding="utf-8") as f:
-            return json.load(f)
+            return cast(dict[str, Any], json.load(f))
     except json.JSONDecodeError as e:
         raise PatchError(f"Invalid JSON in {file_path}: {e}")
 
@@ -614,6 +614,7 @@ def add_preset_to_field(
         # Find existing override or create new one
         override_idx = _get_field_override_index(field_overrides, full_field_id)
         
+        override: dict[str, Any]
         if override_idx is not None:
             override = field_overrides[override_idx]
         else:
@@ -621,7 +622,7 @@ def add_preset_to_field(
             field_overrides.append(override)
         
         # Get current presets from override or initialize
-        current_presets = override.get("replace_presets_with", [])
+        current_presets: list[Any] = cast(list[Any], override.get("replace_presets_with", []))
         
         # Insert preset at position
         if position is None or position >= len(current_presets):
@@ -690,8 +691,8 @@ def remove_preset_from_field(
         if override_idx is None:
             raise PatchError(f"No override found for field {full_field_id}")
         
-        override = field_overrides[override_idx]
-        current_presets = override.get("replace_presets_with", [])
+        override: dict[str, Any] = field_overrides[override_idx]
+        current_presets: list[Any] = cast(list[Any], override.get("replace_presets_with", []))
         
         # Remove preset
         if position is not None:

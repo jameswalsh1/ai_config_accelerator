@@ -263,8 +263,8 @@ def extract_field_dict(field_obj: dict[str, Any]) -> dict[str, Any]:
 
 
 def compare_presets(
-    before_presets: Optional[list[dict]] = None,
-    after_presets: Optional[list[dict]] = None,
+    before_presets: Optional[list[dict[str, Any]]] = None,
+    after_presets: Optional[list[dict[str, Any]]] = None,
 ) -> list[PresetChange]:
     """Compare preset lists and return changes."""
     changes = []
@@ -278,6 +278,9 @@ def compare_presets(
     
     # Check for removed and modified presets
     for label, before_preset in before_map.items():
+        if label is None:
+            continue
+        label = str(label)
         if label not in after_map:
             changes.append(
                 PresetChange(
@@ -307,6 +310,9 @@ def compare_presets(
     
     # Check for added presets
     for label, after_preset in after_map.items():
+        if label is None:
+            continue
+        label = str(label)
         if label not in before_map:
             changes.append(
                 PresetChange(
@@ -327,6 +333,7 @@ def compare_fields(
 ) -> FieldDiff:
     """Compare two field definitions and return differences."""
     field_id = after_field.get("id") or before_field.get("id")
+    field_id = str(field_id) if field_id is not None else ""
     field_type = after_field.get("type") or before_field.get("type")
     
     # Determine if field was added/removed/modified
@@ -424,6 +431,7 @@ def compare_steps(
 ) -> StepDiff:
     """Compare two step definitions and return differences."""
     step_id = after_step.get("id") or before_step.get("id")
+    step_id = str(step_id) if step_id is not None else ""
     
     # Determine if step was added/removed/modified
     if not before_step:

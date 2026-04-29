@@ -21,7 +21,7 @@ def _get(step_answers: dict[str, Any], field_id: str, default: Any = None) -> An
     return v if v is not None else default
 
 
-def _get_field_value(field, step_answers: dict[str, Any]) -> Any:
+def _get_field_value(field: WizardField, step_answers: dict[str, Any]) -> Any:
     value = _get(step_answers, field.id, field.default)
     return value if value is not None else field.locked_value
 

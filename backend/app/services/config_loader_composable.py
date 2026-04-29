@@ -12,7 +12,7 @@ Implements identity + overrides architecture:
 import json
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from app.models.wizard import WizardConfig, WizardField, WizardStep
 from app.services.config_validator import (
@@ -361,8 +361,8 @@ def load_composable_config(tool_id: str, language_id: str) -> dict[str, Any]:
         )
     
     # Resolve all preset_files references
-    config = _resolve_preset_files(config)
-    
+    config = cast(dict[str, Any], _resolve_preset_files(config))
+
     return config
 
 
@@ -415,8 +415,8 @@ def load_config_legacy_path(config_id: str) -> dict[str, Any] | None:
                             break
     
     # Resolve preset files
-    base_config = _resolve_preset_files(base_config)
-    
+    base_config = cast(dict[str, Any], _resolve_preset_files(base_config))
+
     return base_config
 
 
@@ -432,9 +432,9 @@ def extract_presets_from_config(config: dict[str, Any], tool_id: str, language_i
     Returns:
         Dict with keys 'shared', 'language', 'tool' containing lists of preset dicts
     """
-    shared_presets = []
-    language_presets = []
-    tool_presets = []
+    shared_presets: list[dict[str, Any]] = []
+    language_presets: list[dict[str, Any]] = []
+    tool_presets: list[dict[str, Any]] = []
     
     # Traverse all steps and fields to collect presets
     for step in config.get("steps", []):
