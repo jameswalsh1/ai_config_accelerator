@@ -299,3 +299,61 @@ def clear_schema_cache() -> None:
     """Clear the schema cache. Useful for testing."""
     _schema_cache.clear()
 
+
+def validate_override_references(schema_data: dict[str, Any], override_data: dict[str, Any], source: str) -> list[str]:
+    """
+    Validate that field_id and step_id references in an override file
+    actually exist in the base schema.
+
+    Args:
+        schema_data: The base wizard schema dict (must have 'steps')
+        override_data: The override dict to validate
+        source: Human-readable source name for error messages
+
+    Returns:
+        List of warning strings for unresolvable references.
+        Empty list means all references are valid.
+    """
+    # Build index of valid step IDs and field paths
+    valid_step_ids: set[str] = set()
+    valid_field_paths: set[str] = set()
+
+    for step in schema_data.get("steps", []):
+        step_id = step.get("id", "")
+        if step_id:
+            valid_step_ids.add(step_id)
+            for field in step.get("fields", []):
+                _collect_field_paths(step_id, field, valid_field_paths)
+
+    warnings: list[str] = []
+
+    # Check metadata_overrides
+    for entry in override_data.get("metadata_overrides", []):
+        field_id = entry.get("field_id", "")
+        if field_id and field_id not in valid_field_paths:
+            warnings.append(f"{source}: metadata_overrides references unknown field '{field_id}'")
+
+    # Check field_overrides
+    for entry in override_data.get("field_overrides", []):
+        field_id = entry.get("field_id", "")
+        if field_id and field_id not in valid_field_paths:
+            warnings.append(f"{source}: field_overrides references unknown field '{field_id}'")
+
+    # Check step_overrides
+    for entry in override_data.get("step_overrides", []):
+        step_id = entry.get("step_id", "")
+        if step_id and step_id not in valid_step_ids:
+            warnings.append(f"{source}: step_overrides references unknown step '{step_id}'")
+
+    return warnings
+
+
+def _collect_field_paths(prefix: str, field: dict[str, Any], paths: set[str]) -> None:
+    """Recursively collect valid field paths like 'step_id.field_id'."""
+    field_id = field.get("id", "")
+    if field_id:
+        path = f"{prefix}.{field_id}"
+        paths.add(path)
+        for nested in field.get("fields", []):
+            _collect_field_paths(path, nested, paths)
+

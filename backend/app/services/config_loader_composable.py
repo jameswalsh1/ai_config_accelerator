@@ -14,12 +14,13 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from app.models.wizard import WizardConfig, WizardField, WizardStep
+from app.models.wizard import WizardConfig, WizardConfigSummary, WizardField, WizardStep
 from app.services.config_validator import (
     validate_wizard_schema,
     validate_tool_override,
     validate_language_override,
     validate_combo_override,
+    validate_override_references,
     SchemaValidationError,
 )
 
@@ -289,6 +290,10 @@ def load_composable_config(tool_id: str, language_id: str) -> dict[str, Any]:
         validate_wizard_schema(config)
     except SchemaValidationError as e:
         raise ValueError(f"Invalid schema.json: {e}")
+
+    # Keep a reference to the raw schema for semantic validation of overrides
+    schema_for_validation = config
+    validation_warnings: list[str] = []
     
     # Apply tool overrides
     tool_override_file = DATA_DIR / "tools" / f"{tool_id}.json"
@@ -296,30 +301,39 @@ def load_composable_config(tool_id: str, language_id: str) -> dict[str, Any]:
         with tool_override_file.open(encoding="utf-8") as f:
             tool_overrides = json.load(f)
         
-        # Validate tool overrides
+        # Validate tool overrides (structural)
         try:
             validate_tool_override(tool_overrides)
         except SchemaValidationError as e:
             raise ValueError(f"Invalid {tool_override_file.name}: {e}")
+
+        # Validate override references against schema (semantic)
+        validation_warnings.extend(
+            validate_override_references(schema_for_validation, tool_overrides, f"tools/{tool_id}.json")
+        )
         
+        # Work on a copy so partial failures don't corrupt state
+        candidate = deepcopy(config)
+
         # Extract tool_metadata and merge into top level
         if "tool_metadata" in tool_overrides:
             metadata = tool_overrides["tool_metadata"]
             if "title" in metadata:
-                config["title"] = metadata["title"]
+                candidate["title"] = metadata["title"]
             if "description" in metadata:
-                config["description"] = metadata["description"]
+                candidate["description"] = metadata["description"]
             if "target" in metadata:
-                config["target"] = metadata["target"]
+                candidate["target"] = metadata["target"]
             # Use tool_id as config id
-            config["id"] = tool_id
+            candidate["id"] = tool_id
         
         _apply_overrides(
-            config, 
+            candidate, 
             tool_overrides, 
             source=f"tool:{tool_id}",
             applies_to_tool=tool_id
         )
+        config = candidate
     
     # Apply language overrides
     language_override_file = DATA_DIR / "languages" / f"{language_id}.json"
@@ -332,13 +346,20 @@ def load_composable_config(tool_id: str, language_id: str) -> dict[str, Any]:
             validate_language_override(language_overrides)
         except SchemaValidationError as e:
             raise ValueError(f"Invalid {language_override_file.name}: {e}")
+
+        # Validate override references against schema (semantic)
+        validation_warnings.extend(
+            validate_override_references(schema_for_validation, language_overrides, f"languages/{language_id}.json")
+        )
         
+        candidate = deepcopy(config)
         _apply_overrides(
-            config,
+            candidate,
             language_overrides,
             source=f"language:{language_id}",
             applies_to_language=language_id
         )
+        config = candidate
     
     # Apply tool+language overrides (highest priority)
     combo_override_file = DATA_DIR / "overrides" / f"{tool_id}+{language_id}.json"
@@ -351,73 +372,114 @@ def load_composable_config(tool_id: str, language_id: str) -> dict[str, Any]:
             validate_combo_override(combo_overrides)
         except SchemaValidationError as e:
             raise ValueError(f"Invalid {combo_override_file.name}: {e}")
+
+        # Validate override references against schema (semantic)
+        validation_warnings.extend(
+            validate_override_references(schema_for_validation, combo_overrides, f"overrides/{tool_id}+{language_id}.json")
+        )
         
+        candidate = deepcopy(config)
         _apply_overrides(
-            config,
+            candidate,
             combo_overrides,
             source=f"override:{tool_id}+{language_id}",
             applies_to_tool=tool_id,
             applies_to_language=language_id
         )
+        config = candidate
     
     # Resolve all preset_files references
     config = cast(dict[str, Any], _resolve_preset_files(config))
 
+    if validation_warnings:
+        config["_validation_warnings"] = validation_warnings
+
     return config
 
 
-def load_config_legacy_path(config_id: str) -> dict[str, Any] | None:
-    """
-    DEPRECATED: Load a config from the old monolithic directory structure (base + language variants).
-    
-    This exists for backwards compatibility during migration.
-    New code should use load_composable_config() instead.
-    """
-    config_dir = DATA_DIR / config_id
-    if not config_dir.is_dir():
-        return None
-    
-    base_file = config_dir / "_base.json"
-    if not base_file.exists():
-        return None
-    
-    # Load base config
-    with base_file.open(encoding="utf-8") as f:
-        base_config = json.load(f)
-    
-    # Load and merge language-specific configs
-    languages_dir = config_dir / "languages"
-    if languages_dir.is_dir():
-        for lang_file in sorted(languages_dir.glob("*.json")):
-            with lang_file.open(encoding="utf-8") as f:
-                lang_config = json.load(f)
-            
-            # OLD MERGE LOGIC (preserved for backwards compat)
-            # This is what we're replacing
-            if "step_overrides" in lang_config:
-                for override in lang_config["step_overrides"]:
-                    step_id = override.get("step_id")
-                    field_id = override.get("field_id")
-                    presets_to_add = override.get("presets_to_add", [])
-                    
-                    if not step_id or not field_id or not presets_to_add:
-                        continue
-                    
-                    # Find the step and field
-                    for step in base_config.get("steps", []):
-                        if step.get("id") == step_id:
-                            for field in step.get("fields", []):
-                                if field.get("id") == field_id:
-                                    if "presets" not in field:
-                                        field["presets"] = []
-                                    field["presets"].extend(presets_to_add)
-                                    break
-                            break
-    
-    # Resolve preset files
-    base_config = cast(dict[str, Any], _resolve_preset_files(base_config))
+def get_all_configs() -> list[WizardConfigSummary]:
+    """Load all wizard configurations and return summaries."""
+    configs: list[WizardConfigSummary] = []
+    tools_dir = DATA_DIR / "tools"
+    if not tools_dir.exists():
+        return configs
+    for tool_file in sorted(tools_dir.glob("*.json")):
+        tool_id = tool_file.stem
+        try:
+            config_data = load_composable_config(tool_id, "")
+            config = WizardConfig.model_validate(config_data)
+            configs.append(WizardConfigSummary(
+                id=config.id,
+                title=config.title,
+                description=config.description,
+                target=config.target,
+            ))
+        except Exception:
+            pass
+    return configs
 
-    return base_config
+
+def strip_hidden_steps(config: WizardConfig) -> WizardConfig:
+    """Return a copy of config with steps marked hidden=True removed."""
+    visible = [s for s in config.steps if not s.hidden]
+    return config.model_copy(update={"steps": visible})
+
+
+def get_config(config_id: str) -> WizardConfig | None:
+    """Get a single tool config by its ID (without language overrides)."""
+    tool_file = DATA_DIR / "tools" / f"{config_id}.json"
+    if not tool_file.exists():
+        return None
+    try:
+        config_data = load_composable_config(config_id, "")
+        config = WizardConfig.model_validate(config_data)
+        return strip_hidden_steps(config)
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def get_config_with_language_filter(config_id: str, language: str | None) -> WizardConfig | None:
+    """Get a config with presets filtered based on the selected language.
+
+    Presets are filtered to include only those with:
+    - No language tags (universal/applicable to all languages)
+    - A tag matching the selected language
+    """
+    if not language:
+        return get_config(config_id)
+
+    try:
+        config_data = load_composable_config(config_id, language)
+        config = WizardConfig.model_validate(config_data)
+    except Exception:
+        return get_config(config_id)
+
+    config = strip_hidden_steps(config)
+    config_copy = deepcopy(config)
+
+    for step in config_copy.steps:
+        for field in step.fields:
+            if field.presets:
+                field.presets = [
+                    p for p in field.presets
+                    if not p.tags or language in p.tags
+                ]
+            if field.fields:
+                _filter_nested_presets(field.fields, language)
+
+    return config_copy
+
+
+def _filter_nested_presets(fields: list[WizardField], language: str) -> None:
+    """Helper to recursively filter presets in nested field structures."""
+    for field in fields:
+        if field.presets:
+            field.presets = [
+                p for p in field.presets
+                if not p.tags or language in p.tags
+            ]
+        if field.fields:
+            _filter_nested_presets(field.fields, language)
 
 
 def extract_presets_from_config(config: dict[str, Any], tool_id: str, language_id: str) -> dict[str, list[dict[str, Any]]]:

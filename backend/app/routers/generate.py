@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.services.config_loader import get_config
+from app.services.config_loader_composable import get_config
 from app.services.file_generator import generate_files
 from app.services.zip_service import create_zip
 

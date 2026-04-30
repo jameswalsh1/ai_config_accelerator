@@ -413,6 +413,115 @@ class TestIntegrationWithLoader:
         assert config is not None
         assert "steps" in config
 
+    def test_existing_overrides_have_no_warnings(self):
+        """All shipped override files should reference valid schema fields.
+
+        Skips files that have a .backup sibling — they may have been
+        modified by other tests during this run.
+        """
+        import json
+        from pathlib import Path
+        from app.services.config_validator import validate_override_references
+
+        data_dir = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+        with (data_dir / "schema.json").open() as f:
+            schema = json.load(f)
+
+        def _check_dir(subdir: str) -> None:
+            d = data_dir / subdir
+            if not d.exists():
+                return
+            for p in sorted(d.glob("*.json")):
+                if p.name.endswith(".backup"):
+                    continue
+                # Skip files that may have been mutated by other tests
+                if p.with_suffix(".json.backup").exists():
+                    continue
+                with p.open() as f:
+                    data = json.load(f)
+                warnings = validate_override_references(schema, data, p.name)
+                assert warnings == [], f"{p.name}: {warnings}"
+
+        _check_dir("tools")
+        _check_dir("languages")
+
+
+class TestOverrideReferenceValidation:
+    """Tests for semantic validation of override field/step references."""
+
+    def test_valid_references_produce_no_warnings(self):
+        from app.services.config_validator import validate_override_references
+
+        schema = {
+            "steps": [
+                {"id": "step1", "fields": [{"id": "field1"}, {"id": "field2"}]},
+                {"id": "step2", "fields": [{"id": "fieldA"}]},
+            ]
+        }
+        override = {
+            "metadata_overrides": [{"field_id": "step1.field1", "default": "x"}],
+            "field_overrides": [{"field_id": "step2.fieldA"}],
+            "step_overrides": [{"step_id": "step1", "hidden": True}],
+        }
+        warnings = validate_override_references(schema, override, "test")
+        assert warnings == []
+
+    def test_unknown_field_produces_warning(self):
+        from app.services.config_validator import validate_override_references
+
+        schema = {"steps": [{"id": "s1", "fields": [{"id": "f1"}]}]}
+        override = {"metadata_overrides": [{"field_id": "s1.nonexistent"}]}
+        warnings = validate_override_references(schema, override, "test")
+        assert len(warnings) == 1
+        assert "nonexistent" in warnings[0]
+
+    def test_unknown_step_produces_warning(self):
+        from app.services.config_validator import validate_override_references
+
+        schema = {"steps": [{"id": "s1", "fields": []}]}
+        override = {"step_overrides": [{"step_id": "ghost_step"}]}
+        warnings = validate_override_references(schema, override, "test")
+        assert len(warnings) == 1
+        assert "ghost_step" in warnings[0]
+
+    def test_nested_fields_resolved(self):
+        from app.services.config_validator import validate_override_references
+
+        schema = {
+            "steps": [
+                {
+                    "id": "s1",
+                    "fields": [
+                        {"id": "group", "fields": [{"id": "nested"}]}
+                    ],
+                }
+            ]
+        }
+        override = {"field_overrides": [{"field_id": "s1.group.nested"}]}
+        warnings = validate_override_references(schema, override, "test")
+        assert warnings == []
+
+    def test_warnings_attached_to_config(self):
+        """Warnings from invalid overrides are attached to the composed config."""
+        import json
+        from app.services import config_loader_composable as loader
+
+        overrides_dir = loader.DATA_DIR / "overrides"
+        overrides_dir.mkdir(parents=True, exist_ok=True)
+        combo_file = overrides_dir / "claude+python.json"
+        combo_file.write_text(json.dumps({
+            "metadata_overrides": [{"field_id": "fake_step.fake_field", "default": "x"}]
+        }), encoding="utf-8")
+
+        try:
+            config = loader.load_composable_config("claude", "python")
+            warnings = config.get("_validation_warnings", [])
+            assert len(warnings) >= 1
+            combo_warnings = [w for w in warnings if "fake_step.fake_field" in w]
+            assert len(combo_warnings) == 1
+        finally:
+            combo_file.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

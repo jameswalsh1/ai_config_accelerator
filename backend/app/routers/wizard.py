@@ -2,8 +2,15 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Any
 
 from app.models.wizard import WizardConfig, WizardConfigSummary
-from app.services.config_loader import get_all_configs, get_config, get_config_with_language_filter, strip_hidden_steps
-from app.services.config_loader_composable import load_composable_config, extract_presets_from_config, get_available_tools
+from app.services.config_loader_composable import (
+    get_all_configs,
+    get_config,
+    get_config_with_language_filter,
+    strip_hidden_steps,
+    load_composable_config,
+    extract_presets_from_config,
+    get_available_tools,
+)
 from app.services.config_editor import get_editable_step
 
 router = APIRouter(prefix="/api/wizard", tags=["wizard"])

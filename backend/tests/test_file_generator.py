@@ -265,7 +265,7 @@ class TestDirectoryOutputResolver:
 
 class TestGenerateFilesIntegration:
     def test_claude_config_generates_claude_md(self):
-        from app.services.config_loader import get_config
+        from app.services.config_loader_composable import get_config
 
         config = get_config("claude")
         assert config is not None
@@ -273,7 +273,7 @@ class TestGenerateFilesIntegration:
         assert "CLAUDE.md" in files
 
     def test_claude_locked_values_always_in_output(self):
-        from app.services.config_loader import get_config
+        from app.services.config_loader_composable import get_config
 
         config = get_config("claude")
         assert config is not None
@@ -284,7 +284,7 @@ class TestGenerateFilesIntegration:
         assert "Review every change for security implications" in md
 
     def test_claude_settings_locked_value_always_in_output(self):
-        from app.services.config_loader import get_config
+        from app.services.config_loader_composable import get_config
 
         config = get_config("claude")
         assert config is not None
@@ -293,7 +293,7 @@ class TestGenerateFilesIntegration:
         assert "CLAUDE_CODE_ENABLE_TELEMETRY" in settings
 
     def test_user_answers_combined_with_locked_values(self):
-        from app.services.config_loader import get_config
+        from app.services.config_loader_composable import get_config
 
         config = get_config("claude")
         assert config is not None
@@ -304,7 +304,7 @@ class TestGenerateFilesIntegration:
         assert "- Project-specific rule." in md
 
     def test_copilot_config_generates_instructions_file(self):
-        from app.services.config_loader import get_config
+        from app.services.config_loader_composable import get_config
 
         config = get_config("copilot")
         assert config is not None
@@ -317,7 +317,7 @@ class TestGenerateFilesIntegration:
         assert ".github/instructions/copilot-instructions.md" in files
 
     def test_cursor_config_generates_cursorignore(self):
-        from app.services.config_loader import get_config
+        from app.services.config_loader_composable import get_config
 
         config = get_config("cursor")
         assert config is not None
@@ -326,7 +326,7 @@ class TestGenerateFilesIntegration:
         assert ".env" in files[".cursorignore"]
 
     def test_generate_returns_only_non_empty_files(self):
-        from app.services.config_loader import get_config
+        from app.services.config_loader_composable import get_config
 
         for config_id in ("claude", "copilot", "cursor"):
             config = get_config(config_id)

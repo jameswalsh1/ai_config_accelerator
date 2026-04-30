@@ -1,9 +1,9 @@
-"""Tests for app/services/config_loader.py."""
+"""Tests for app/services/config_loader_composable.py."""
 
 import pytest
 
 from app.models.wizard import WizardConfig, WizardConfigSummary
-from app.services.config_loader import (
+from app.services.config_loader_composable import (
     get_all_configs,
     get_config,
     get_config_with_language_filter,
@@ -84,6 +84,108 @@ class TestGetConfig:
         assert isinstance(cfg.schema_version, str)
         assert cfg.target_version_constraints is None or isinstance(cfg.target_version_constraints, dict)
         assert cfg.output_preview_targets is None or isinstance(cfg.output_preview_targets, list)
+
+
+class TestCompositionSafety:
+    """Tests that composition uses deepcopy to protect against partial failures."""
+
+    def test_invalid_combo_does_not_corrupt_config(self):
+        """An invalid combo override should not leave a half-modified config."""
+        import json
+        from app.services import config_loader_composable as loader
+
+        overrides_dir = loader.DATA_DIR / "overrides"
+        overrides_dir.mkdir(parents=True, exist_ok=True)
+        combo_file = overrides_dir / "claude+python.json"
+        # Write invalid JSON structure — metadata_overrides should be array, not string
+        combo_file.write_text('{"metadata_overrides": "not-an-array"}', encoding="utf-8")
+
+        try:
+            with pytest.raises(ValueError, match="Invalid"):
+                loader.load_composable_config("claude", "python")
+        finally:
+            combo_file.unlink(missing_ok=True)
+
+    def test_multiple_loads_are_independent(self):
+        """Two sequential loads should return independent config dicts."""
+        from app.services import config_loader_composable as loader
+
+        config1 = loader.load_composable_config("claude", "python")
+        config2 = loader.load_composable_config("claude", "python")
+        # Mutate config1
+        config1["steps"][0]["title"] = "MUTATED"
+        # config2 should be unaffected
+        assert config2["steps"][0]["title"] != "MUTATED"
+
+
+class TestComboOverrides:
+    """Tests for tool+language combo overrides in the overrides/ directory."""
+
+    def test_combo_override_applied(self, tmp_path, monkeypatch):
+        """A combo override file should be applied on top of tool+language layers."""
+        import json
+        from pathlib import Path
+        from app.services import config_loader_composable as loader
+
+        # Write a combo override file into the real overrides dir
+        overrides_dir = loader.DATA_DIR / "overrides"
+        overrides_dir.mkdir(parents=True, exist_ok=True)
+        combo_file = overrides_dir / "claude+python.json"
+        combo_data = {
+            "metadata_overrides": [
+                {
+                    "field_id": "claude_md.heading",
+                    "default": "combo-default-heading",
+                }
+            ]
+        }
+        combo_file.write_text(json.dumps(combo_data), encoding="utf-8")
+
+        try:
+            config = loader.load_composable_config("claude", "python")
+            # Find the heading field in claude_md step
+            claude_md = next(s for s in config["steps"] if s["id"] == "claude_md")
+            heading = next(f for f in claude_md["fields"] if f["id"] == "heading")
+            assert heading["default"] == "combo-default-heading"
+        finally:
+            combo_file.unlink(missing_ok=True)
+
+    def test_combo_override_has_highest_priority(self, tmp_path):
+        """Combo overrides should take precedence over tool and language layers."""
+        import json
+        from app.services import config_loader_composable as loader
+
+        overrides_dir = loader.DATA_DIR / "overrides"
+        overrides_dir.mkdir(parents=True, exist_ok=True)
+        combo_file = overrides_dir / "claude+python.json"
+        combo_data = {
+            "metadata_overrides": [
+                {
+                    "field_id": "claude_md.project_maturity",
+                    "default": "combo-maturity",
+                }
+            ]
+        }
+        combo_file.write_text(json.dumps(combo_data), encoding="utf-8")
+
+        try:
+            config = loader.load_composable_config("claude", "python")
+            claude_md = next(s for s in config["steps"] if s["id"] == "claude_md")
+            field = next(f for f in claude_md["fields"] if f["id"] == "project_maturity")
+            assert field["default"] == "combo-maturity"
+        finally:
+            combo_file.unlink(missing_ok=True)
+
+    def test_no_combo_file_works_fine(self):
+        """Loading should work normally when no combo override file exists."""
+        from app.services import config_loader_composable as loader
+
+        # Ensure no combo file for this pair
+        combo_file = loader.DATA_DIR / "overrides" / "claude+typescript.json"
+        assert not combo_file.exists()
+        # Should load without error
+        config = loader.load_composable_config("claude", "typescript")
+        assert config["id"] == "claude"
 
 
 class TestLanguageSelection:

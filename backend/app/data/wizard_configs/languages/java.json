@@ -8,7 +8,7 @@
   },
   "metadata_overrides": [
     {
-      "field_id": "language_selection.language_choice",
+      "field_id": "language_selection.language",
       "editability": "locked"
     },
     {
