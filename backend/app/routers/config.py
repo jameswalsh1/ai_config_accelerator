@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Any, Literal, cast
 
+from app.services.auth import AuthUser, require_config_editor, require_audit_viewer
 from app.services.config_loader_composable import (
     load_composable_config,
     get_available_tools,
@@ -23,6 +24,7 @@ def get_editable_config_slice(
     tool: str = Query(..., description="Tool ID (e.g., 'claude', 'copilot', 'cursor')"),
     language: str = Query(..., description="Language ID (e.g., 'python', 'java', 'javascript')"),
     step_id: str = Query(..., description="Step ID to fetch editable portion for"),
+    _user: AuthUser = Depends(require_config_editor),
 ) -> dict[str, Any]:
     """Get editable configuration slice for a specific step + language.
 
@@ -116,7 +118,10 @@ def get_editable_config_slice(
 
 
 @router.post("/update")
-def update_field_config(payload: dict[str, Any]) -> dict[str, Any]:
+def update_field_config(
+    payload: dict[str, Any],
+    _user: AuthUser = Depends(require_config_editor),
+) -> dict[str, Any]:
     """
     Update field configuration metadata.
 
@@ -212,7 +217,10 @@ def update_field_config(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/reset")
-def reset_field_to_base(payload: dict[str, Any]) -> dict[str, Any]:
+def reset_field_to_base(
+    payload: dict[str, Any],
+    _user: AuthUser = Depends(require_config_editor),
+) -> dict[str, Any]:
     """
     Reset a field to its base/tool defaults by removing overrides.
 
@@ -291,7 +299,10 @@ def reset_field_to_base(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/presets/add")
-def add_preset(payload: dict[str, Any]) -> dict[str, Any]:
+def add_preset(
+    payload: dict[str, Any],
+    _user: AuthUser = Depends(require_config_editor),
+) -> dict[str, Any]:
     """
     Add a preset to a field.
 
@@ -372,7 +383,10 @@ def add_preset(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/presets/remove")
-def remove_preset(payload: dict[str, Any]) -> dict[str, Any]:
+def remove_preset(
+    payload: dict[str, Any],
+    _user: AuthUser = Depends(require_config_editor),
+) -> dict[str, Any]:
     """
     Remove a preset from a field.
 
@@ -449,13 +463,17 @@ def remove_preset(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.get("/tools")
-def list_available_tools() -> list[dict[str, str]]:
+def list_available_tools(
+    _user: AuthUser = Depends(require_config_editor),
+) -> list[dict[str, str]]:
     """Get list of available tools."""
     return get_available_tools()
 
 
 @router.get("/coverage")
-def get_tool_language_coverage() -> dict[str, Any]:
+def get_tool_language_coverage(
+    _user: AuthUser = Depends(require_config_editor),
+) -> dict[str, Any]:
     """Return the tool × language coverage matrix.
 
     Each cell reports whether the language configuration has field overrides
@@ -477,7 +495,9 @@ def get_tool_language_coverage() -> dict[str, Any]:
 
 
 @router.get("/languages")
-def list_available_languages() -> list[dict[str, str]]:
+def list_available_languages(
+    _user: AuthUser = Depends(require_config_editor),
+) -> list[dict[str, str]]:
     """Get list of available languages."""
     return get_available_languages()
 
@@ -485,6 +505,7 @@ def list_available_languages() -> list[dict[str, str]]:
 @router.post("/languages")
 def create_language(
     payload: dict[str, Any],
+    _user: AuthUser = Depends(require_config_editor),
 ) -> dict[str, Any]:
     """Create a new language configuration.
 
@@ -531,6 +552,7 @@ def create_language(
 @router.get("/languages/{language_id}/tags")
 def get_language_tag_list(
     language_id: str,
+    _user: AuthUser = Depends(require_config_editor),
 ) -> list[str]:
     """Return the unique tags used in presets for a language config.
 
@@ -552,6 +574,7 @@ def get_language_tag_list(
 def list_available_steps(
     tool: str = Query(..., description="Tool ID"),
     language: str = Query(..., description="Language ID"),
+    _user: AuthUser = Depends(require_config_editor),
 ) -> list[dict[str, str]]:
     """Get list of available steps for a tool/language combination."""
     return get_available_steps(tool, language)
@@ -563,6 +586,7 @@ def get_audit_log(
     offset: int = Query(default=0, ge=0, description="Entries to skip (pagination)"),
     scope: str | None = Query(default=None, description="Filter by scope (language|tool|override)"),
     target: str | None = Query(default=None, description="Filter by target (e.g. 'python', 'claude')"),
+    _user: AuthUser = Depends(require_audit_viewer),
 ) -> dict[str, Any]:
     """Return a paginated, newest-first view of the audit log.
 
@@ -598,6 +622,7 @@ def get_audit_log(
 def get_config_history(
     scope: str = Query(..., description="Scope: tool|language|override"),
     target: str = Query(..., description="Target identifier, e.g. 'python' or 'claude'"),
+    _user: AuthUser = Depends(require_audit_viewer),
 ) -> list[dict[str, Any]]:
     """List all versions for a scope+target, newest first."""
     return list_versions(scope, target)
@@ -609,6 +634,7 @@ def diff_config_versions(
     target: str = Query(..., description="Target identifier, e.g. 'python' or 'claude'"),
     v1: int = Query(..., description="First version number"),
     v2: int = Query(..., description="Second version number"),
+    _user: AuthUser = Depends(require_audit_viewer),
 ) -> dict[str, Any]:
     """Compute the diff between two versions.
 
@@ -637,6 +663,7 @@ def get_config_version(
     version: int,
     scope: str = Query(..., description="Scope: tool|language|override"),
     target: str = Query(..., description="Target identifier, e.g. 'python' or 'claude'"),
+    _user: AuthUser = Depends(require_audit_viewer),
 ) -> dict[str, Any]:
     """Return the full envelope (metadata + data) for a specific version."""
     try:
