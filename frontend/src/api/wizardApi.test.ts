@@ -104,6 +104,8 @@ describe('wizardApi', () => {
       expect(body).toEqual({
         scope: 'language',
         target: 'python',
+        tool: 'claude',
+        language: 'python',
         step_id: 'step1',
         field_id: 'field1',
         changes: { default: 'new-value' },

@@ -18,10 +18,6 @@
     {
       "field_id": "build_test_commands.install",
       "default": "test - build"
-    },
-    {
-      "field_id": "claude_md.tech_stack",
-      "default": ""
     }
   ],
   "field_overrides": [

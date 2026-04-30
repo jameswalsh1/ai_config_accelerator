@@ -52,6 +52,20 @@ describe('FieldValueInput', () => {
       expect(onSave).toHaveBeenCalledWith('val')
     })
 
+    it('calls onSave when save button is clicked', () => {
+      render(
+        <FieldValueInput
+          field={{ id: 'name', type: 'text' }}
+          value="val"
+          onChange={onChange}
+          onSave={onSave}
+          isDirty={true}
+        />
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+      expect(onSave).toHaveBeenCalledWith('val')
+    })
+
     it('calls onBlurValidation on blur when provided', () => {
       render(
         <FieldValueInput

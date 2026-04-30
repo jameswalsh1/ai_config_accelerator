@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Lock, Unlock, RotateCcw, Loader2, AlertCircle } from 'lucide-react'
+import { Lock, Unlock, RotateCcw, AlertCircle, Plus, X } from 'lucide-react'
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
-import { updateFieldMetadata, resetFieldToBase } from '@/api/wizardApi'
-import { PresetManagement } from './PresetManagement'
+import { updateFieldMetadata, resetFieldToBase, addPresetToField, removePresetFromField } from '@/api/wizardApi'
 import { FieldGroup, groupFieldsByStatus, type FieldGroupKey } from './FieldGroup'
 import { FieldValueInput } from './FieldValueInput'
 
@@ -32,6 +31,68 @@ const SOURCE_COLORS: Record<string, string> = {
   preset: 'bg-orange-100 text-orange-700',
 }
 
+function AddPresetForm({ onAdd, onCancel }: {
+  onAdd: (label: string, value: string, mode: string) => void
+  onCancel: () => void
+}) {
+  const [label, setLabel] = useState('')
+  const [value, setValue] = useState('')
+  const [mode, setMode] = useState<string>('replace')
+
+  return (
+    <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Label</label>
+          <input
+            type="text"
+            value={label}
+            onChange={e => setLabel(e.target.value)}
+            placeholder="e.g. PEP8 + Black"
+            className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Mode</label>
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value)}
+            className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
+          >
+            <option value="replace">Replace</option>
+            <option value="append">Append</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Value</label>
+        <textarea
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          placeholder="The value that will be applied when the user selects this preset"
+          rows={3}
+          className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-vertical font-mono"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onAdd(label, value, mode)}
+          disabled={!label.trim() || !value.trim()}
+          className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        >
+          Add Preset
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function StepFieldEditor({
   editableStep,
   onFieldChange,
@@ -49,7 +110,7 @@ export function StepFieldEditor({
   })
   const [updating, setUpdating] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [showPresetManagement, setShowPresetManagement] = useState<Record<string, boolean>>({})
+  const [showAddPreset, setShowAddPreset] = useState<Record<string, boolean>>({})
   // Per-field inline edit state for default value and lock reason (saved on blur)
   const [inlineEdits, setInlineEdits] = useState<Record<string, { default?: string; lock_reason?: string }>>({})
   // Draft values for the live value inputs (so we have stable controlled inputs and only save on blur/change)
@@ -72,14 +133,55 @@ export function StepFieldEditor({
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }))
   }
 
+  // Track which fields saved successfully (vs errored) so UI shows correct indicator
+  const [saveErrors, setSaveErrors] = useState<Record<string, string>>({})
+
   // Save a field value to the backend immediately
   const handleValueSave = async (fieldId: string, value: unknown) => {
     if (!onFieldSave) return
     setSavingFields(prev => new Set([...prev, fieldId]))
+    setSaveErrors(prev => { const n = { ...prev }; delete n[fieldId]; return n })
     try {
       await onFieldSave(fieldId, value)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save'
+      setSaveErrors(prev => ({ ...prev, [fieldId]: msg }))
     } finally {
       setSavingFields(prev => { const s = new Set(prev); s.delete(fieldId); return s })
+    }
+  }
+
+  // Resolve scope/target for a field — falls back to language scope if no override source
+  const scopeForField = (field: EditableField): { scope: string; target: string } => {
+    if (field.override_source && field.override_source !== 'schema') {
+      const [s, t] = field.override_source.split(':', 2)
+      if (s && t) return { scope: s, target: t }
+    }
+    return { scope: 'language', target: language }
+  }
+
+  const handleAddPreset = async (field: EditableField, label: string, value: string, mode: string) => {
+    const { scope, target } = scopeForField(field)
+    try {
+      setActionError(null)
+      const result = await addPresetToField(scope, target, tool, language, step.id, field.id, { label, value, mode })
+      onMetadataUpdate?.(result)
+      setShowAddPreset(prev => ({ ...prev, [field.id]: false }))
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to add preset'
+      setActionError(msg)
+    }
+  }
+
+  const handleRemovePreset = async (field: EditableField, presetLabel: string) => {
+    const { scope, target } = scopeForField(field)
+    try {
+      setActionError(null)
+      const result = await removePresetFromField(scope, target, tool, language, step.id, field.id, presetLabel)
+      onMetadataUpdate?.(result)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to remove preset'
+      setActionError(msg)
     }
   }
 
@@ -235,12 +337,8 @@ export function StepFieldEditor({
     const hasOverride = !!field.override_source && field.override_source !== 'schema'
     const isLocked = field.is_locked
 
-    // Inline edit state for default value and lock reason (save on blur)
+    // Inline edit state for lock reason (save on blur)
     const fieldEdits = inlineEdits[field.id] || {}
-    const rawDefault = field.default !== undefined
-      ? (typeof field.default === 'string' ? field.default : JSON.stringify(field.default))
-      : ''
-    const localDefault = fieldEdits.default !== undefined ? fieldEdits.default : rawDefault
     const localLockReason = fieldEdits.lock_reason !== undefined ? fieldEdits.lock_reason : (field.lock_reason || '')
 
     return (
@@ -346,65 +444,12 @@ export function StepFieldEditor({
           </div>
         )}
 
-        {/* ── Default value row (inline editable, saves on blur) ── */}
-        {hasOverride && (
-          <div className="flex items-start gap-2 px-4 py-2 bg-white border-t border-gray-100">
-            <span className="text-xs font-medium text-gray-500 w-14 shrink-0 mt-1.5">Default:</span>
-            <div className="flex-1 min-w-0">
-              <input
-                type="text"
-                value={localDefault}
-                onChange={e =>
-                  setInlineEdits(prev => ({
-                    ...prev,
-                    [field.id]: { ...prev[field.id], default: e.target.value },
-                  }))
-                }
-                onBlur={() => {
-                  // Validate JSON if needed before saving
-                  const jsonErr = shouldValidateAsJson(field.id, localDefault)
-                    ? validateJson(localDefault)
-                    : null
-                  const errorKey = `${field.id}__default`
-                  setFieldErrors(prev => {
-                    if (!jsonErr) {
-                      const next = { ...prev }; delete next[errorKey]; return next
-                    }
-                    return { ...prev, [errorKey]: jsonErr }
-                  })
-                  if (!jsonErr && localDefault !== rawDefault) {
-                    handleMetadataUpdate(field.id, { default: localDefault })
-                  }
-                }}
-                placeholder="No default set"
-                className={`w-full text-xs px-2 py-1.5 border rounded focus:outline-none focus:ring-1 ${
-                  fieldErrors[`${field.id}__default`]
-                    ? 'border-red-400 focus:ring-red-400 bg-red-50'
-                    : 'border-gray-200 focus:ring-indigo-400'
-                }`}
-              />
-              {fieldErrors[`${field.id}__default`] && (
-                <p className="flex items-center gap-1 mt-1 text-xs text-red-600">
-                  <AlertCircle className="size-3 shrink-0" />
-                  {fieldErrors[`${field.id}__default`]}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Current value (auto-save on blur / change) ── */}
+        {/* ── Current value ── */}
         <div className="px-4 py-3 border-t border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Value
             </label>
-            {savingFields.has(field.id) && (
-              <span className="inline-flex items-center gap-1 text-xs text-indigo-600">
-                <Loader2 className="size-3 animate-spin" />
-                Saving…
-              </span>
-            )}
           </div>
           <FieldValueInput
             field={field}
@@ -414,19 +459,21 @@ export function StepFieldEditor({
               onFieldChange?.(field.id, value)
             }}
             onSave={(value) => handleValueSave(field.id, value)}
+            isDirty={JSON.stringify(fieldValues[field.id] ?? displayValue) !== JSON.stringify(field.current_value ?? field.default ?? '')}
+            isSaving={savingFields.has(field.id)}
+            saveError={saveErrors[field.id]}
             validationError={fieldErrors[field.id]}
             onBlurValidation={handleFieldBlurValidation}
           />
         </div>
 
         {/* ── Presets ── */}
-        {field.presets && field.presets.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-100 bg-white">
-            <div className="flex items-center flex-wrap gap-2">
-              <span className="text-xs font-medium text-gray-500 shrink-0">Presets:</span>
-              {field.presets.map((preset, idx) => (
+        <div className="px-4 py-3 border-t border-gray-100 bg-white">
+          <div className="flex items-center flex-wrap gap-2">
+            <span className="text-xs font-medium text-gray-500 shrink-0">Presets:</span>
+            {field.presets && field.presets.length > 0 && field.presets.map((preset, idx) => (
+              <span key={idx} className="inline-flex items-center gap-0.5 group">
                 <button
-                  key={idx}
                   onClick={() => {
                     const currentVal = fieldValues[field.id] ?? displayValue
                     const newValue =
@@ -437,37 +484,42 @@ export function StepFieldEditor({
                     onFieldChange?.(field.id, newValue, 'preset')
                     handleValueSave(field.id, newValue)
                   }}
-                  title={preset.description}
-                  className="px-2.5 py-1 rounded text-xs bg-white border border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors font-medium"
+                  title={preset.description || `Apply "${preset.label}"`}
+                  className="px-2.5 py-1 rounded-l text-xs bg-white border border-r-0 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors font-medium"
                 >
                   {preset.label}
                 </button>
-              ))}
-              <button
-                onClick={() =>
-                  setShowPresetManagement(prev => ({ ...prev, [field.id]: !prev[field.id] }))
-                }
-                className="ml-auto text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded border border-gray-200 hover:bg-gray-200 transition-colors shrink-0"
-              >
-                {showPresetManagement[field.id] ? 'Hide' : 'Manage Presets'}
-              </button>
-            </div>
+                <button
+                  onClick={() => handleRemovePreset(field, preset.label)}
+                  title={`Remove "${preset.label}" preset`}
+                  className="px-1 py-1 rounded-r text-xs bg-white border border-gray-300 text-gray-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500 transition-colors"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+            {(!field.presets || field.presets.length === 0) && (
+              <span className="text-xs text-gray-400 italic">No presets</span>
+            )}
+            <button
+              onClick={() =>
+                setShowAddPreset(prev => ({ ...prev, [field.id]: !prev[field.id] }))
+              }
+              className="ml-auto inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded border border-indigo-200 hover:bg-indigo-100 transition-colors shrink-0"
+            >
+              <Plus className="size-3" />
+              Add
+            </button>
           </div>
-        )}
 
-        {/* Preset Management panel */}
-        {showPresetManagement[field.id] && (
-          <div className="px-4 py-3 border-t border-gray-200">
-            <PresetManagement
-              tool={tool}
-              language={language}
-              fieldId={field.id}
-              onAssignmentsChange={assignments => {
-                console.log('Preset assignments updated:', assignments)
-              }}
+          {/* Inline Add Preset Form */}
+          {showAddPreset[field.id] && (
+            <AddPresetForm
+              onAdd={(label, value, mode) => handleAddPreset(field, label, value, mode)}
+              onCancel={() => setShowAddPreset(prev => ({ ...prev, [field.id]: false }))}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     )
   }

@@ -1,4 +1,5 @@
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Check, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { RepeatableGroupField } from './fields/RepeatableGroupField'
 
 interface FieldValueInputProps {
@@ -14,6 +15,9 @@ interface FieldValueInputProps {
   value: unknown
   onChange: (value: unknown) => void
   onSave: (value: unknown) => void
+  isDirty?: boolean
+  isSaving?: boolean
+  saveError?: string
   validationError?: string
   onBlurValidation?: (fieldId: string, value: string) => void
 }
@@ -23,15 +27,68 @@ export function FieldValueInput({
   value,
   onChange,
   onSave,
+  isDirty = false,
+  isSaving = false,
+  saveError,
   validationError,
   onBlurValidation,
 }: FieldValueInputProps) {
   const fieldId = field.id
+  const [showSaved, setShowSaved] = useState(false)
+
+  // Show "Saved" briefly when isSaving transitions from true → false (only on success)
+  const [wasSaving, setWasSaving] = useState(false)
+  useEffect(() => {
+    if (isSaving) {
+      setWasSaving(true)
+    } else if (wasSaving) {
+      setWasSaving(false)
+      if (!saveError) {
+        setShowSaved(true)
+        const t = setTimeout(() => setShowSaved(false), 2000)
+        return () => clearTimeout(t)
+      }
+    }
+  }, [isSaving, saveError])
+
   const baseClasses =
     'w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-base shadow-sm transition-shadow hover:shadow-md'
   const validClasses = `${baseClasses} border-gray-300 focus:ring-indigo-500`
   const errorClasses = `${baseClasses} border-red-400 focus:ring-red-400 bg-red-50`
-  const commonClasses = validationError ? errorClasses : validClasses
+  const dirtyClasses = `${baseClasses} border-indigo-400 focus:ring-indigo-500 ring-1 ring-indigo-200`
+  const commonClasses = validationError ? errorClasses : isDirty ? dirtyClasses : validClasses
+
+  const saveButton = (isDirty || showSaved || isSaving || saveError) && (
+    <div className="flex items-center gap-2 mt-2">
+      {isDirty && !isSaving && (
+        <button
+          type="button"
+          onClick={() => onSave(value)}
+          className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
+        >
+          Save
+        </button>
+      )}
+      {isSaving && (
+        <span className="inline-flex items-center gap-1.5 text-sm text-indigo-600">
+          <Loader2 className="size-3.5 animate-spin" />
+          Saving…
+        </span>
+      )}
+      {showSaved && !isSaving && !isDirty && !saveError && (
+        <span className="inline-flex items-center gap-1 text-sm text-green-600">
+          <Check className="size-3.5" />
+          Saved
+        </span>
+      )}
+      {saveError && !isSaving && (
+        <span className="inline-flex items-center gap-1.5 text-sm text-red-600">
+          <AlertCircle className="size-3.5 shrink-0" />
+          {saveError}
+        </span>
+      )}
+    </div>
+  )
 
   switch (field.type) {
     case 'text':
@@ -54,19 +111,23 @@ export function FieldValueInput({
               {validationError}
             </p>
           )}
+          {saveButton}
         </div>
       )
 
     case 'number':
       return (
-        <input
-          type="number"
-          value={(value as number) || ''}
-          onChange={e => onChange(e.target.value ? Number(e.target.value) : '')}
-          onBlur={e => onSave(e.target.value ? Number(e.target.value) : '')}
-          placeholder={field.placeholder}
-          className={commonClasses}
-        />
+        <div>
+          <input
+            type="number"
+            value={(value as number) || ''}
+            onChange={e => onChange(e.target.value ? Number(e.target.value) : '')}
+            onBlur={e => onSave(e.target.value ? Number(e.target.value) : '')}
+            placeholder={field.placeholder}
+            className={commonClasses}
+          />
+          {saveButton}
+        </div>
       )
 
     case 'textarea':
@@ -89,6 +150,7 @@ export function FieldValueInput({
               {validationError}
             </p>
           )}
+          {saveButton}
         </div>
       )
 

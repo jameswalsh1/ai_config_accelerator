@@ -206,6 +206,8 @@ export async function saveFieldValue(
     body: JSON.stringify({
       scope: resolvedScope,
       target: resolvedTarget,
+      tool,
+      language,
       step_id: stepId,
       field_id: fieldId,
       changes: {
@@ -240,6 +242,60 @@ export async function resetFieldToBase(
     }),
   })
   await throwIfNotOk(res, 'Failed to reset field to base')
+  return res.json() as Promise<EditableStep>
+}
+
+export async function addPresetToField(
+  scope: string,
+  target: string,
+  tool: string,
+  language: string,
+  stepId: string,
+  fieldId: string,
+  preset: { label: string; value: string; description?: string; mode?: string },
+  position?: number
+): Promise<EditableStep> {
+  const res = await fetchWithTimeout(`${BASE}/config/presets/add`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scope,
+      target,
+      tool,
+      language,
+      step_id: stepId,
+      field_id: fieldId,
+      preset,
+      ...(position !== undefined && { position }),
+    }),
+  })
+  await throwIfNotOk(res, 'Failed to add preset')
+  return res.json() as Promise<EditableStep>
+}
+
+export async function removePresetFromField(
+  scope: string,
+  target: string,
+  tool: string,
+  language: string,
+  stepId: string,
+  fieldId: string,
+  presetLabel: string
+): Promise<EditableStep> {
+  const res = await fetchWithTimeout(`${BASE}/config/presets/remove`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scope,
+      target,
+      tool,
+      language,
+      step_id: stepId,
+      field_id: fieldId,
+      preset_label: presetLabel,
+    }),
+  })
+  await throwIfNotOk(res, 'Failed to remove preset')
   return res.json() as Promise<EditableStep>
 }
 
@@ -363,69 +419,6 @@ export async function fetchAuditLog(params?: {
   const res = await fetchWithTimeout(url)
   await throwIfNotOk(res, 'Failed to load audit log')
   return res.json() as Promise<AuditLogResponse>
-}
-
-export async function assignPresetToField(
-  tool: string,
-  language: string,
-  fieldId: string,
-  presetId: string,
-  assignmentMode: string,
-  displayOrder: number
-): Promise<PresetAssignment> {
-  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tool,
-      language,
-      field_id: fieldId,
-      preset_id: presetId,
-      assignment_mode: assignmentMode,
-      display_order: displayOrder,
-    }),
-  })
-  await throwIfNotOk(res, 'Failed to assign preset')
-  return res.json() as Promise<PresetAssignment>
-}
-
-export async function updatePresetAssignment(
-  assignmentId: string,
-  changes: Partial<PresetAssignment>
-): Promise<PresetAssignment> {
-  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(changes),
-  })
-  await throwIfNotOk(res, 'Failed to update preset assignment')
-  return res.json() as Promise<PresetAssignment>
-}
-
-export async function removePresetFromField(assignmentId: string): Promise<void> {
-  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
-    method: 'DELETE',
-  })
-  await throwIfNotOk(res, 'Failed to remove preset assignment')
-}
-
-export async function reorderPresetAssignments(
-  tool: string,
-  language: string,
-  fieldId: string,
-  assignmentIds: string[]
-): Promise<void> {
-  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/reorder`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tool,
-      language,
-      field_id: fieldId,
-      assignment_ids: assignmentIds,
-    }),
-  })
-  await throwIfNotOk(res, 'Failed to reorder preset assignments')
 }
 
 
