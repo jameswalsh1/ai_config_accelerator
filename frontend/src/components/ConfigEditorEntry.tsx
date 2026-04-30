@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   fetchAvailableTools,
@@ -60,6 +60,20 @@ export function ConfigEditorEntry({ onConfigSelected, reloadTrigger, initialTool
     loadInitialData()
   }, [])
 
+  const loadStep = useCallback(async (stepId: string, tool = selectedTool, language = selectedLanguage) => {
+    if (!tool || !language || !stepId) return
+    try {
+      setLoadingConfig(true)
+      const editableConfig = await fetchEditableConfig(tool, language, stepId)
+      onConfigSelected(editableConfig, tool, language)
+      setConfigLoaded(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load config')
+    } finally {
+      setLoadingConfig(false)
+    }
+  }, [selectedTool, selectedLanguage, onConfigSelected])
+
   useEffect(() => {
     if (selectedTool && selectedLanguage) {
       const loadSteps = async () => {
@@ -88,30 +102,14 @@ export function ConfigEditorEntry({ onConfigSelected, reloadTrigger, initialTool
       setSelectedStep('')
       setConfigLoaded(false)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTool, selectedLanguage])
-
-  const loadStep = async (stepId: string, tool = selectedTool, language = selectedLanguage) => {
-    if (!tool || !language || !stepId) return
-    try {
-      setLoadingConfig(true)
-      const editableConfig = await fetchEditableConfig(tool, language, stepId)
-      onConfigSelected(editableConfig, tool, language)
-      setConfigLoaded(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load config')
-    } finally {
-      setLoadingConfig(false)
-    }
-  }
+  }, [selectedTool, selectedLanguage, loadStep])
 
   // Reload current step when reloadTrigger is incremented (e.g. after snapshot restore)
   useEffect(() => {
     if (reloadTrigger && reloadTrigger > 0 && selectedStep) {
       loadStep(selectedStep)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadTrigger])
+  }, [reloadTrigger, selectedStep, loadStep])
 
   const currentStepIndex = steps.findIndex(s => s.id === selectedStep)
 

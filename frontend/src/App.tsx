@@ -1,13 +1,22 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { fetchConfigs, fetchWizardConfig } from '@/api/wizardApi'
 import type { WizardConfig, WizardConfigSummary, EditableStep } from '@/types/wizard'
-import { Wizard } from '@/components/Wizard'
-import { ConfigEditorEntry } from '@/components/ConfigEditorEntry'
-import { ConfigEditor } from '@/components/ConfigEditor'
-import { AuditLog } from '@/components/AuditLog'
-import { SnapshotManager } from '@/components/SnapshotManager'
 import { BotIcon, Loader2Icon } from 'lucide-react'
-import { CoverageMatrix } from '@/components/CoverageMatrix'
+
+const Wizard = lazy(() => import('@/components/Wizard').then(m => ({ default: m.Wizard })))
+const ConfigEditorEntry = lazy(() => import('@/components/ConfigEditorEntry').then(m => ({ default: m.ConfigEditorEntry })))
+const ConfigEditor = lazy(() => import('@/components/ConfigEditor').then(m => ({ default: m.ConfigEditor })))
+const AuditLog = lazy(() => import('@/components/AuditLog').then(m => ({ default: m.AuditLog })))
+const SnapshotManager = lazy(() => import('@/components/SnapshotManager').then(m => ({ default: m.SnapshotManager })))
+const CoverageMatrix = lazy(() => import('@/components/CoverageMatrix').then(m => ({ default: m.CoverageMatrix })))
+
+function LazyFallback() {
+  return (
+    <div className="flex justify-center py-16">
+      <Loader2Icon className="size-8 animate-spin text-indigo-400" />
+    </div>
+  )
+}
 
 const TARGET_LABELS: Record<string, string> = {
   claude: 'Claude',
@@ -86,13 +95,14 @@ function App() {
           alt="Version 1"
           className="h-8 w-auto"
         />
-        <div className="flex items-center gap-4">
+        <nav className="flex items-center gap-4" aria-label="Main navigation">
           <button
             onClick={() => {
               setMode('config-selection')
               setSelectedConfig(null)
               setEditableConfig(null)
             }}
+            aria-current={mode === 'config-selection' ? 'page' : undefined}
             className={`px-3 py-1 text-sm rounded ${
               mode === 'config-selection'
                 ? 'bg-indigo-100 text-indigo-700'
@@ -107,6 +117,7 @@ function App() {
               setSelectedConfig(null)
               setEditableConfig(null)
             }}
+            aria-current={mode === 'config-editor' ? 'page' : undefined}
             className={`px-3 py-1 text-sm rounded ${
               mode === 'config-editor'
                 ? 'bg-indigo-100 text-indigo-700'
@@ -121,6 +132,7 @@ function App() {
               setSelectedConfig(null)
               setEditableConfig(null)
             }}
+            aria-current={mode === 'audit-log' ? 'page' : undefined}
             className={`px-3 py-1 text-sm rounded ${
               mode === 'audit-log'
                 ? 'bg-indigo-100 text-indigo-700'
@@ -135,6 +147,7 @@ function App() {
               setSelectedConfig(null)
               setEditableConfig(null)
             }}
+            aria-current={mode === 'coverage' ? 'page' : undefined}
             className={`px-3 py-1 text-sm rounded ${
               mode === 'coverage'
                 ? 'bg-indigo-100 text-indigo-700'
@@ -143,7 +156,7 @@ function App() {
           >
             Coverage
           </button>
-        </div>
+        </nav>
         <span className="text-xs font-medium uppercase tracking-widest text-gray-400">
           AI Config Accelerator
         </span>
@@ -157,7 +170,9 @@ function App() {
         {navbar}
         <main className="min-h-screen bg-gray-50 px-4 py-10">
           <div className="mx-auto max-w-2xl">
-            <Wizard config={selectedConfig} onBack={() => setSelectedConfig(null)} />
+            <Suspense fallback={<LazyFallback />}>
+              <Wizard config={selectedConfig} onBack={() => setSelectedConfig(null)} />
+            </Suspense>
           </div>
         </main>
       </>
@@ -169,16 +184,18 @@ function App() {
         {navbar}
         <main className="min-h-screen bg-gray-50 px-4 py-12">
           <div className="mx-auto max-w-5xl">
-            <CoverageMatrix
-              onNavigateToEditor={(toolId, languageId) => {
-                setPreselectedTool(toolId)
-                setPreselectedLanguage(languageId)
-                setSelectedTool(toolId)
-                setSelectedLanguage(languageId)
-                setEditableConfig(null)
-                setMode('config-editor')
-              }}
-            />
+            <Suspense fallback={<LazyFallback />}>
+              <CoverageMatrix
+                onNavigateToEditor={(toolId, languageId) => {
+                  setPreselectedTool(toolId)
+                  setPreselectedLanguage(languageId)
+                  setSelectedTool(toolId)
+                  setSelectedLanguage(languageId)
+                  setEditableConfig(null)
+                  setMode('config-editor')
+                }}
+              />
+            </Suspense>
           </div>
         </main>
       </>
@@ -190,7 +207,9 @@ function App() {
         {navbar}
         <main className="min-h-screen bg-gray-50 px-4 py-12">
           <div className="mx-auto max-w-4xl">
-            <AuditLog />
+            <Suspense fallback={<LazyFallback />}>
+              <AuditLog />
+            </Suspense>
           </div>
         </main>
       </>
@@ -200,44 +219,45 @@ function App() {
     return (
       <>
         {navbar}
-        <ConfigEditorEntry
-          reloadTrigger={snapshotReloadTrigger}
-          initialTool={preselectedTool}
-          initialLanguage={preselectedLanguage}
-          onConfigSelected={(config, tool, language) => {
-            setEditableConfig(config)
-            setSelectedTool(tool)
-            setSelectedLanguage(language)
-          }}
-        />
-        <main className="min-h-screen bg-gray-50 px-6 py-8">
-          <div className="mx-auto max-w-5xl">
-            {editableConfig ? (
-              <div className="flex flex-col gap-4">
-                <ConfigEditor
-                  editableStep={editableConfig}
-                  onFieldChange={handleFieldChange}
-                  onMetadataUpdate={handleMetadataUpdate}
-                  tool={selectedTool}
-                  language={selectedLanguage}
-                />
-                {selectedLanguage && (
-                  <SnapshotManager
-                    scope="language"
-                    target={selectedLanguage}
-                    onRestored={() => setSnapshotReloadTrigger(t => t + 1)}
+        <Suspense fallback={<LazyFallback />}>
+          <ConfigEditorEntry
+            reloadTrigger={snapshotReloadTrigger}
+            initialTool={preselectedTool}
+            initialLanguage={preselectedLanguage}
+            onConfigSelected={(config, tool, language) => {
+              setEditableConfig(config)
+              setSelectedTool(tool)
+              setSelectedLanguage(language)
+            }}
+          />
+          <main className="min-h-screen bg-gray-50 px-6 py-8">
+            <div className="mx-auto max-w-5xl">
+              {editableConfig ? (
+                <div className="flex flex-col gap-4">
+                  <ConfigEditor
+                    editableStep={editableConfig}
+                    onFieldChange={handleFieldChange}
+                    onMetadataUpdate={handleMetadataUpdate}
+                    tool={selectedTool}
+                    language={selectedLanguage}
                   />
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-24 text-center text-gray-400">
-                <p className="text-lg font-medium">Select a tool and language above to get started</p>
-                <p className="text-sm mt-1">Steps will load automatically</p>
-              </div>
-            )}
-          </div>
-        </main>
-      </>
+                  {selectedLanguage && (
+                    <SnapshotManager
+                      scope="language"
+                      target={selectedLanguage}
+                      onRestored={() => setSnapshotReloadTrigger(t => t + 1)}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-24 text-center text-gray-400">
+                  <p className="text-lg font-medium">Select a tool and language above to get started</p>
+                  <p className="text-sm mt-1">Steps will load automatically</p>
+                </div>
+              )}
+            </div>
+          </main>
+        </Suspense>
     )
   }
   return (

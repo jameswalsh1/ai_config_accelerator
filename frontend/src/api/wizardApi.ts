@@ -1,12 +1,45 @@
 import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep, Preset, PresetAssignment } from '@/types/wizard'
 
-const BASE = 'http://localhost:8000'
+const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+const DEFAULT_TIMEOUT_MS = 30_000
+
+/** Fetch with an AbortController timeout. */
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs}ms`)
+    }
+    throw err
+  } finally {
+    clearTimeout(id)
+  }
+}
+
+/** Throw with a simple status message for non-ok responses. */
+async function throwIfNotOk(res: Response, context: string): Promise<void> {
+  if (!res.ok) throw new Error(`${context}: ${res.statusText}`)
+}
+
+/** Parse error detail from JSON body, falling back to statusText. */
+async function throwDetailedError(res: Response, context: string): Promise<never> {
+  const detail = await res.json().catch(() => ({ detail: res.statusText }))
+  throw new Error(detail.detail ?? `${context}: ${res.statusText}`)
+}
 
 export type { EditableStep }
 
 export async function fetchConfigs(): Promise<WizardConfigSummary[]> {
-  const res = await fetch(`${BASE}/api/wizard/configs`)
-  if (!res.ok) throw new Error(`Failed to load configs: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/configs`)
+  await throwIfNotOk(res, 'Failed to load configs')
   return res.json() as Promise<WizardConfigSummary[]>
 }
 
@@ -17,18 +50,18 @@ export async function fetchWizardConfig(id: string, language?: string): Promise<
   const url = query 
     ? `${BASE}/api/wizard/config/${encodeURIComponent(id)}?${query}`
     : `${BASE}/api/wizard/config/${encodeURIComponent(id)}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to load config '${id}': ${res.statusText}`)
+  const res = await fetchWithTimeout(url)
+  await throwIfNotOk(res, `Failed to load config '${id}'`)
   return res.json() as Promise<WizardConfig>
 }
 
 export async function generateFiles(configId: string, answers: WizardAnswers): Promise<void> {
-  const res = await fetch(`${BASE}/api/generate`, {
+  const res = await fetchWithTimeout(`${BASE}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ config_id: configId, answers }),
   })
-  if (!res.ok) throw new Error(`Generation failed: ${res.statusText}`)
+  await throwIfNotOk(res, 'Generation failed')
 
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
@@ -50,12 +83,12 @@ export interface PreviewResponse {
 }
 
 export async function previewFiles(configId: string, answers: WizardAnswers): Promise<PreviewResponse> {
-  const res = await fetch(`${BASE}/api/generate/preview`, {
+  const res = await fetchWithTimeout(`${BASE}/api/generate/preview`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ config_id: configId, answers }),
   })
-  if (!res.ok) throw new Error(`Preview failed: ${res.statusText}`)
+  await throwIfNotOk(res, 'Preview failed')
   return res.json() as Promise<PreviewResponse>
 }
 
@@ -79,14 +112,14 @@ export interface StepOption {
 }
 
 export async function fetchAvailableTools(): Promise<ToolOption[]> {
-  const res = await fetch(`${BASE}/config/tools`)
-  if (!res.ok) throw new Error(`Failed to load tools: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/config/tools`)
+  await throwIfNotOk(res, 'Failed to load tools')
   return res.json() as Promise<ToolOption[]>
 }
 
 export async function fetchAvailableLanguages(): Promise<LanguageOption[]> {
-  const res = await fetch(`${BASE}/config/languages`)
-  if (!res.ok) throw new Error(`Failed to load languages: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/config/languages`)
+  await throwIfNotOk(res, 'Failed to load languages')
   return res.json() as Promise<LanguageOption[]>
 }
 
@@ -100,15 +133,12 @@ export interface CreateLanguagePayload {
 }
 
 export async function createLanguageConfig(payload: CreateLanguagePayload): Promise<LanguageOption> {
-  const res = await fetch(`${BASE}/config/languages`, {
+  const res = await fetchWithTimeout(`${BASE}/config/languages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(detail.detail ?? res.statusText)
-  }
+  if (!res.ok) await throwDetailedError(res, 'Failed to create language')
   const data = await res.json() as { language_id: string; metadata?: { title?: string; description?: string } }
   return {
     id: data.language_id,
@@ -118,20 +148,20 @@ export async function createLanguageConfig(payload: CreateLanguagePayload): Prom
 }
 
 export async function fetchLanguageTags(languageId: string): Promise<string[]> {
-  const res = await fetch(`${BASE}/config/languages/${encodeURIComponent(languageId)}/tags`)
-  if (!res.ok) throw new Error(`Failed to load tags: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/config/languages/${encodeURIComponent(languageId)}/tags`)
+  await throwIfNotOk(res, 'Failed to load tags')
   return res.json() as Promise<string[]>
 }
 
 export async function fetchAvailableSteps(tool: string, language: string): Promise<StepOption[]> {
-  const res = await fetch(`${BASE}/config/steps?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}`)
-  if (!res.ok) throw new Error(`Failed to load steps: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/config/steps?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}`)
+  await throwIfNotOk(res, 'Failed to load steps')
   return res.json() as Promise<StepOption[]>
 }
 
 export async function fetchEditableConfig(tool: string, language: string, stepId: string): Promise<EditableStep> {
-  const res = await fetch(`${BASE}/config/edit?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&step_id=${encodeURIComponent(stepId)}`)
-  if (!res.ok) throw new Error(`Failed to load editable config: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/config/edit?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&step_id=${encodeURIComponent(stepId)}`)
+  await throwIfNotOk(res, 'Failed to load editable config')
   return res.json() as Promise<EditableStep>
 }
 
@@ -142,7 +172,7 @@ export async function updateFieldMetadata(
   fieldId: string,
   changes: Record<string, unknown>
 ): Promise<EditableStep> {
-  const res = await fetch(`${BASE}/config/update`, {
+  const res = await fetchWithTimeout(`${BASE}/config/update`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -153,7 +183,7 @@ export async function updateFieldMetadata(
       changes,
     }),
   })
-  if (!res.ok) throw new Error(`Failed to update field metadata: ${res.statusText}`)
+  await throwIfNotOk(res, 'Failed to update field metadata')
   return res.json() as Promise<EditableStep>
 }
 
@@ -169,7 +199,7 @@ export async function saveFieldValue(
   const resolvedScope = scope ?? 'language'
   const resolvedTarget = target ?? language
 
-  const res = await fetch(`${BASE}/config/update`, {
+  const res = await fetchWithTimeout(`${BASE}/config/update`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -182,7 +212,7 @@ export async function saveFieldValue(
       },
     }),
   })
-  if (!res.ok) throw new Error(`Failed to save field value: ${res.statusText}`)
+  await throwIfNotOk(res, 'Failed to save field value')
   return res.json() as Promise<EditableStep>
 }
 
@@ -193,7 +223,7 @@ export async function resetFieldToBase(
   fieldId: string,
   overrideType: 'metadata' | 'structure' = 'metadata'
 ): Promise<EditableStep> {
-  const res = await fetch(`${BASE}/config/reset`, {
+  const res = await fetchWithTimeout(`${BASE}/config/reset`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -204,7 +234,7 @@ export async function resetFieldToBase(
       override_type: overrideType,
     }),
   })
-  if (!res.ok) throw new Error(`Failed to reset field to base: ${res.statusText}`)
+  await throwIfNotOk(res, 'Failed to reset field to base')
   return res.json() as Promise<EditableStep>
 }
 
@@ -213,8 +243,8 @@ export async function fetchAvailablePresets(tool: string, language: string): Pro
   language: Preset[]
   tool: Preset[]
 }> {
-  const res = await fetch(`${BASE}/api/wizard/presets?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}`)
-  if (!res.ok) throw new Error(`Failed to load presets: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/presets?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}`)
+  await throwIfNotOk(res, 'Failed to load presets')
   return res.json() as Promise<{
     shared: Preset[]
     language: Preset[]
@@ -227,8 +257,8 @@ export async function fetchFieldPresetAssignments(
   language: string,
   fieldId: string
 ): Promise<PresetAssignment[]> {
-  const res = await fetch(`${BASE}/api/wizard/field-presets?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&field_id=${encodeURIComponent(fieldId)}`)
-  if (!res.ok) throw new Error(`Failed to load field preset assignments: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets?tool=${encodeURIComponent(tool)}&language=${encodeURIComponent(language)}&field_id=${encodeURIComponent(fieldId)}`)
+  await throwIfNotOk(res, 'Failed to load field preset assignments')
   return res.json() as Promise<PresetAssignment[]>
 }
 
@@ -325,8 +355,8 @@ export async function fetchAuditLog(params?: {
   if (params?.scope) query.set('scope', params.scope)
   if (params?.target) query.set('target', params.target)
   const url = `${BASE}/config/audit${query.toString() ? `?${query}` : ''}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to load audit log: ${res.statusText}`)
+  const res = await fetchWithTimeout(url)
+  await throwIfNotOk(res, 'Failed to load audit log')
   return res.json() as Promise<AuditLogResponse>
 }
 
@@ -338,7 +368,7 @@ export async function assignPresetToField(
   assignmentMode: string,
   displayOrder: number
 ): Promise<PresetAssignment> {
-  const res = await fetch(`${BASE}/api/wizard/field-presets`, {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -350,7 +380,7 @@ export async function assignPresetToField(
       display_order: displayOrder,
     }),
   })
-  if (!res.ok) throw new Error(`Failed to assign preset: ${res.statusText}`)
+  await throwIfNotOk(res, 'Failed to assign preset')
   return res.json() as Promise<PresetAssignment>
 }
 
@@ -358,20 +388,20 @@ export async function updatePresetAssignment(
   assignmentId: string,
   changes: Partial<PresetAssignment>
 ): Promise<PresetAssignment> {
-  const res = await fetch(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(changes),
   })
-  if (!res.ok) throw new Error(`Failed to update preset assignment: ${res.statusText}`)
+  await throwIfNotOk(res, 'Failed to update preset assignment')
   return res.json() as Promise<PresetAssignment>
 }
 
 export async function removePresetFromField(assignmentId: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
     method: 'DELETE',
   })
-  if (!res.ok) throw new Error(`Failed to remove preset assignment: ${res.statusText}`)
+  await throwIfNotOk(res, 'Failed to remove preset assignment')
 }
 
 export async function reorderPresetAssignments(
@@ -380,7 +410,7 @@ export async function reorderPresetAssignments(
   fieldId: string,
   assignmentIds: string[]
 ): Promise<void> {
-  const res = await fetch(`${BASE}/api/wizard/field-presets/reorder`, {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/reorder`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -390,7 +420,7 @@ export async function reorderPresetAssignments(
       assignment_ids: assignmentIds,
     }),
   })
-  if (!res.ok) throw new Error(`Failed to reorder preset assignments: ${res.statusText}`)
+  await throwIfNotOk(res, 'Failed to reorder preset assignments')
 }
 
 // ---------------------------------------------------------------------------
@@ -410,22 +440,19 @@ export async function createSnapshot(
   target: string,
   name: string
 ): Promise<SnapshotMeta> {
-  const res = await fetch(`${BASE}/config/snapshots`, {
+  const res = await fetchWithTimeout(`${BASE}/config/snapshots`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ scope, target, name }),
   })
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(detail.detail ?? res.statusText)
-  }
+  if (!res.ok) await throwDetailedError(res, 'Failed to create snapshot')
   return res.json() as Promise<SnapshotMeta>
 }
 
 export async function listSnapshots(scope: string, target: string): Promise<SnapshotMeta[]> {
   const params = new URLSearchParams({ scope, target })
-  const res = await fetch(`${BASE}/config/snapshots?${params}`)
-  if (!res.ok) throw new Error(`Failed to list snapshots: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/config/snapshots?${params}`)
+  await throwIfNotOk(res, 'Failed to list snapshots')
   return res.json() as Promise<SnapshotMeta[]>
 }
 
@@ -434,15 +461,12 @@ export async function restoreSnapshot(
   target: string,
   snapshotId: string
 ): Promise<SnapshotMeta> {
-  const res = await fetch(`${BASE}/config/snapshots/restore`, {
+  const res = await fetchWithTimeout(`${BASE}/config/snapshots/restore`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ scope, target, snapshot_id: snapshotId }),
   })
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(detail.detail ?? res.statusText)
-  }
+  if (!res.ok) await throwDetailedError(res, 'Failed to restore snapshot')
   return res.json() as Promise<SnapshotMeta>
 }
 
@@ -452,14 +476,11 @@ export async function deleteSnapshot(
   snapshotId: string
 ): Promise<void> {
   const params = new URLSearchParams({ scope, target })
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${BASE}/config/snapshots/${encodeURIComponent(snapshotId)}?${params}`,
     { method: 'DELETE' }
   )
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(detail.detail ?? res.statusText)
-  }
+  if (!res.ok) await throwDetailedError(res, 'Failed to delete snapshot')
 }
 
 // ---------------------------------------------------------------------------
@@ -481,7 +502,7 @@ export interface CoverageMatrix {
 }
 
 export async function fetchCoverageMatrix(): Promise<CoverageMatrix> {
-  const res = await fetch(`${BASE}/config/coverage`)
-  if (!res.ok) throw new Error(`Failed to load coverage matrix: ${res.statusText}`)
+  const res = await fetchWithTimeout(`${BASE}/config/coverage`)
+  await throwIfNotOk(res, 'Failed to load coverage matrix')
   return res.json() as Promise<CoverageMatrix>
 }

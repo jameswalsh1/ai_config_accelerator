@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FileIcon, DownloadIcon, Loader2Icon, ChevronRightIcon } from 'lucide-react'
 import type { PreviewFile } from '@/api/wizardApi'
 
@@ -154,8 +154,8 @@ function FileTree({
 
 export function GeneratePreview({ files, configTitle, isDownloading, onDownload }: GeneratePreviewProps) {
   const [selected, setSelected] = useState<PreviewFile>(files[0])
-  const tree = buildTree(files)
-  const tokens = tokenise(selected.content, selected.language)
+  const tree = useMemo(() => buildTree(files), [files])
+  const tokens = useMemo(() => tokenise(selected.content, selected.language), [selected.content, selected.language])
 
   return (
     <div className="flex flex-col gap-4">

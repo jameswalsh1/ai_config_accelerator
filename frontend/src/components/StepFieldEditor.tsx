@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
-import { Lock, Unlock, ChevronDown, RotateCcw, Loader2, AlertCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Lock, Unlock, RotateCcw, Loader2, AlertCircle } from 'lucide-react'
 import type { EditableField, EditableStep, Editability } from '@/types/wizard'
 import { updateFieldMetadata, resetFieldToBase } from '@/api/wizardApi'
 import { PresetManagement } from './PresetManagement'
-import { RepeatableGroupField } from './fields/RepeatableGroupField'
+import { FieldGroup, groupFieldsByStatus, type FieldGroupKey } from './FieldGroup'
+import { FieldValueInput } from './FieldValueInput'
 
 interface StepFieldEditorProps {
   editableStep: EditableStep
@@ -13,8 +14,6 @@ interface StepFieldEditorProps {
   tool: string
   language: string
 }
-
-type FieldGroup = 'overridden' | 'default' | 'locked' | 'suggested'
 
 const EDITABILITY_COLORS: Record<Editability, { bg: string; border: string; text: string }> = {
   free: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
@@ -42,7 +41,7 @@ export function StepFieldEditor({
   language,
 }: StepFieldEditorProps) {
   const { step, source_tracking } = editableStep
-  const [expandedGroups, setExpandedGroups] = useState<Record<FieldGroup, boolean>>({
+  const [expandedGroups, setExpandedGroups] = useState<Record<FieldGroupKey, boolean>>({
     overridden: true,
     default: true,
     locked: true,
@@ -68,7 +67,7 @@ export function StepFieldEditor({
     setFieldErrors({})
   }, [step.id])
 
-  const toggleGroup = (group: FieldGroup) => {
+  const toggleGroup = (group: FieldGroupKey) => {
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }))
   }
 
@@ -400,15 +399,17 @@ export function StepFieldEditor({
               </span>
             )}
           </div>
-          {renderEditableInput(
-            field,
-            fieldValues[field.id] ?? displayValue,
-            (value) => {
+          <FieldValueInput
+            field={field}
+            value={fieldValues[field.id] ?? displayValue}
+            onChange={(value) => {
               setFieldValues(prev => ({ ...prev, [field.id]: value }))
               onFieldChange?.(field.id, value)
-            },
-            (value) => handleValueSave(field.id, value)
-          )}
+            }}
+            onSave={(value) => handleValueSave(field.id, value)}
+            validationError={fieldErrors[field.id]}
+            onBlurValidation={handleFieldBlurValidation}
+          />
         </div>
 
         {/* ── Presets ── */}
@@ -462,168 +463,6 @@ export function StepFieldEditor({
         )}
       </div>
     )
-  }
-
-  const renderEditableInput = (
-    field: {
-      id: string
-      type: string
-      placeholder?: string
-      rows?: number
-      options?: { value: string; label: string; description?: string }[]
-      description?: string
-      fields?: any[]
-    },
-    value: unknown,
-    onChange: (value: unknown) => void,
-    onSave: (value: unknown) => void
-  ) => {
-    const fieldId = field.id
-    const validationError = fieldErrors[fieldId]
-    const baseClasses =
-      'w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-base shadow-sm transition-shadow hover:shadow-md'
-    const validClasses = `${baseClasses} border-gray-300 focus:ring-indigo-500`
-    const errorClasses = `${baseClasses} border-red-400 focus:ring-red-400 bg-red-50`
-    const commonClasses = validationError ? errorClasses : validClasses
-
-    switch (field.type) {
-      case 'text':
-        return (
-          <div>
-            <input
-              type="text"
-              value={(value as string) || ''}
-              onChange={e => onChange(e.target.value)}
-              onBlur={e => {
-                handleFieldBlurValidation(fieldId, e.target.value)
-                onSave(e.target.value)
-              }}
-              placeholder={field.placeholder}
-              className={commonClasses}
-            />
-            {validationError && (
-              <p className="flex items-center gap-1.5 mt-1.5 text-sm text-red-600">
-                <AlertCircle className="size-4 shrink-0" />
-                {validationError}
-              </p>
-            )}
-          </div>
-        )
-
-      case 'number':
-        return (
-          <input
-            type="number"
-            value={(value as number) || ''}
-            onChange={e => onChange(e.target.value ? Number(e.target.value) : '')}
-            onBlur={e => onSave(e.target.value ? Number(e.target.value) : '')}
-            placeholder={field.placeholder}
-            className={commonClasses}
-          />
-        )
-
-      case 'textarea':
-        return (
-          <div>
-            <textarea
-              value={(value as string) || ''}
-              onChange={e => onChange(e.target.value)}
-              onBlur={e => {
-                handleFieldBlurValidation(fieldId, e.target.value)
-                onSave(e.target.value)
-              }}
-              placeholder={field.placeholder}
-              rows={field.rows || 4}
-              className={`${commonClasses} resize-vertical font-mono text-sm`}
-            />
-            {validationError && (
-              <p className="flex items-center gap-1.5 mt-1.5 text-sm text-red-600">
-                <AlertCircle className="size-4 shrink-0" />
-                {validationError}
-              </p>
-            )}
-          </div>
-        )
-
-      case 'select':
-        return (
-          <select
-            value={(value as string) || ''}
-            onChange={e => { onChange(e.target.value); onSave(e.target.value) }}
-            className={commonClasses}
-          >
-            <option value="">-- Select --</option>
-            {field.options?.map(opt => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        )
-
-      case 'multi_select':
-      case 'multiselect': {
-        const selectedValues = Array.isArray(value) ? value : []
-        return (
-          <div className="space-y-3 bg-white border border-gray-300 rounded-lg p-4">
-            {field.options?.map(opt => (
-              <label key={opt.value} className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors">
-                <input
-                  type="checkbox"
-                  checked={selectedValues.includes(opt.value)}
-                  onChange={e => {
-                    const newValues = e.target.checked
-                      ? [...selectedValues, opt.value]
-                      : selectedValues.filter((v: string) => v !== opt.value)
-                    onChange(newValues)
-                    onSave(newValues)
-                  }}
-                  className="mt-1 rounded border-gray-300 w-4 h-4"
-                />
-                <div className="flex-1">
-                  <div className="text-base font-medium text-gray-900">{opt.label}</div>
-                  {opt.description && (
-                    <div className="text-sm text-gray-600 mt-1">{opt.description}</div>
-                  )}
-                </div>
-              </label>
-            ))}
-          </div>
-        )
-      }
-
-      case 'checkbox':
-      case 'boolean':
-        return (
-          <label className="flex items-center gap-3 cursor-pointer p-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors w-fit">
-            <input
-              type="checkbox"
-              checked={(value as boolean) || false}
-              onChange={e => { onChange(e.target.checked); onSave(e.target.checked) }}
-              className="h-5 w-5 rounded border-gray-300 text-indigo-600"
-            />
-            <span className="text-base text-gray-900 font-medium">Enabled</span>
-          </label>
-        )
-
-      case 'repeatable_group': {
-        const groupValues = Array.isArray(value) ? value : []
-        return (
-          <RepeatableGroupField
-            field={field as any}
-            value={groupValues}
-            onChange={v => { onChange(v); onSave(v) }}
-          />
-        )
-      }
-
-      default:
-        return (
-          <div className="text-base text-gray-500 italic bg-gray-50 px-4 py-3 rounded-lg">
-            Unsupported field type: {field.type}
-          </div>
-        )
-    }
   }
 
   return (
@@ -753,94 +592,5 @@ export function StepFieldEditor({
         )}
       </div>
     </div>
-  )
-}
-
-// Helper component for field groups
-interface FieldGroupProps {
-  title: string
-  count: number
-  isExpanded: boolean
-  onToggle: () => void
-  icon: 'indigo' | 'red' | 'amber' | 'gray'
-  children: React.ReactNode
-}
-
-function FieldGroup({ title, count, isExpanded, onToggle, icon, children }: FieldGroupProps) {
-  const iconColors = {
-    indigo: 'bg-indigo-100 text-indigo-700',
-    red: 'bg-red-100 text-red-700',
-    amber: 'bg-amber-100 text-amber-700',
-    gray: 'bg-gray-100 text-gray-700',
-  }
-
-  const borderColors = {
-    indigo: 'border-l-indigo-600',
-    red: 'border-l-red-600',
-    amber: 'border-l-amber-600',
-    gray: 'border-l-gray-400',
-  }
-
-  return (
-    <div
-      className={`rounded-lg border-l-4 overflow-hidden shadow transition-all ${
-        borderColors[icon]
-      } ${isExpanded ? 'shadow-md border-gray-200' : 'shadow-sm border-gray-100 hover:shadow-md'}`}
-    >
-      <button
-        onClick={onToggle}
-        className={`w-full flex items-center justify-between px-6 py-4 transition-colors ${
-          isExpanded ? 'bg-gradient-to-r from-gray-50 to-white border-b border-gray-200' : 'hover:bg-gray-50 bg-white'
-        }`}
-      >
-        <div className="flex items-center gap-4">
-          <h3 className="font-semibold text-gray-900 text-lg">{title}</h3>
-          <span
-            className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-              iconColors[icon]
-            }`}
-          >
-            {count}
-          </span>
-        </div>
-        <ChevronDown
-          className={`size-5 text-gray-500 transition-transform flex-shrink-0 ${
-            isExpanded ? 'rotate-180' : ''
-          }`}
-        />
-      </button>
-
-      {isExpanded && (
-        <div className="px-6 py-4 space-y-4 bg-gradient-to-b from-white to-gray-50">
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Helper function to group fields by status
-function groupFieldsByStatus(
-  fields: EditableField[]
-): Record<FieldGroup, EditableField[]> {
-  return fields.reduce(
-    (acc, field) => {
-      if (field.is_locked) {
-        acc.locked.push(field)
-      } else if (!field.is_default) {
-        acc.overridden.push(field)
-      } else if (field.editability === 'suggested') {
-        acc.suggested.push(field)
-      } else {
-        acc.default.push(field)
-      }
-      return acc
-    },
-    {
-      overridden: [] as EditableField[],
-      default: [] as EditableField[],
-      locked: [] as EditableField[],
-      suggested: [] as EditableField[],
-    }
   )
 }

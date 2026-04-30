@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X, Plus, Copy, ArrowRight, Tag } from 'lucide-react'
 import { createLanguageConfig, fetchLanguageTags, type CreateLanguagePayload, type LanguageOption } from '@/api/wizardApi'
 
@@ -30,6 +30,12 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
   // tagRemap: entries the user has configured — { from: string, to: string }
   const [tagRemap, setTagRemap] = useState<Array<{ from: string; to: string }>>([])
 
+  // Refs to read current values without adding them as effect dependencies
+  const languageIdRef = useRef(languageId)
+  languageIdRef.current = languageId
+  const basedOnRef = useRef(basedOn)
+  basedOnRef.current = basedOn
+
   // When basedOn changes, fetch the source language's tags and pre-populate remap
   useEffect(() => {
     if (!basedOn) {
@@ -44,23 +50,26 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
         // Pre-populate remap: each tag defaults to mapping to itself (no change).
         // The "from" default is the source tag; "to" defaults to languageId if the
         // tag equals basedOn, otherwise same as from.
-        setTagRemap(tags.map(t => ({ from: t, to: t === basedOn ? (languageId || t) : t })))
+        const currentLangId = languageIdRef.current
+        setTagRemap(tags.map(t => ({ from: t, to: t === basedOn ? (currentLangId || t) : t })))
       })
       .catch(() => {
         setSourceTags([])
         setTagRemap([])
       })
       .finally(() => setTagsLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basedOn])
 
   // When languageId changes, update any remap "to" that was auto-set from basedOn
   useEffect(() => {
-    if (!basedOn || tagRemap.length === 0) return
-    setTagRemap(prev => prev.map(entry =>
-      entry.from === basedOn && entry.to === basedOn ? { ...entry, to: languageId || basedOn } : entry
-    ))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const currentBasedOn = basedOnRef.current
+    if (!currentBasedOn) return
+    setTagRemap(prev => {
+      if (prev.length === 0) return prev
+      return prev.map(entry =>
+        entry.from === currentBasedOn && entry.to === currentBasedOn ? { ...entry, to: languageId || currentBasedOn } : entry
+      )
+    })
   }, [languageId])
 
   const handleTitleChange = (value: string) => {
