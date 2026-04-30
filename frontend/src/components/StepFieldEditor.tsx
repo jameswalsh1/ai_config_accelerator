@@ -525,23 +525,6 @@ export function StepFieldEditor({
             </div>
           </div>
         </div>
-
-        {/* Source Breakdown */}
-        <div className="mt-6">
-          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Fields by Source</p>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(source_tracking.by_source).map(([source, count]) => (
-              <span
-                key={source}
-                className={`px-4 py-2 rounded-lg font-medium text-sm shadow-sm ${
-                  SOURCE_COLORS[source] || SOURCE_COLORS.base
-                }`}
-              >
-                {source}: {count}
-              </span>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Field Groups - Improved Spacing */}
