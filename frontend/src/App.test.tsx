@@ -13,6 +13,8 @@ vi.mock('@/api/wizardApi', () => ({
   fetchEditableConfig: vi.fn(),
   fetchAuditLog: vi.fn(),
   fetchCoverageMatrix: vi.fn(),
+  fetchVersionHistory: vi.fn(),
+  fetchVersionDiff: vi.fn(),
 }))
 
 import {
@@ -24,6 +26,8 @@ import {
   fetchEditableConfig,
   fetchAuditLog,
   fetchCoverageMatrix,
+  fetchVersionHistory,
+  fetchVersionDiff,
 } from '@/api/wizardApi'
 
 const mockFetchConfigs = fetchConfigs as ReturnType<typeof vi.fn>
@@ -34,6 +38,8 @@ const mockFetchAvailableSteps = fetchAvailableSteps as ReturnType<typeof vi.fn>
 const mockFetchEditableConfig = fetchEditableConfig as ReturnType<typeof vi.fn>
 const mockFetchAuditLog = fetchAuditLog as ReturnType<typeof vi.fn>
 const mockFetchCoverageMatrix = fetchCoverageMatrix as ReturnType<typeof vi.fn>
+const mockFetchVersionHistory = fetchVersionHistory as ReturnType<typeof vi.fn>
+const mockFetchVersionDiff = fetchVersionDiff as ReturnType<typeof vi.fn>
 
 const sampleConfigs = [
   { id: 'claude-java', title: 'Claude Java', description: 'Java config', target: 'claude' },
@@ -50,6 +56,8 @@ beforeEach(() => {
   mockFetchEditableConfig.mockResolvedValue({ step: { id: 's1', title: 'Step 1', fields: [] }, scope: 'language', target: 'java' })
   mockFetchAuditLog.mockResolvedValue({ entries: [], total: 0 })
   mockFetchCoverageMatrix.mockResolvedValue({ tools: [], languages: [], matrix: {} })
+  mockFetchVersionHistory.mockResolvedValue([])
+  mockFetchVersionDiff.mockResolvedValue({ v1: 1, v2: 2, scope: 'language', target: 'java', diff: {} })
 })
 
 describe('App', () => {

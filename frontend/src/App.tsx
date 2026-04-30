@@ -7,8 +7,8 @@ const Wizard = lazy(() => import('@/components/Wizard').then(m => ({ default: m.
 const ConfigEditorEntry = lazy(() => import('@/components/ConfigEditorEntry').then(m => ({ default: m.ConfigEditorEntry })))
 const ConfigEditor = lazy(() => import('@/components/ConfigEditor').then(m => ({ default: m.ConfigEditor })))
 const AuditLog = lazy(() => import('@/components/AuditLog').then(m => ({ default: m.AuditLog })))
-const SnapshotManager = lazy(() => import('@/components/SnapshotManager').then(m => ({ default: m.SnapshotManager })))
 const CoverageMatrix = lazy(() => import('@/components/CoverageMatrix').then(m => ({ default: m.CoverageMatrix })))
+const VersionHistory = lazy(() => import('@/components/VersionHistory').then(m => ({ default: m.VersionHistory })))
 
 function LazyFallback() {
   return (
@@ -43,7 +43,6 @@ function App() {
   const [editableConfig, setEditableConfig] = useState<EditableStep | null>(null)
   const [selectedTool, setSelectedTool] = useState<string>('')
   const [selectedLanguage, setSelectedLanguage] = useState<string>('')
-  const [snapshotReloadTrigger, setSnapshotReloadTrigger] = useState(0)
   /** Set when navigating from the coverage matrix to pre-select tool/language in the editor. */
   const [preselectedTool, setPreselectedTool] = useState<string | undefined>()
   const [preselectedLanguage, setPreselectedLanguage] = useState<string | undefined>()
@@ -227,7 +226,6 @@ function App() {
         {navbar}
         <Suspense fallback={<LazyFallback />}>
           <ConfigEditorEntry
-            reloadTrigger={snapshotReloadTrigger}
             initialTool={preselectedTool}
             initialLanguage={preselectedLanguage}
             onConfigSelected={handleConfigSelected}
@@ -244,10 +242,9 @@ function App() {
                     language={selectedLanguage}
                   />
                   {selectedLanguage && (
-                    <SnapshotManager
+                    <VersionHistory
                       scope="language"
                       target={selectedLanguage}
-                      onRestored={() => setSnapshotReloadTrigger(t => t + 1)}
                     />
                   )}
                 </div>

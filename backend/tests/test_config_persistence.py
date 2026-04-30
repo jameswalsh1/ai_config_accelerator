@@ -30,8 +30,7 @@ from app.services.config_persistence import (
     _create_backup,
     _restore_backup,
 )
-
-DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
+import app.services.config_persistence as persistence_module
 
 
 class TestJsonValidation:
@@ -129,7 +128,7 @@ class TestBackupRestore:
 
     def test_create_backup_nonexistent_file(self):
         """Test creating backup of non-existent file (no-op)."""
-        nonexistent = DATA_DIR / "nonexistent.json"
+        nonexistent = persistence_module.DATA_DIR / "nonexistent.json"
         # Should not raise
         backup_path = _create_backup(nonexistent)
         # Backup path is returned even if source doesn't exist
@@ -166,8 +165,8 @@ class TestBackupRestore:
 
     def test_restore_backup_missing_backup(self):
         """Test restore when backup doesn't exist."""
-        test_file = DATA_DIR / "languages" / "python.json"
-        missing_backup = DATA_DIR / "nonexistent_backup.json"
+        test_file = persistence_module.DATA_DIR / "languages" / "python.json"
+        missing_backup = persistence_module.DATA_DIR / "nonexistent_backup.json"
         
         with pytest.raises(BackupError):
             _restore_backup(test_file, missing_backup)
@@ -459,7 +458,9 @@ class TestConfigTransaction:
 class TestCreateLanguageConfig:
     """Tests for create_language_config and get_language_tags."""
 
-    LANGUAGES_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs" / "languages"
+    @property
+    def LANGUAGES_DIR(self):
+        return persistence_module.DATA_DIR / "languages"
 
     _TEST_IDS = [
         "test-scratch-lang", "test-clone-all-sections", "test-retag-default",
@@ -572,7 +573,9 @@ class TestCreateLanguageConfig:
 class TestLanguageTagsEndpoint:
     """Integration tests for GET /languages/{language_id}/tags router."""
 
-    LANGUAGES_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs" / "languages"
+    @property
+    def LANGUAGES_DIR(self):
+        return persistence_module.DATA_DIR / "languages"
 
     def setup_method(self):
         (self.LANGUAGES_DIR / "test-route-tag-remap.json").unlink(missing_ok=True)

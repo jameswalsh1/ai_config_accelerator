@@ -133,6 +133,18 @@ def _validate_override_schema(data: dict[str, Any], file_type: str) -> None:
             )
 
 
+def _infer_scope_from_path(file_path: Path) -> str:
+    """Guess scope from file path segments."""
+    parts = file_path.parts
+    if "languages" in parts:
+        return "language"
+    if "tools" in parts:
+        return "tool"
+    if "overrides" in parts:
+        return "override"
+    return "unknown"
+
+
 def _create_backup(file_path: Path) -> Path:
     """
     Create a backup of a file before modification.
@@ -325,6 +337,7 @@ def save_config(
                 raise ReloadError(f"Config not reloadable after save: {e}")
 
         # Emit audit log entry — non-fatal: a log failure must never block a save
+        diff_summary = ""
         try:
             from app.services.audit_log import append_audit_entry, build_audit_entry
             entry = build_audit_entry(
@@ -334,6 +347,24 @@ def save_config(
                 context=context,
                 actor=(context or {}).get("actor", "system"),
             )
+            diff_summary = entry.get("diff_summary", "")
+
+            # Save versioned copy — non-fatal
+            try:
+                from app.services.version_history import save_version
+                scope = (context or {}).get("scope") or _infer_scope_from_path(file_path)
+                target = (context or {}).get("target") or file_path.stem
+                version_meta = save_version(
+                    scope=scope,
+                    target=target,
+                    data=data,
+                    actor=(context or {}).get("actor", "system"),
+                    summary=diff_summary,
+                )
+                entry["version"] = version_meta["version"]
+            except Exception as ver_exc:
+                print(f"[version] WARNING: failed to save version: {ver_exc}", file=__import__('sys').stderr)
+
             append_audit_entry(entry)
         except Exception as audit_exc:  # noqa: BLE001
             print(f"[audit] WARNING: failed to write audit entry: {audit_exc}", file=__import__('sys').stderr)
@@ -697,210 +728,3 @@ class ConfigTransaction:
             except BackupError as e:
                 # Log but don't fail - try to restore others
                 pass
-
-
-# ---------------------------------------------------------------------------
-# Named snapshot store
-# ---------------------------------------------------------------------------
-# Snapshots are stored at:
-#   data/wizard_configs/snapshots/{scope}/{target}/{snapshot_id}.json
-#
-# Each snapshot file is a wrapper:
-#   {
-#     "meta": { "snapshot_id": "...", "name": "...", "created_at": "...",
-#               "scope": "...", "target": "..." },
-#     "data": { ...full config file content... }
-#   }
-# ---------------------------------------------------------------------------
-
-SNAPSHOTS_DIR = DATA_DIR / "snapshots"
-
-_VALID_SCOPES = frozenset({"tool", "language", "override"})
-
-
-class SnapshotError(PersistenceError):
-    """Raised for snapshot-specific errors."""
-    pass
-
-
-def _source_path_for(scope: str, target: str) -> Path:
-    """Return the live config file path for a given scope+target."""
-    if scope == "tool":
-        return DATA_DIR / "tools" / f"{target}.json"
-    elif scope == "language":
-        return DATA_DIR / "languages" / f"{target}.json"
-    elif scope == "override":
-        return DATA_DIR / "overrides" / f"{target}.json"
-    raise SnapshotError(f"Invalid scope '{scope}'. Must be one of: tool, language, override")
-
-
-def _snapshot_dir(scope: str, target: str) -> Path:
-    return SNAPSHOTS_DIR / scope / target
-
-
-def _slugify(name: str) -> str:
-    """Convert a human name to a filename-safe slug."""
-    slug = name.lower().strip()
-    slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    slug = slug.strip("-")
-    return slug or "snapshot"
-
-
-def _make_snapshot_id(name: str) -> str:
-    """Generate a sortable, unique snapshot ID from a name."""
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    return f"{ts}_{_slugify(name)}"
-
-
-def create_snapshot(scope: str, target: str, name: str) -> dict[str, Any]:
-    """
-    Create a named snapshot of the current config file for scope+target.
-
-    Args:
-        scope: "tool", "language", or "override"
-        target: e.g. "python", "claude"
-        name: Human-readable label, e.g. "before Python migration"
-
-    Returns:
-        Snapshot metadata dict (without the data payload).
-
-    Raises:
-        SnapshotError: If the source file does not exist or write fails.
-    """
-    if scope not in _VALID_SCOPES:
-        raise SnapshotError(f"Invalid scope '{scope}'. Must be one of: {', '.join(sorted(_VALID_SCOPES))}")
-
-    source = _source_path_for(scope, target)
-    if not source.exists():
-        raise SnapshotError(f"Source config not found: {source}")
-
-    with source.open("r", encoding="utf-8") as f:
-        current_data = json.load(f)
-
-    snapshot_id = _make_snapshot_id(name)
-
-    meta: dict[str, Any] = {
-        "snapshot_id": snapshot_id,
-        "name": name,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "scope": scope,
-        "target": target,
-    }
-
-    snapshot: dict[str, Any] = {"meta": meta, "data": current_data}
-
-    snap_dir = _snapshot_dir(scope, target)
-    snap_dir.mkdir(parents=True, exist_ok=True)
-    snap_path = snap_dir / f"{snapshot_id}.json"
-
-    try:
-        # Write atomically
-        temp_fd, temp_path_str = tempfile.mkstemp(dir=snap_dir, prefix=".tmp_", suffix=".json")
-        temp_path = Path(temp_path_str)
-        os.close(temp_fd)
-        with temp_path.open("w", encoding="utf-8") as f:
-            json.dump(snapshot, f, indent=2)
-        temp_path.replace(snap_path)
-    except Exception as e:
-        raise SnapshotError(f"Failed to write snapshot: {e}")
-
-    return meta
-
-
-def list_snapshots(scope: str, target: str) -> list[dict[str, Any]]:
-    """
-    List all snapshots for a given scope+target, newest first.
-
-    Returns:
-        List of snapshot metadata dicts (no data payload).
-    """
-    if scope not in _VALID_SCOPES:
-        raise SnapshotError(f"Invalid scope '{scope}'. Must be one of: {', '.join(sorted(_VALID_SCOPES))}")
-
-    snap_dir = _snapshot_dir(scope, target)
-    if not snap_dir.exists():
-        return []
-
-    metas: list[dict[str, Any]] = []
-    for snap_path in sorted(snap_dir.glob("*.json"), reverse=True):
-        try:
-            with snap_path.open("r", encoding="utf-8") as f:
-                snapshot = json.load(f)
-            metas.append(snapshot["meta"])
-        except Exception:
-            # Skip corrupt snapshot files silently
-            continue
-
-    return metas
-
-
-def restore_snapshot(scope: str, target: str, snapshot_id: str) -> dict[str, Any]:
-    """
-    Restore a named snapshot, replacing the live config file.
-
-    Creates a pre-restore backup of the current file before overwriting it.
-
-    Args:
-        scope: "tool", "language", or "override"
-        target: e.g. "python", "claude"
-        snapshot_id: The snapshot_id returned from create_snapshot / list_snapshots
-
-    Returns:
-        The restored snapshot metadata dict.
-
-    Raises:
-        SnapshotError: If snapshot not found or restore fails.
-    """
-    if scope not in _VALID_SCOPES:
-        raise SnapshotError(f"Invalid scope '{scope}'. Must be one of: {', '.join(sorted(_VALID_SCOPES))}")
-
-    snap_path = _snapshot_dir(scope, target) / f"{snapshot_id}.json"
-    if not snap_path.exists():
-        raise SnapshotError(f"Snapshot not found: {snapshot_id}")
-
-    with snap_path.open("r", encoding="utf-8") as f:
-        snapshot = json.load(f)
-
-    data = snapshot.get("data")
-    if not isinstance(data, dict):
-        raise SnapshotError(f"Snapshot '{snapshot_id}' has invalid data payload")
-
-    source = _source_path_for(scope, target)
-
-    # Persist — creates a .backup of current state and writes atomically
-    save_config(
-        source,
-        data,
-        validate=False,
-        create_backup=True,
-        verify_reloadable=False,
-        context={
-            "scope": scope,
-            "target": target,
-            "action": "snapshot_restore",
-            "snapshot_id": snapshot_id,
-            "snapshot_name": snapshot.get("meta", {}).get("name", ""),
-        },
-    )
-
-    return cast(dict[str, Any], snapshot["meta"])
-
-
-def delete_snapshot(scope: str, target: str, snapshot_id: str) -> None:
-    """
-    Permanently delete a named snapshot.
-
-    Raises:
-        SnapshotError: If snapshot not found or deletion fails.
-    """
-    if scope not in _VALID_SCOPES:
-        raise SnapshotError(f"Invalid scope '{scope}'. Must be one of: {', '.join(sorted(_VALID_SCOPES))}")
-
-    snap_path = _snapshot_dir(scope, target) / f"{snapshot_id}.json"
-    if not snap_path.exists():
-        raise SnapshotError(f"Snapshot not found: {snapshot_id}")
-
-    try:
-        snap_path.unlink()
-    except Exception as e:
-        raise SnapshotError(f"Failed to delete snapshot: {e}")

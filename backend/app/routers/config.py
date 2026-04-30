@@ -12,14 +12,8 @@ from app.services.config_editor import get_editable_step
 from app.services.config_patcher import update_field_metadata, ConfigNotFoundError, add_preset_to_field, remove_preset_from_field, remove_field_override
 from app.services.config_validator import validate_language_override, validate_tool_override
 from app.services.config_persistence import create_language_config, get_language_tags, ValidationError as PersistenceValidationError
-from app.services.config_persistence import (
-    create_snapshot,
-    list_snapshots,
-    restore_snapshot,
-    delete_snapshot,
-    SnapshotError,
-)
 from app.services.audit_log import read_audit_log
+from app.services.version_history import list_versions, get_version, get_version_data
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -600,131 +594,55 @@ def get_audit_log(
 
 
 # ---------------------------------------------------------------------------
-# Snapshot endpoints
+# Version history endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/snapshots")
-def create_config_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
-    """Create a named snapshot of the current config file for a scope+target.
-
-    Payload:
-        {
-            "scope": "language|tool|override",
-            "target": "python|claude|etc",
-            "name": "before Python migration"
-        }
-
-    Returns:
-        Snapshot metadata: { snapshot_id, name, created_at, scope, target }
-
-    Raises:
-        HTTPException 400: Invalid scope/target or name missing
-        HTTPException 404: Source config file not found
-        HTTPException 500: Write failure
-    """
-    scope = payload.get("scope", "").strip()
-    target = payload.get("target", "").strip()
-    name = payload.get("name", "").strip()
-
-    if not scope:
-        raise HTTPException(status_code=400, detail="scope is required")
-    if not target:
-        raise HTTPException(status_code=400, detail="target is required")
-    if not name:
-        raise HTTPException(status_code=400, detail="name is required")
-
-    try:
-        return create_snapshot(scope, target, name)
-    except SnapshotError as e:
-        msg = str(e)
-        status = 404 if "not found" in msg.lower() else 400
-        raise HTTPException(status_code=status, detail=msg)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create snapshot: {e}")
-
-
-@router.get("/snapshots")
-def list_config_snapshots(
+@router.get("/history")
+def get_config_history(
     scope: str = Query(..., description="Scope: tool|language|override"),
     target: str = Query(..., description="Target identifier, e.g. 'python' or 'claude'"),
 ) -> list[dict[str, Any]]:
-    """List all named snapshots for a scope+target, newest first.
+    """List all versions for a scope+target, newest first."""
+    return list_versions(scope, target)
 
-    Returns:
-        List of snapshot metadata objects (no config data payload).
+
+@router.get("/history/diff")
+def diff_config_versions(
+    scope: str = Query(..., description="Scope: tool|language|override"),
+    target: str = Query(..., description="Target identifier, e.g. 'python' or 'claude'"),
+    v1: int = Query(..., description="First version number"),
+    v2: int = Query(..., description="Second version number"),
+) -> dict[str, Any]:
+    """Compute the diff between two versions.
+
+    Returns the structured diff from config_diff plus the version metadata.
     """
-    try:
-        return list_snapshots(scope, target)
-    except SnapshotError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list snapshots: {e}")
-
-
-@router.post("/snapshots/restore")
-def restore_config_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
-    """Restore a named snapshot, replacing the live config file.
-
-    The current live config is backed up before overwriting, and the
-    restore is recorded in the audit log.
-
-    Payload:
-        {
-            "scope": "language|tool|override",
-            "target": "python|claude|etc",
-            "snapshot_id": "20260428T123456_before-python-migration"
-        }
-
-    Returns:
-        The restored snapshot metadata dict.
-
-    Raises:
-        HTTPException 400: Invalid scope/target
-        HTTPException 404: Snapshot not found
-        HTTPException 500: Restore failure
-    """
-    scope = payload.get("scope", "").strip()
-    target = payload.get("target", "").strip()
-    snapshot_id = payload.get("snapshot_id", "").strip()
-
-    if not scope:
-        raise HTTPException(status_code=400, detail="scope is required")
-    if not target:
-        raise HTTPException(status_code=400, detail="target is required")
-    if not snapshot_id:
-        raise HTTPException(status_code=400, detail="snapshot_id is required")
+    from app.services.config_diff import compare_configs, diff_to_dict
 
     try:
-        return restore_snapshot(scope, target, snapshot_id)
-    except SnapshotError as e:
-        msg = str(e)
-        status = 404 if "not found" in msg.lower() else 400
-        raise HTTPException(status_code=status, detail=msg)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to restore snapshot: {e}")
+        data1 = get_version_data(scope, target, v1)
+        data2 = get_version_data(scope, target, v2)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    diff_obj = compare_configs(data1, data2)
+    return {
+        "v1": v1,
+        "v2": v2,
+        "scope": scope,
+        "target": target,
+        "diff": diff_to_dict(diff_obj),
+    }
 
 
-@router.delete("/snapshots/{snapshot_id}")
-def delete_config_snapshot(
-    snapshot_id: str,
+@router.get("/history/{version}")
+def get_config_version(
+    version: int,
     scope: str = Query(..., description="Scope: tool|language|override"),
     target: str = Query(..., description="Target identifier, e.g. 'python' or 'claude'"),
 ) -> dict[str, Any]:
-    """Permanently delete a named snapshot.
-
-    Returns:
-        { "deleted": true, "snapshot_id": "..." }
-
-    Raises:
-        HTTPException 404: Snapshot not found
-        HTTPException 500: Deletion failure
-    """
+    """Return the full envelope (metadata + data) for a specific version."""
     try:
-        delete_snapshot(scope, target, snapshot_id)
-        return {"deleted": True, "snapshot_id": snapshot_id}
-    except SnapshotError as e:
-        msg = str(e)
-        status = 404 if "not found" in msg.lower() else 400
-        raise HTTPException(status_code=status, detail=msg)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete snapshot: {e}")
+        return get_version(scope, target, version)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))

@@ -96,26 +96,6 @@ describe('wizardApi', () => {
     })
   })
 
-  describe('createSnapshot', () => {
-    it('throws detailed error on failure', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        statusText: 'Bad Request',
-        json: () => Promise.resolve({ detail: 'Invalid name' }),
-      })
-      await expect(api.createSnapshot('language', 'python', 'bad'))
-        .rejects.toThrow('Invalid name')
-    })
-  })
-
-  describe('deleteSnapshot', () => {
-    it('succeeds with no return value', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true, status: 204, statusText: 'No Content' })
-      await expect(api.deleteSnapshot('language', 'python', 'snap1')).resolves.toBeUndefined()
-    })
-  })
-
   describe('saveFieldValue', () => {
     it('sends correct payload', async () => {
       mockFetch.mockResolvedValueOnce(ok({ step: { id: 's1', fields: [] }, source_tracking: {} }))

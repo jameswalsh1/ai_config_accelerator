@@ -423,65 +423,6 @@ export async function reorderPresetAssignments(
   await throwIfNotOk(res, 'Failed to reorder preset assignments')
 }
 
-// ---------------------------------------------------------------------------
-// Snapshots
-// ---------------------------------------------------------------------------
-
-export interface SnapshotMeta {
-  snapshot_id: string
-  name: string
-  created_at: string
-  scope: string
-  target: string
-}
-
-export async function createSnapshot(
-  scope: string,
-  target: string,
-  name: string
-): Promise<SnapshotMeta> {
-  const res = await fetchWithTimeout(`${BASE}/config/snapshots`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scope, target, name }),
-  })
-  if (!res.ok) await throwDetailedError(res, 'Failed to create snapshot')
-  return res.json() as Promise<SnapshotMeta>
-}
-
-export async function listSnapshots(scope: string, target: string): Promise<SnapshotMeta[]> {
-  const params = new URLSearchParams({ scope, target })
-  const res = await fetchWithTimeout(`${BASE}/config/snapshots?${params}`)
-  await throwIfNotOk(res, 'Failed to list snapshots')
-  return res.json() as Promise<SnapshotMeta[]>
-}
-
-export async function restoreSnapshot(
-  scope: string,
-  target: string,
-  snapshotId: string
-): Promise<SnapshotMeta> {
-  const res = await fetchWithTimeout(`${BASE}/config/snapshots/restore`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scope, target, snapshot_id: snapshotId }),
-  })
-  if (!res.ok) await throwDetailedError(res, 'Failed to restore snapshot')
-  return res.json() as Promise<SnapshotMeta>
-}
-
-export async function deleteSnapshot(
-  scope: string,
-  target: string,
-  snapshotId: string
-): Promise<void> {
-  const params = new URLSearchParams({ scope, target })
-  const res = await fetchWithTimeout(
-    `${BASE}/config/snapshots/${encodeURIComponent(snapshotId)}?${params}`,
-    { method: 'DELETE' }
-  )
-  if (!res.ok) await throwDetailedError(res, 'Failed to delete snapshot')
-}
 
 // ---------------------------------------------------------------------------
 // Coverage matrix
@@ -505,4 +446,56 @@ export async function fetchCoverageMatrix(): Promise<CoverageMatrix> {
   const res = await fetchWithTimeout(`${BASE}/config/coverage`)
   await throwIfNotOk(res, 'Failed to load coverage matrix')
   return res.json() as Promise<CoverageMatrix>
+}
+
+
+// ---------------------------------------------------------------------------
+// Version history
+// ---------------------------------------------------------------------------
+
+export interface VersionMeta {
+  version: number
+  timestamp: string
+  actor: string
+  summary: string
+  scope: string
+  target: string
+}
+
+export interface VersionEnvelope extends VersionMeta {
+  data: Record<string, unknown>
+}
+
+export interface VersionDiff {
+  v1: number
+  v2: number
+  scope: string
+  target: string
+  diff: Record<string, unknown>
+}
+
+export async function fetchVersionHistory(scope: string, target: string): Promise<VersionMeta[]> {
+  const params = new URLSearchParams({ scope, target })
+  const res = await fetchWithTimeout(`${BASE}/config/history?${params}`)
+  await throwIfNotOk(res, 'Failed to load version history')
+  return res.json() as Promise<VersionMeta[]>
+}
+
+export async function fetchVersion(scope: string, target: string, version: number): Promise<VersionEnvelope> {
+  const params = new URLSearchParams({ scope, target })
+  const res = await fetchWithTimeout(`${BASE}/config/history/${version}?${params}`)
+  await throwIfNotOk(res, 'Failed to load version')
+  return res.json() as Promise<VersionEnvelope>
+}
+
+export async function fetchVersionDiff(
+  scope: string,
+  target: string,
+  v1: number,
+  v2: number,
+): Promise<VersionDiff> {
+  const params = new URLSearchParams({ scope, target, v1: String(v1), v2: String(v2) })
+  const res = await fetchWithTimeout(`${BASE}/config/history/diff?${params}`)
+  await throwIfNotOk(res, 'Failed to load version diff')
+  return res.json() as Promise<VersionDiff>
 }
