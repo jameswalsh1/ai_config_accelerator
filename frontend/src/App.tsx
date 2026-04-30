@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { fetchConfigs, fetchWizardConfig } from '@/api/wizardApi'
 import type { WizardConfig, WizardConfigSummary, EditableStep } from '@/types/wizard'
 import { BotIcon, Loader2Icon } from 'lucide-react'
@@ -47,6 +47,12 @@ function App() {
   /** Set when navigating from the coverage matrix to pre-select tool/language in the editor. */
   const [preselectedTool, setPreselectedTool] = useState<string | undefined>()
   const [preselectedLanguage, setPreselectedLanguage] = useState<string | undefined>()
+
+  const handleConfigSelected = useCallback((config: EditableStep, tool: string, language: string) => {
+    setEditableConfig(config)
+    setSelectedTool(tool)
+    setSelectedLanguage(language)
+  }, [])
 
   useEffect(() => {
     fetchConfigs()
@@ -224,11 +230,7 @@ function App() {
             reloadTrigger={snapshotReloadTrigger}
             initialTool={preselectedTool}
             initialLanguage={preselectedLanguage}
-            onConfigSelected={(config, tool, language) => {
-              setEditableConfig(config)
-              setSelectedTool(tool)
-              setSelectedLanguage(language)
-            }}
+            onConfigSelected={handleConfigSelected}
           />
           <main className="min-h-screen bg-gray-50 px-6 py-8">
             <div className="mx-auto max-w-5xl">
@@ -258,6 +260,7 @@ function App() {
             </div>
           </main>
         </Suspense>
+      </>
     )
   }
   return (
