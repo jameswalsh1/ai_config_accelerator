@@ -1,5 +1,4 @@
-"""
-Shared test fixtures.
+"""Shared test fixtures.
 
 Redirects every service's DATA_DIR to a per-session copy under
 ``tests/.test_output/`` so that tests never mutate production config files.
@@ -13,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-# Real production data directory
-_REAL_DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
-# Isolated test copy
+# Production config data
+_PROD_DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+# Isolated test copy (written to during tests, cleaned up after)
 _TEST_OUTPUT_DIR = Path(__file__).parent / ".test_output"
 _TEST_DATA_DIR = _TEST_OUTPUT_DIR / "wizard_configs"
 
@@ -38,7 +37,7 @@ def _import_module(dotted: str):
 @pytest.fixture(autouse=True, scope="session")
 def _redirect_data_dir():
     """
-    Copy production config data into .test_output/ and redirect every
+    Copy production data into .test_output/ and redirect every
     service's DATA_DIR there for the entire test session.
 
     Cleaned up automatically after all tests finish.
@@ -49,7 +48,7 @@ def _redirect_data_dir():
 
     # Copy production data (ignoring audit.jsonl and history/)
     shutil.copytree(
-        _REAL_DATA_DIR,
+        _PROD_DATA_DIR,
         _TEST_DATA_DIR,
         ignore=shutil.ignore_patterns("audit.jsonl", "history", "*.backup"),
     )

@@ -770,3 +770,137 @@ class TestStepDiffUtility:
         assert "title changed" in summary
         assert "2 field(s) added" in summary
         assert "1 field(s) removed" in summary
+
+
+class TestOverrideFileDiff:
+    """Test diff comparison for raw override files (no steps key)."""
+
+    def test_preset_added_in_field_override(self):
+        before = {
+            "field_overrides": [
+                {"field_id": "step1.my_field", "merge_presets": [
+                    {"label": "A", "value": "a", "mode": "replace"},
+                ]},
+            ],
+        }
+        after = {
+            "field_overrides": [
+                {"field_id": "step1.my_field", "merge_presets": [
+                    {"label": "A", "value": "a", "mode": "replace"},
+                    {"label": "B", "value": "b", "mode": "append"},
+                ]},
+            ],
+        }
+        result = compare_configs(before, after)
+        assert result.has_changes()
+        assert len(result.step_diffs) == 1
+        assert result.step_diffs[0].step_id == "step1"
+        field_diff = result.step_diffs[0].field_diffs[0]
+        assert field_diff.field_id == "step1.my_field"
+        assert len(field_diff.preset_changes) == 1
+        assert field_diff.preset_changes[0].change_type == ChangeType.ADDED
+        assert field_diff.preset_changes[0].label == "B"
+
+    def test_preset_removed_in_field_override(self):
+        before = {
+            "field_overrides": [
+                {"field_id": "step1.my_field", "merge_presets": [
+                    {"label": "A", "value": "a"},
+                    {"label": "B", "value": "b"},
+                ]},
+            ],
+        }
+        after = {
+            "field_overrides": [
+                {"field_id": "step1.my_field", "merge_presets": [
+                    {"label": "A", "value": "a"},
+                ]},
+            ],
+        }
+        result = compare_configs(before, after)
+        assert result.has_changes()
+        preset_changes = result.step_diffs[0].field_diffs[0].preset_changes
+        assert len(preset_changes) == 1
+        assert preset_changes[0].change_type == ChangeType.REMOVED
+        assert preset_changes[0].label == "B"
+
+    def test_metadata_override_default_changed(self):
+        before = {
+            "metadata_overrides": [
+                {"field_id": "step1.field1", "default": "old_val"},
+            ],
+        }
+        after = {
+            "metadata_overrides": [
+                {"field_id": "step1.field1", "default": "new_val"},
+            ],
+        }
+        result = compare_configs(before, after)
+        assert result.has_changes()
+        fd = result.step_diffs[0].field_diffs[0]
+        assert fd.value_changed
+        assert fd.before_value == "old_val"
+        assert fd.after_value == "new_val"
+
+    def test_metadata_override_editability_changed(self):
+        before = {
+            "metadata_overrides": [
+                {"field_id": "step1.field1", "editability": "free"},
+            ],
+        }
+        after = {
+            "metadata_overrides": [
+                {"field_id": "step1.field1", "editability": "locked"},
+            ],
+        }
+        result = compare_configs(before, after)
+        assert result.has_changes()
+        fd = result.step_diffs[0].field_diffs[0]
+        assert fd.locking_changes is not None
+        assert fd.locking_changes.before_state == "free"
+        assert fd.locking_changes.after_state == "locked"
+
+    def test_new_field_override_added(self):
+        before = {"field_overrides": []}
+        after = {
+            "field_overrides": [
+                {"field_id": "step1.new_field", "merge_presets": [
+                    {"label": "X", "value": "x"},
+                ]},
+            ],
+        }
+        result = compare_configs(before, after)
+        assert result.has_changes()
+        fd = result.step_diffs[0].field_diffs[0]
+        assert fd.field_id == "step1.new_field"
+        assert len(fd.preset_changes) == 1
+        assert fd.preset_changes[0].change_type == ChangeType.ADDED
+
+    def test_no_changes_in_override(self):
+        data = {
+            "field_overrides": [
+                {"field_id": "s.f", "merge_presets": [{"label": "A", "value": "a"}]},
+            ],
+            "metadata_overrides": [
+                {"field_id": "s.f", "default": "val"},
+            ],
+        }
+        result = compare_configs(data, data)
+        assert not result.has_changes()
+
+    def test_serializes_to_dict(self):
+        before = {"field_overrides": []}
+        after = {
+            "field_overrides": [
+                {"field_id": "step1.field1", "merge_presets": [
+                    {"label": "New", "value": "new_val", "mode": "replace"},
+                ]},
+            ],
+        }
+        result = compare_configs(before, after)
+        d = diff_to_dict(result)
+        assert d["has_changes"] is True
+        assert len(d["steps"]["modified"]) == 1
+        field_mod = d["steps"]["modified"][0]["fields"]["modified"][0]
+        assert field_mod["presets"][0]["type"] == "added"
+        assert field_mod["presets"][0]["label"] == "New"

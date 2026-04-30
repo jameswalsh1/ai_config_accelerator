@@ -475,6 +475,9 @@ def compare_configs(before: dict[str, Any], after: dict[str, Any]) -> ConfigDiff
     """
     Compare two configuration dictionaries and return detailed diff.
     
+    Handles both fully-resolved configs (with ``steps``) and raw override
+    files (with ``field_overrides`` / ``metadata_overrides``).
+
     Args:
         before: The original/previous configuration
         after: The new/current configuration
@@ -501,29 +504,167 @@ def compare_configs(before: dict[str, Any], after: dict[str, Any]) -> ConfigDiff
         diff.before_description = before.get("description")
         diff.after_description = after.get("description")
     
-    # Compare steps
+    # Compare steps (fully-resolved config path)
     before_steps = before.get("steps", []) or []
     after_steps = after.get("steps", []) or []
     
-    before_step_map = {s.get("id"): s for s in before_steps}
-    after_step_map = {s.get("id"): s for s in after_steps}
-    
-    all_step_ids = set(before_step_map.keys()) | set(after_step_map.keys())
-    
-    for step_id in sorted(all_step_ids):
-        before_step = before_step_map.get(step_id, {})
-        after_step = after_step_map.get(step_id, {})
+    if before_steps or after_steps:
+        before_step_map = {s.get("id"): s for s in before_steps}
+        after_step_map = {s.get("id"): s for s in after_steps}
         
-        if not before_step:
-            diff.steps_added.append(step_id)
-        elif not after_step:
-            diff.steps_removed.append(step_id)
-        else:
-            step_diff = compare_steps(before_step, after_step)
-            if step_diff.has_changes():
-                diff.step_diffs.append(step_diff)
+        all_step_ids = set(before_step_map.keys()) | set(after_step_map.keys())
+        
+        for step_id in sorted(all_step_ids):
+            before_step = before_step_map.get(step_id, {})
+            after_step = after_step_map.get(step_id, {})
+            
+            if not before_step:
+                diff.steps_added.append(step_id)
+            elif not after_step:
+                diff.steps_removed.append(step_id)
+            else:
+                step_diff = compare_steps(before_step, after_step)
+                if step_diff.has_changes():
+                    diff.step_diffs.append(step_diff)
+    else:
+        # Override file path — compare flat override structures
+        _compare_override_files(before, after, diff)
     
     return diff
+
+
+def _compare_override_files(
+    before: dict[str, Any],
+    after: dict[str, Any],
+    diff: ConfigDiff,
+) -> None:
+    """
+    Compare two raw override files (field_overrides / metadata_overrides).
+
+    Converts changes into ``StepDiff`` / ``FieldDiff`` entries so the rest
+    of the pipeline (``diff_to_dict``, the UI) can display them unchanged.
+    """
+    # ── metadata_overrides ──
+    before_meta = {o["field_id"]: o for o in (before.get("metadata_overrides") or []) if "field_id" in o}
+    after_meta = {o["field_id"]: o for o in (after.get("metadata_overrides") or []) if "field_id" in o}
+
+    # ── field_overrides ──
+    before_field = {o["field_id"]: o for o in (before.get("field_overrides") or []) if "field_id" in o}
+    after_field = {o["field_id"]: o for o in (after.get("field_overrides") or []) if "field_id" in o}
+
+    # ── step_overrides ──
+    before_step_ov = {o.get("step_id", o.get("id", "")): o for o in (before.get("step_overrides") or [])}
+    after_step_ov = {o.get("step_id", o.get("id", "")): o for o in (after.get("step_overrides") or [])}
+
+    # Collect all touched field IDs (format: "step_id.field_name")
+    all_field_ids = set(before_meta) | set(after_meta) | set(before_field) | set(after_field)
+
+    # Group by step prefix so we can build StepDiff entries
+    step_fields: dict[str, list[str]] = {}
+    for fid in all_field_ids:
+        step_prefix = fid.split(".", 1)[0] if "." in fid else "_global"
+        step_fields.setdefault(step_prefix, []).append(fid)
+
+    for step_id, field_ids in sorted(step_fields.items()):
+        step_diff = StepDiff(step_id=step_id, change_type=ChangeType.MODIFIED)
+
+        for fid in sorted(field_ids):
+            field_diff = _compare_override_field(
+                fid,
+                before_meta.get(fid, {}),
+                after_meta.get(fid, {}),
+                before_field.get(fid, {}),
+                after_field.get(fid, {}),
+            )
+            if field_diff.has_changes():
+                step_diff.field_diffs.append(field_diff)
+
+        if step_diff.has_changes():
+            diff.step_diffs.append(step_diff)
+
+    # Compare step_overrides for title/description changes
+    all_step_ids = set(before_step_ov) | set(after_step_ov)
+    for sid in sorted(all_step_ids):
+        b = before_step_ov.get(sid, {})
+        a = after_step_ov.get(sid, {})
+        if b == a:
+            continue
+        # Find or create a StepDiff for this step
+        existing = next((sd for sd in diff.step_diffs if sd.step_id == sid), None)
+        if existing is None:
+            existing = StepDiff(step_id=sid, change_type=ChangeType.MODIFIED)
+            diff.step_diffs.append(existing)
+        if b.get("title") != a.get("title"):
+            existing.title_changed = True
+            existing.before_title = b.get("title")
+            existing.after_title = a.get("title")
+
+
+def _compare_override_field(
+    field_id: str,
+    before_meta: dict[str, Any],
+    after_meta: dict[str, Any],
+    before_field: dict[str, Any],
+    after_field: dict[str, Any],
+) -> FieldDiff:
+    """Compare a single field across metadata_overrides and field_overrides."""
+    fd = FieldDiff(
+        field_id=field_id,
+        field_type="override",
+        change_type=ChangeType.MODIFIED,
+    )
+
+    # ── value (default) changes from metadata_overrides ──
+    b_default = before_meta.get("default")
+    a_default = after_meta.get("default")
+    if b_default != a_default:
+        fd.value_changed = True
+        fd.before_value = b_default
+        fd.after_value = a_default
+
+    # ── editability / locking changes ──
+    b_edit = before_meta.get("editability")
+    a_edit = after_meta.get("editability")
+    b_lock = before_meta.get("lock_reason")
+    a_lock = after_meta.get("lock_reason")
+    if b_edit != a_edit or b_lock != a_lock:
+        fd.locking_changes = LockingChange(
+            change_type=ChangeType.MODIFIED,
+            before_state=b_edit,
+            after_state=a_edit,
+            before_locked_value=b_lock,
+            after_locked_value=a_lock,
+        )
+
+    # ── hidden changes ──
+    b_hidden = before_meta.get("hidden")
+    a_hidden = after_meta.get("hidden")
+    if b_hidden != a_hidden:
+        fd.hidden_changed = True
+        fd.before_hidden = b_hidden
+        fd.after_hidden = a_hidden
+
+    # ── preset changes from field_overrides ──
+    b_presets = _extract_presets_from_override(before_field)
+    a_presets = _extract_presets_from_override(after_field)
+    if b_presets is not None or a_presets is not None:
+        preset_changes = compare_presets(b_presets, a_presets)
+        if preset_changes:
+            fd.preset_changes = preset_changes
+
+    return fd
+
+
+def _extract_presets_from_override(override: dict[str, Any]) -> list[dict[str, Any]] | None:
+    """Pull the effective preset list from a field_override entry."""
+    if not override:
+        return None
+    # replace_presets_with takes precedence over merge_presets
+    if "replace_presets_with" in override:
+        return override["replace_presets_with"]
+    if "merge_presets" in override:
+        return override["merge_presets"]
+    return None
 
 
 def diff_to_dict(diff: ConfigDiff) -> dict[str, Any]:
