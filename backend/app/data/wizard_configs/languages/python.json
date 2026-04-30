@@ -18,7 +18,7 @@
           "label": "FastAPI",
           "description": "Modern async Python web framework",
           "value": "FastAPI, Pydantic v2, uvicorn, SQLAlchemy 2.x",
-          "mode": "replace",
+          "mode": "overwrite",
           "tags": [
             "python"
           ]
@@ -27,7 +27,7 @@
           "label": "Django",
           "description": "Full-featured Python web framework",
           "value": "Django 5.x, Django REST Framework, Celery",
-          "mode": "replace",
+          "mode": "overwrite",
           "tags": [
             "python"
           ]
@@ -36,7 +36,7 @@
           "label": "Data Science",
           "description": "Data science and ML stack",
           "value": "NumPy, Pandas, scikit-learn, Jupyter",
-          "mode": "replace",
+          "mode": "overwrite",
           "tags": [
             "python"
           ]

@@ -4,29 +4,9 @@ from pathlib import Path
 from typing import Any, cast
 
 from app.models.wizard import WizardConfig, WizardConfigSummary, WizardField
-from app.services.config_loader_composable import load_composable_config
+from app.services.config_loader_composable import load_composable_config, _resolve_preset_files
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
-
-
-def _resolve_preset_files(data: Any) -> Any:
-    if isinstance(data, dict):
-        if "preset_files" in data and isinstance(data["preset_files"], list):
-            presets = list(data.get("presets", []))
-            for preset_path in data["preset_files"]:
-                preset_file = DATA_DIR / preset_path
-                if not preset_file.exists():
-                    raise FileNotFoundError(f"Preset file not found: {preset_file}")
-                with preset_file.open(encoding="utf-8") as f:
-                    file_presets = json.load(f)
-                if not isinstance(file_presets, list):
-                    raise ValueError(f"Preset file must contain a JSON array: {preset_file}")
-                presets.extend(file_presets)
-            data["presets"] = presets
-        return {key: _resolve_preset_files(value) for key, value in data.items()}
-    if isinstance(data, list):
-        return [_resolve_preset_files(value) for value in data]
-    return data
 
 
 def _merge_language_overrides(base_config: dict[str, Any], language_config: dict[str, Any], tool_id: str | None = None) -> dict[str, Any]:
@@ -173,7 +153,7 @@ def _load_all() -> list[WizardConfig]:
                                 # Check if this looks like old format (has step_overrides)
                                 if "step_overrides" in lang_config:
                                     config_data = _merge_language_overrides(config_data, lang_config, tool_id=tool_id)
-                            except:
+                            except Exception:
                                 pass
                     
                     # Resolve preset files
@@ -192,7 +172,7 @@ def _load_all() -> list[WizardConfig]:
                     resolved = _resolve_preset_files(data)
                     configs.append(WizardConfig.model_validate(resolved))
                     loaded_ids.add(config_id)
-            except:
+            except Exception:
                 pass
     
     return configs
@@ -210,7 +190,7 @@ def get_all_configs() -> list[WizardConfigSummary]:
     ]
 
 
-def _strip_hidden_steps(config: WizardConfig) -> WizardConfig:
+def strip_hidden_steps(config: WizardConfig) -> WizardConfig:
     """Return a copy of config with steps marked hidden=True removed."""
     visible = [s for s in config.steps if not s.hidden]
     return config.model_copy(update={"steps": visible})
@@ -219,7 +199,7 @@ def _strip_hidden_steps(config: WizardConfig) -> WizardConfig:
 def get_config(config_id: str) -> WizardConfig | None:
     for config in _load_all():
         if config.id == config_id:
-            return _strip_hidden_steps(config)
+            return strip_hidden_steps(config)
     return None
 
 
@@ -247,7 +227,7 @@ def get_config_with_language_filter(config_id: str, language: str | None) -> Wiz
         config = config_or_none
     
     # Strip hidden steps first
-    config = _strip_hidden_steps(config)
+    config = strip_hidden_steps(config)
 
     # Deep copy to avoid modifying cached config
     config_copy = deepcopy(config)

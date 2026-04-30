@@ -527,43 +527,43 @@
           "label": "Secure baseline",
           "description": "Block .env + disable telemetry",
           "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(./.env)\", \"Read(**/.env.*)\", \"Read(**/secrets/**)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
+          "mode": "overwrite"
         },
         {
           "label": "Hardened security",
           "description": "Block all secrets, keys, and sensitive configs",
           "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\",\n      \"Read(**/*.p12)\",\n      \"Read(**/*.pfx)\",\n      \"Read(**/credentials/**)\",\n      \"Read(**/.aws/**)\",\n      \"Read(**/.ssh/**)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
+          "mode": "overwrite"
         },
         {
           "label": "Audit-friendly",
           "description": "Block secrets + restrict destructive commands",
           "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\",\n      \"Bash(rm -rf*)\",\n      \"Bash(git push*)\",\n      \"Bash(git reset --hard*)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
+          "mode": "overwrite"
         },
         {
           "label": "Read-only mode",
           "description": "Claude can read but not write files",
           "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Write(**)\", \"Edit(**)\", \"MultiEdit(**)\"]\n  }\n}",
-          "mode": "replace"
+          "mode": "overwrite"
         },
         {
           "label": "Enable Grading Tools",
           "description": "Allow Claude to run grading and evaluation tools",
           "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\n      \"Read(./.env)\",\n      \"Read(**/.env.*)\",\n      \"Read(**/secrets/**)\",\n      \"Read(**/*.pem)\",\n      \"Read(**/*.key)\"\n    ],\n    \"allow\": [\n      \"Bash(npx eslint*)\",\n      \"Bash(python -m pylint*)\",\n      \"Bash(npm run grade*)\"\n    ]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
+          "mode": "overwrite"
         },
         {
           "label": "Repository boundaries",
           "description": "Protect generated, vendor, and deployment files at the team level.",
           "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(**/node_modules/**)\", \"Read(**/dist/**)\", \"Read(**/build/**)\", \"Read(**/vendor/**)\", \"Read(**/terraform/**)\", \"Read(**/*.tfstate)\", \"Read(**/*.lock)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"\n  }\n}",
-          "mode": "replace"
+          "mode": "overwrite"
         },
         {
           "label": "Windows compatibility",
           "description": "Add Windows-friendly path and shell handling for mixed environments.",
           "value": "{\n  \"$schema\": \"https://json.schemastore.org/claude-code-settings.json\",\n  \"permissions\": {\n    \"deny\": [\"Read(./.env)\", \"Read(**/.env.*)\", \"Read(**/secrets/**)\"]\n  },\n  \"env\": {\n    \"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\",\n    \"SHELL\": \"bash\"\n  },\n  \"platform_notes\": \"For mixed Windows/macOS teams, prefer shell-safe paths and Git Bash-compatible commands.\"\n}",
-          "mode": "replace"
+          "mode": "overwrite"
         }
       ],
       "_source_tool": "claude"

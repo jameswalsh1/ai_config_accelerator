@@ -1,9 +1,35 @@
+from dataclasses import dataclass, field as dc_field
 from typing import Any, cast
 
 from app.enums import FieldType, OutputFormat
 from app.models.wizard import WizardConfig, WizardField, WizardStep
 
 type Answers = dict[str, dict[str, Any]]
+
+
+@dataclass
+class _RenderStep:
+    """Lightweight stand-in for WizardStep used by rendering helpers."""
+    title: str = ""
+    fields: list[WizardField] = dc_field(default_factory=list)
+    output_format: OutputFormat = OutputFormat.text
+
+
+@dataclass
+class _RenderField:
+    """Lightweight stand-in for WizardField used for legacy repeatable_group rendering."""
+    id: str = ""
+    type: FieldType = FieldType.textarea
+    label: str = ""
+    description: str | None = None
+    placeholder: Any = None
+    required: bool = False
+    render: bool = True
+    locked_value: Any = None
+    default: Any = None
+    rows: int = 4
+    frontmatter: bool = False
+    frontmatter_key: Any = None
 
 
 def _get_selected_language(answers: Answers) -> str | None:
@@ -170,11 +196,6 @@ def _render_agent(agent: dict[str, Any]) -> str:
 
 
 def _render_group_entry(fields: list[WizardField], entry: dict[str, Any], title: str, output_format: OutputFormat) -> str:
-    class TempStep:
-        title: str
-        fields: list[WizardField]
-        output_format: OutputFormat
-
     # Filter out nested fields that are marked `render: false` unless the
     # corresponding include flag (nestedField.id + '__include') is truthy in
     # the entry. This ensures optional fields the user did not opt into are
@@ -188,10 +209,7 @@ def _render_group_entry(fields: list[WizardField], entry: dict[str, Any], title:
                 continue
         filtered_fields.append(f)
 
-    temp_step = TempStep()
-    temp_step.title = title
-    temp_step.fields = filtered_fields
-    temp_step.output_format = output_format
+    temp_step = _RenderStep(title=title, fields=filtered_fields, output_format=output_format)
     
     step = cast(WizardStep, temp_step)
 
@@ -345,51 +363,34 @@ def generate_files(config: WizardConfig, answers: Answers) -> dict[str, str]:
             # type-safe for static checkers.
             step_for_render: WizardStep
             if legacy_present:
-                class TempStepForRender:
-                    title: str
-                    fields: list[WizardField]
-                    output_format: OutputFormat
-
                 temp_fields: list[Any] = []
                 for f in step.fields:
                     if f.type == FieldType.repeatable_group:
-                        class TempField:
-                            id: str
-                            type: FieldType
-                            label: str
-                            description: str | None
-                            placeholder: Any
-                            required: bool
-                            render: bool
-                            locked_value: Any
-                            default: Any
-                            rows: int
-                            frontmatter: bool
-                            frontmatter_key: Any
-
-                        tf = TempField()
-                        tf.id = f.id
-                        tf.type = FieldType.textarea
-                        tf.label = f.label
-                        tf.description = f.description
-                        tf.placeholder = f.placeholder
-                        tf.required = f.required
-                        tf.render = True
-                        tf.locked_value = None
-                        tf.default = None
-                        tf.rows = f.rows if f.rows is not None else 4
-                        tf.frontmatter = False
-                        tf.frontmatter_key = None
+                        tf = _RenderField(
+                            id=f.id,
+                            type=FieldType.textarea,
+                            label=f.label,
+                            description=f.description,
+                            placeholder=f.placeholder,
+                            required=f.required,
+                            render=True,
+                            locked_value=None,
+                            default=None,
+                            rows=f.rows if f.rows is not None else 4,
+                            frontmatter=False,
+                            frontmatter_key=None,
+                        )
                         temp_fields.append(tf)
                     else:
                         temp_fields.append(f)
 
-                temp_step = TempStepForRender()
-                temp_step.title = step.title
-                temp_step.fields = temp_fields
-                temp_step.output_format = step.output_format
+                render_step = _RenderStep(
+                    title=step.title,
+                    fields=temp_fields,
+                    output_format=step.output_format,
+                )
 
-                step_for_render = cast(WizardStep, temp_step)
+                step_for_render = cast(WizardStep, render_step)
             else:
                 step_for_render = step
 

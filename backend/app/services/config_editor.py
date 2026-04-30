@@ -173,16 +173,3 @@ def _extract_source_tracking(step: dict[str, Any]) -> dict[str, Any]:
         "default_fields": default_count,
         "overridden_fields": overridden_count,
     }
-
-
-def get_field_override_chain(
-    config: dict[str, Any], step_id: str, field_id: str
-) -> dict[str, Any]:
-    """
-    Get the complete override chain for a specific field showing how it evolved.
-    
-    Returns values from each layer: schema -> tool -> language -> combo
-    """
-    # This is a more advanced feature - shows the progression of the field
-    # through each override layer. Implementation can be added later if needed.
-    raise NotImplementedError("Override chain tracking coming in future release")

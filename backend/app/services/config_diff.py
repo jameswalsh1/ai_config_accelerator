@@ -224,27 +224,6 @@ class ConfigDiff:
         return count
 
 
-def compare_values(before: Any, after: Any) -> tuple[bool, Optional[str], Optional[str]]:
-    """
-    Compare two values and return change status.
-    
-    Returns:
-        Tuple of (changed, before_str, after_str) where strings are None if values unchanged
-    """
-    # Normalize for comparison
-    before_norm = before
-    after_norm = after
-    
-    if before_norm == after_norm:
-        return False, None, None
-    
-    # Convert to strings for display
-    before_str = str(before_norm) if before_norm is not None else None
-    after_str = str(after_norm) if after_norm is not None else None
-    
-    return True, before_str, after_str
-
-
 def extract_field_dict(field_obj: dict[str, Any]) -> dict[str, Any]:
     """Extract field data for comparison."""
     return {

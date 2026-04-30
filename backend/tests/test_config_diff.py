@@ -89,13 +89,13 @@ class TestPresetComparison:
     def test_preset_mode_modified(self):
         """Test detection of modified preset mode."""
         before = [{"label": "Python", "value": "python", "mode": "append"}]
-        after = [{"label": "Python", "value": "python", "mode": "replace"}]
+        after = [{"label": "Python", "value": "python", "mode": "overwrite"}]
         
         changes = compare_presets(before, after)
         assert len(changes) == 1
         assert changes[0].change_type == ChangeType.MODIFIED
         assert changes[0].before_mode == "append"
-        assert changes[0].after_mode == "replace"
+        assert changes[0].after_mode == "overwrite"
     
     def test_multiple_preset_changes(self):
         """Test detection of multiple preset changes."""

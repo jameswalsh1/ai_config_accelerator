@@ -741,6 +741,8 @@ class TestConfigUpdateEndpoint:
         payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "changes": {
@@ -755,6 +757,8 @@ class TestConfigUpdateEndpoint:
         payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "changes": {
@@ -774,6 +778,8 @@ class TestConfigUpdateEndpoint:
         payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "changes": {
@@ -809,6 +815,8 @@ class TestConfigUpdateEndpoint:
         payload = {
             "scope": "invalid",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "changes": {"default": "javascript"}
@@ -820,6 +828,8 @@ class TestConfigUpdateEndpoint:
         payload = {
             "scope": "language",
             "target": "nonexistent",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "changes": {"default": "javascript"}
@@ -835,6 +845,8 @@ class TestPresetEndpoints:
         payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "preset": {
@@ -850,6 +862,8 @@ class TestPresetEndpoints:
         payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "preset": {
@@ -868,6 +882,8 @@ class TestPresetEndpoints:
         payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "preset": {
@@ -885,6 +901,8 @@ class TestPresetEndpoints:
         add_payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "preset": {
@@ -899,6 +917,8 @@ class TestPresetEndpoints:
         remove_payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "preset_label": "Preset to Remove"
@@ -911,6 +931,8 @@ class TestPresetEndpoints:
         add_payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "preset": {
@@ -925,6 +947,8 @@ class TestPresetEndpoints:
         remove_payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "position": 0
@@ -933,7 +957,7 @@ class TestPresetEndpoints:
         assert response.status_code == 200
     
     def test_add_preset_returns_400_for_missing_required_fields(self):
-        # Missing preset
+        # Missing preset (and tool/language)
         payload = {
             "scope": "language",
             "target": "python",
@@ -947,6 +971,8 @@ class TestPresetEndpoints:
         payload = {
             "scope": "language",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language"
         }
@@ -957,6 +983,8 @@ class TestPresetEndpoints:
         payload = {
             "scope": "invalid",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "preset": {
@@ -971,6 +999,8 @@ class TestPresetEndpoints:
         payload = {
             "scope": "invalid",
             "target": "python",
+            "tool": "claude",
+            "language": "python",
             "step_id": "language_selection",
             "field_id": "language",
             "preset_label": "Test"

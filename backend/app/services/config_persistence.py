@@ -10,7 +10,10 @@ Implements safe, atomic persistence of configuration changes with:
 """
 
 import json
+import os
+import re
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 from copy import deepcopy
@@ -262,7 +265,6 @@ def save_config(
         temp_path = Path(temp_path_str)
         
         # Close the file descriptor first
-        import os
         os.close(temp_fd)
         
         # Write JSON to temp file
@@ -482,7 +484,6 @@ def create_language_config(
         ValidationError: If language_id already exists or is invalid.
         PersistenceError: If the file cannot be written.
     """
-    import re
 
     if not re.fullmatch(r"[a-z0-9][a-z0-9\-]*", language_id):
         raise ValidationError(
@@ -672,7 +673,6 @@ class ConfigTransaction:
                 temp_path = Path(temp_path_str)
                 
                 # Close the file descriptor
-                import os
                 os.close(temp_fd)
                 
                 with temp_path.open("w", encoding="utf-8") as f:
@@ -740,7 +740,6 @@ def _snapshot_dir(scope: str, target: str) -> Path:
 
 def _slugify(name: str) -> str:
     """Convert a human name to a filename-safe slug."""
-    import re
     slug = name.lower().strip()
     slug = re.sub(r"[^a-z0-9]+", "-", slug)
     slug = slug.strip("-")
@@ -749,7 +748,6 @@ def _slugify(name: str) -> str:
 
 def _make_snapshot_id(name: str) -> str:
     """Generate a sortable, unique snapshot ID from a name."""
-    from datetime import datetime, timezone
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     return f"{ts}_{_slugify(name)}"
 
@@ -781,7 +779,6 @@ def create_snapshot(scope: str, target: str, name: str) -> dict[str, Any]:
 
     snapshot_id = _make_snapshot_id(name)
 
-    from datetime import datetime, timezone
     meta: dict[str, Any] = {
         "snapshot_id": snapshot_id,
         "name": name,
@@ -798,7 +795,6 @@ def create_snapshot(scope: str, target: str, name: str) -> dict[str, Any]:
 
     try:
         # Write atomically
-        import os
         temp_fd, temp_path_str = tempfile.mkstemp(dir=snap_dir, prefix=".tmp_", suffix=".json")
         temp_path = Path(temp_path_str)
         os.close(temp_fd)

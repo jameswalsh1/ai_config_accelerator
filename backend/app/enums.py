@@ -27,5 +27,5 @@ class OutputFormat(StrEnum):
 
 class PresetMode(StrEnum):
     append = "append"  # concat to existing text (text / textarea)
-    replace = "replace"  # type: ignore[assignment]  # shadows str.replace; intentional StrEnum value
+    overwrite = "overwrite"  # replace entire field value
     merge_json = "merge_json"  # deep-merge JSON objects (verbatim JSON fields)
