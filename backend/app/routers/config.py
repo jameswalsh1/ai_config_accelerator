@@ -488,9 +488,10 @@ def create_language(
 ) -> dict[str, Any]:
     """Create a new language configuration.
 
+    The language_id is derived automatically from the title.
+
     Payload:
         {
-            "language_id": "python-datascience",
             "title": "Python – Data Science",
             "description": "NumPy, pandas, PyTorch stack",
             "based_on": "python"  // optional — copy overrides from existing language
@@ -500,17 +501,14 @@ def create_language(
         The newly created language config dict.
 
     Raises:
-        HTTPException 400: language_id invalid or already exists
+        HTTPException 400: title missing, derived id invalid or already exists
         HTTPException 500: Write failure
     """
-    language_id = payload.get("language_id", "").strip()
     title = payload.get("title", "").strip()
     description = payload.get("description", "").strip()
     based_on = payload.get("based_on") or None
     tag_remap_raw = payload.get("tag_remap")  # dict[str, str] or None
 
-    if not language_id:
-        raise HTTPException(status_code=400, detail="language_id is required")
     if not title:
         raise HTTPException(status_code=400, detail="title is required")
     if tag_remap_raw is not None and not isinstance(tag_remap_raw, dict):
@@ -518,7 +516,6 @@ def create_language(
 
     try:
         new_config = create_language_config(
-            language_id=language_id,
             title=title,
             description=description,
             based_on=based_on,

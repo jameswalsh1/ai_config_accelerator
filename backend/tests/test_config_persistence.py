@@ -478,32 +478,31 @@ class TestCreateLanguageConfig:
     def test_create_scratch(self):
         """Create a brand new language with no based_on."""
         from app.services.config_persistence import create_language_config
-        lid = "test-scratch-lang"
-        result = create_language_config(lid, "Test Scratch Lang")
-        assert result["language_id"] == lid
+        result = create_language_config("Test Scratch Lang")
+        assert result["language_id"] == "test-scratch-lang"
         assert result["metadata"]["title"] == "Test Scratch Lang"
         assert result["field_overrides"] == []
         assert result["metadata_overrides"] == []
         assert result["step_overrides"] == []
-        assert (self.LANGUAGES_DIR / f"{lid}.json").exists()
+        assert (self.LANGUAGES_DIR / "test-scratch-lang.json").exists()
 
     def test_create_invalid_id_raises(self):
-        """language_id with invalid chars raises ValidationError."""
+        """Title that produces an empty slug raises ValidationError."""
         from app.services.config_persistence import create_language_config, ValidationError
-        with pytest.raises(ValidationError, match="lowercase alphanumeric"):
-            create_language_config("Bad ID!", "title")
+        with pytest.raises(ValidationError):
+            create_language_config("!!!")
 
     def test_create_duplicate_raises(self):
         """Creating a language that already exists raises ValidationError."""
         from app.services.config_persistence import create_language_config, ValidationError
         with pytest.raises(ValidationError, match="already exists"):
-            create_language_config("python", "Python duplicate")
+            create_language_config("Python")
 
     def test_create_based_on_copies_all_sections(self):
         """based_on copies field_overrides, metadata_overrides AND step_overrides."""
         from app.services.config_persistence import create_language_config
-        lid = "test-clone-all-sections"
-        result = create_language_config(lid, "Clone All Sections", based_on="python")
+        result = create_language_config("Test Clone All Sections", based_on="python")
+        lid = result["language_id"]
         # All three override sections should be copied
         assert isinstance(result["field_overrides"], list)
         assert isinstance(result["metadata_overrides"], list)
@@ -514,8 +513,7 @@ class TestCreateLanguageConfig:
     def test_create_based_on_default_tag_retag(self):
         """Default tag remap: presets tagged 'python' become the new language_id."""
         from app.services.config_persistence import create_language_config
-        lid = "test-retag-default"
-        result = create_language_config(lid, "Retag Default", based_on="python")
+        result = create_language_config("Test Retag Default", based_on="python")
         for fo in result["field_overrides"]:
             for preset in fo.get("merge_presets", []):
                 assert "python" not in preset.get("tags", [])
@@ -523,9 +521,8 @@ class TestCreateLanguageConfig:
     def test_create_based_on_explicit_tag_remap(self):
         """Explicit tag_remap overrides the default behaviour."""
         from app.services.config_persistence import create_language_config
-        lid = "test-explicit-remap"
         result = create_language_config(
-            lid, "Explicit Remap", based_on="python",
+            "Test Explicit Remap", based_on="python",
             tag_remap={"python": "django"}
         )
         for fo in result["field_overrides"]:
@@ -535,9 +532,8 @@ class TestCreateLanguageConfig:
     def test_create_based_on_empty_tag_remap_no_retag(self):
         """Passing an empty tag_remap dict means no tags are renamed."""
         from app.services.config_persistence import create_language_config
-        lid = "test-no-remap"
         result = create_language_config(
-            lid, "No Remap", based_on="python",
+            "Test No Remap", based_on="python",
             tag_remap={}
         )
         # With empty remap, 'python' tags stay as 'python'
@@ -605,17 +601,15 @@ class TestLanguageTagsEndpoint:
         """POST /config/languages with tag_remap applies remapping."""
         from fastapi.testclient import TestClient
         from app.main import app
-        lid = "test-route-tag-remap"
         client = TestClient(app)
         resp = client.post("/config/languages", json={
-            "language_id": lid,
-            "title": "Route Tag Remap Test",
+            "title": "Test Route Tag Remap",
             "based_on": "python",
             "tag_remap": {"python": "django"},
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["language_id"] == lid
+        assert data["language_id"] == "test-route-tag-remap"
 
     def test_create_language_invalid_tag_remap(self):
         """POST /config/languages with non-dict tag_remap returns 400."""
@@ -623,7 +617,6 @@ class TestLanguageTagsEndpoint:
         from app.main import app
         client = TestClient(app)
         resp = client.post("/config/languages", json={
-            "language_id": "test-bad-remap",
             "title": "Bad Remap",
             "tag_remap": ["not", "a", "dict"],
         })

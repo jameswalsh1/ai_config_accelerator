@@ -480,8 +480,17 @@ def get_language_tags(language_id: str) -> list[str]:
     return sorted(tags)
 
 
+def _slugify(title: str) -> str:
+    """Derive a language_id from a display title.
+
+    Lowercases, replaces non-alphanumeric runs with hyphens, strips leading/
+    trailing hyphens.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return slug
+
+
 def create_language_config(
-    language_id: str,
     title: str,
     description: str = "",
     based_on: str | None = None,
@@ -489,6 +498,9 @@ def create_language_config(
 ) -> dict[str, Any]:
     """
     Create a new language configuration file.
+
+    The ``language_id`` is derived automatically from ``title`` by slugifying
+    it (lowercase, non-alphanumeric characters replaced with hyphens).
 
     Scaffolds a valid languages/{language_id}.json, optionally copying all
     override sections from an existing language as a starting point.
@@ -500,8 +512,6 @@ def create_language_config(
     "py": "dj"}``).
 
     Args:
-        language_id: Unique identifier (e.g. 'python-datascience', 'haskell').
-                     Must be lowercase, alphanumeric, hyphens allowed.
         title: Human-readable display name (e.g. 'Python – Data Science').
         description: Optional description shown in the UI.
         based_on: Optional existing language_id to copy overrides from.
@@ -509,12 +519,13 @@ def create_language_config(
                    preset in all override sections.
 
     Returns:
-        The newly created config dict.
+        The newly created config dict (includes the derived ``language_id``).
 
     Raises:
-        ValidationError: If language_id already exists or is invalid.
+        ValidationError: If derived language_id is invalid or already exists.
         PersistenceError: If the file cannot be written.
     """
+    language_id = _slugify(title)
 
     if not re.fullmatch(r"[a-z0-9][a-z0-9\-]*", language_id):
         raise ValidationError(

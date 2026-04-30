@@ -122,7 +122,6 @@ export async function fetchAvailableLanguages(): Promise<LanguageOption[]> {
 }
 
 export interface CreateLanguagePayload {
-  language_id: string
   title: string
   description?: string
   based_on?: string

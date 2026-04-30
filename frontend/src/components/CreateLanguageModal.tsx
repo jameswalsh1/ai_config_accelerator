@@ -17,10 +17,8 @@ function slugify(value: string): string {
 
 export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: CreateLanguageModalProps) {
   const [title, setTitle] = useState('')
-  const [languageId, setLanguageId] = useState('')
   const [description, setDescription] = useState('')
   const [basedOn, setBasedOn] = useState('')
-  const [idManuallyEdited, setIdManuallyEdited] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,9 +28,12 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
   // tagRemap: entries the user has configured — { from: string, to: string }
   const [tagRemap, setTagRemap] = useState<Array<{ from: string; to: string }>>([])
 
+  // Derived language ID shown as a preview
+  const derivedId = slugify(title)
+
   // Refs to read current values without adding them as effect dependencies
-  const languageIdRef = useRef(languageId)
-  languageIdRef.current = languageId
+  const derivedIdRef = useRef(derivedId)
+  derivedIdRef.current = derivedId
   const basedOnRef = useRef(basedOn)
   basedOnRef.current = basedOn
 
@@ -47,11 +48,8 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
     fetchLanguageTags(basedOn)
       .then(tags => {
         setSourceTags(tags)
-        // Pre-populate remap: each tag defaults to mapping to itself (no change).
-        // The "from" default is the source tag; "to" defaults to languageId if the
-        // tag equals basedOn, otherwise same as from.
-        const currentLangId = languageIdRef.current
-        setTagRemap(tags.map(t => ({ from: t, to: t === basedOn ? (currentLangId || t) : t })))
+        const currentId = derivedIdRef.current
+        setTagRemap(tags.map(t => ({ from: t, to: t === basedOn ? (currentId || t) : t })))
       })
       .catch(() => {
         setSourceTags([])
@@ -60,29 +58,17 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
       .finally(() => setTagsLoading(false))
   }, [basedOn])
 
-  // When languageId changes, update any remap "to" that was auto-set from basedOn
+  // When derived ID changes, update any remap "to" that was auto-set from basedOn
   useEffect(() => {
     const currentBasedOn = basedOnRef.current
     if (!currentBasedOn) return
     setTagRemap(prev => {
       if (prev.length === 0) return prev
       return prev.map(entry =>
-        entry.from === currentBasedOn && entry.to === currentBasedOn ? { ...entry, to: languageId || currentBasedOn } : entry
+        entry.from === currentBasedOn && entry.to === currentBasedOn ? { ...entry, to: derivedId || currentBasedOn } : entry
       )
     })
-  }, [languageId])
-
-  const handleTitleChange = (value: string) => {
-    setTitle(value)
-    if (!idManuallyEdited) {
-      setLanguageId(slugify(value))
-    }
-  }
-
-  const handleIdChange = (value: string) => {
-    setLanguageId(value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
-    setIdManuallyEdited(true)
-  }
+  }, [derivedId])
 
   const handleTagToChange = (index: number, value: string) => {
     setTagRemap(prev => prev.map((entry, i) => i === index ? { ...entry, to: value.toLowerCase().replace(/[^a-z0-9-]/g, '') } : entry))
@@ -102,10 +88,8 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
     setError(null)
 
     if (!title.trim()) { setError('Title is required'); return }
-    if (!languageId.trim()) { setError('Language ID is required'); return }
 
     const payload: CreateLanguagePayload = {
-      language_id: languageId.trim(),
       title: title.trim(),
       description: description.trim() || undefined,
       based_on: basedOn || undefined,
@@ -191,32 +175,16 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
               id="lang-title"
               type="text"
               value={title}
-              onChange={e => handleTitleChange(e.target.value)}
+              onChange={e => setTitle(e.target.value)}
               placeholder="e.g. Python – Data Science"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               autoFocus
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Shown in the language dropdown throughout the app.
-            </p>
-          </div>
-
-          {/* Language ID */}
-          <div>
-            <label htmlFor="lang-id" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Language ID <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="lang-id"
-              type="text"
-              value={languageId}
-              onChange={e => handleIdChange(e.target.value)}
-              placeholder="e.g. python-datascience"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Unique slug used in config files. Lowercase, alphanumeric, hyphens only.
-            </p>
+            {derivedId && (
+              <p className="mt-1 text-xs text-gray-500">
+                ID: <span className="font-mono text-gray-700">{derivedId}</span>
+              </p>
+            )}
           </div>
 
           {/* Description */}
@@ -242,7 +210,7 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
                 <span className="text-sm font-medium text-indigo-900">Preset tag remapping</span>
               </div>
               <p className="text-xs text-indigo-700">
-                Presets from <strong>{sourceLanguageTitle}</strong> will be copied. Rename any tags that should differ in the new language (e.g. <code className="font-mono bg-white/60 px-1 rounded">{basedOn}</code> → <code className="font-mono bg-white/60 px-1 rounded">{languageId || 'new-id'}</code>).
+                Presets from <strong>{sourceLanguageTitle}</strong> will be copied. Rename any tags that should differ in the new language (e.g. <code className="font-mono bg-white/60 px-1 rounded">{basedOn}</code> → <code className="font-mono bg-white/60 px-1 rounded">{derivedId || 'new-id'}</code>).
               </p>
 
               {tagsLoading && (
