@@ -26,8 +26,20 @@
         "label": "Agent files"
       },
       {
-        "target": "skills",
+        "target": "skill_definitions",
         "label": "Skill files"
+      },
+      {
+        "target": "build_test_commands",
+        "label": ".claude/build_test_commands.json"
+      },
+      {
+        "target": "verification_policy",
+        "label": ".claude/verification_policy.json"
+      },
+      {
+        "target": "hooks",
+        "label": ".claude/hooks/"
       }
     ],
     "file_classification": {
@@ -111,10 +123,6 @@
     },
     {
       "step_id": "rule_files",
-      "hidden": true
-    },
-    {
-      "step_id": "hooks",
       "hidden": true
     }
   ]
