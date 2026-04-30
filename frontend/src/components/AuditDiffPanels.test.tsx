@@ -77,21 +77,15 @@ describe('DiffRow', () => {
 describe('FieldDiffPanel', () => {
   function makeDiff(overrides: Partial<AuditFieldDiff> = {}): AuditFieldDiff {
     return {
-      field_id: 'test_field',
-      field_type: 'text',
-      change_type: 'modified',
-      value_changed: false,
-      before_value: null,
-      after_value: null,
-      label_changed: false,
-      before_label: null,
-      after_label: null,
-      description_changed: false,
-      preset_changes: [],
-      locking_changes: null,
-      hidden_changed: false,
-      before_hidden: null,
-      after_hidden: null,
+      id: 'test_field',
+      type: 'text',
+      changes: 'modified',
+      value: null,
+      label: null,
+      description: null,
+      presets: null,
+      locking: null,
+      hidden: null,
       ...overrides,
     }
   }
@@ -105,9 +99,7 @@ describe('FieldDiffPanel', () => {
     render(
       <FieldDiffPanel
         fd={makeDiff({
-          value_changed: true,
-          before_value: 'old',
-          after_value: 'new',
+          value: { changed: true, before: 'old', after: 'new' },
         })}
       />
     )
@@ -119,8 +111,8 @@ describe('FieldDiffPanel', () => {
     render(
       <FieldDiffPanel
         fd={makeDiff({
-          locking_changes: {
-            change_type: 'modified',
+          locking: {
+            changed: true,
             before_state: 'free',
             after_state: 'locked',
           },
@@ -134,9 +126,7 @@ describe('FieldDiffPanel', () => {
     render(
       <FieldDiffPanel
         fd={makeDiff({
-          value_changed: true,
-          before_value: 'old_val',
-          after_value: 'new_val',
+          value: { changed: true, before: 'old_val', after: 'new_val' },
         })}
       />
     )
@@ -153,9 +143,9 @@ describe('FieldDiffPanel', () => {
     render(
       <FieldDiffPanel
         fd={makeDiff({
-          preset_changes: [
-            { change_type: 'added', label: 'preset1', before_value: null, after_value: 'x' },
-            { change_type: 'added', label: 'preset2', before_value: null, after_value: 'y' },
+          presets: [
+            { type: 'added', label: 'preset1', before: null, after: { value: 'x', mode: null } },
+            { type: 'added', label: 'preset2', before: null, after: { value: 'y', mode: null } },
           ],
         })}
       />
@@ -167,17 +157,15 @@ describe('FieldDiffPanel', () => {
 describe('StepDiffPanel', () => {
   function makeStepDiff(overrides: Partial<AuditStepDiff> = {}): AuditStepDiff {
     return {
-      step_id: 'test_step',
-      change_type: 'modified',
-      title_changed: false,
-      before_title: null,
-      after_title: null,
-      description_changed: false,
-      before_description: null,
-      after_description: null,
-      fields_added: [],
-      fields_removed: [],
-      field_diffs: [],
+      id: 'test_step',
+      changes: 'modified',
+      title: null,
+      description: null,
+      fields: {
+        added: [],
+        removed: [],
+        modified: [],
+      },
       ...overrides,
     }
   }
@@ -186,8 +174,11 @@ describe('StepDiffPanel', () => {
     render(
       <StepDiffPanel
         sd={makeStepDiff({
-          fields_added: ['new_field'],
-          fields_removed: ['old_field'],
+          fields: {
+            added: ['new_field'],
+            removed: ['old_field'],
+            modified: [],
+          },
         })}
       />
     )
@@ -199,7 +190,11 @@ describe('StepDiffPanel', () => {
     render(
       <StepDiffPanel
         sd={makeStepDiff({
-          fields_added: ['new_field'],
+          fields: {
+            added: ['new_field'],
+            removed: [],
+            modified: [],
+          },
         })}
       />
     )
@@ -210,8 +205,11 @@ describe('StepDiffPanel', () => {
     render(
       <StepDiffPanel
         sd={makeStepDiff({
-          fields_added: ['added_field'],
-          fields_removed: ['removed_field'],
+          fields: {
+            added: ['added_field'],
+            removed: ['removed_field'],
+            modified: [],
+          },
         })}
       />
     )

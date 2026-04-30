@@ -22,6 +22,21 @@
     {
       "field_id": "claude_md.tech_stack",
       "default": ""
+    },
+    {
+      "field_id": "rule_files.rules",
+      "default": [
+        {
+          "rule_file_name": "",
+          "rule_file_name__include": false,
+          "rule_type": "core",
+          "rule_activation": "file_matched",
+          "description": "",
+          "globs": "",
+          "always_apply": false,
+          "rules_content": ""
+        }
+      ]
     }
   ],
   "field_overrides": [

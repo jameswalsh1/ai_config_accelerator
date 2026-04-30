@@ -35,21 +35,21 @@ function AuditEntryRow({ entry }: { entry: AuditEntry }) {
   const hasChanges = diff?.has_changes
 
   const modifiedSteps = diff?.steps?.modified?.filter(sd => {
-    const fields = sd.field_diffs.filter(
+    const fields = (sd.fields?.modified ?? []).filter(
       fd =>
-        fd.value_changed ||
-        fd.label_changed ||
-        fd.description_changed ||
-        fd.hidden_changed ||
-        fd.preset_changes.length > 0 ||
-        fd.locking_changes != null,
+        fd.value?.changed ||
+        fd.label?.changed ||
+        fd.description?.changed ||
+        fd.hidden?.changed ||
+        (fd.presets?.length ?? 0) > 0 ||
+        fd.locking != null,
     )
     return (
       fields.length > 0 ||
-      sd.fields_added.length > 0 ||
-      sd.fields_removed.length > 0 ||
-      sd.title_changed ||
-      sd.description_changed
+      (sd.fields?.added?.length ?? 0) > 0 ||
+      (sd.fields?.removed?.length ?? 0) > 0 ||
+      sd.title?.changed ||
+      sd.description?.changed
     )
   }) ?? []
 
@@ -119,25 +119,25 @@ function AuditEntryRow({ entry }: { entry: AuditEntry }) {
           )}
 
           {/* Config-level metadata changes */}
-          {(diff?.metadata_changes?.title || diff?.metadata_changes?.description) && (
+          {(diff?.metadata_changes?.title?.changed || diff?.metadata_changes?.description?.changed) && (
             <div className="space-y-1">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Config metadata</p>
-              {diff.metadata_changes.title && (
-                <DiffRow label="Title" before={null} after={diff.metadata_changes.title} />
+              {diff.metadata_changes.title?.changed && (
+                <DiffRow label="Title" before={diff.metadata_changes.title.before} after={diff.metadata_changes.title.after} />
               )}
-              {diff.metadata_changes.description && (
-                <DiffRow label="Description" before={null} after={diff.metadata_changes.description} />
+              {diff.metadata_changes.description?.changed && (
+                <DiffRow label="Description" before={diff.metadata_changes.description.before} after={diff.metadata_changes.description.after} />
               )}
             </div>
           )}
 
           {/* Added / removed steps */}
-          {diff?.steps?.added?.length > 0 && (
+          {(diff?.steps?.added?.length ?? 0) > 0 && (
             <div className="rounded bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800">
               <strong>Steps added:</strong> {diff.steps.added.join(', ')}
             </div>
           )}
-          {diff?.steps?.removed?.length > 0 && (
+          {(diff?.steps?.removed?.length ?? 0) > 0 && (
             <div className="rounded bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-800">
               <strong>Steps removed:</strong> {diff.steps.removed.join(', ')}
             </div>

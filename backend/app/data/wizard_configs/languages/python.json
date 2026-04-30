@@ -3,7 +3,7 @@
   "version": "1.0",
   "metadata": {
     "title": "Python",
-    "description": "Python 3.13+ — FastAPI, Django, or data science"
+    "description": "Python 3.13+ \u2014 FastAPI, Django, or data science"
   },
   "applies_to": {
     "languages": [
@@ -50,7 +50,7 @@
         {
           "label": "Python PEP 8 + Type Hints",
           "description": "Strict PEP 8 compliance with comprehensive type hints",
-          "value": "## Code Style & PEP 8\n- Follow PEP 8 strictly (line length: 88 chars for Black compatibility)\n- Use Black for auto-formatting: `black --line-length=88 .`\n- Use isort for import organization: `isort .`\n- Imports: Sort in groups (stdlib → third-party → local), one per line\n\n## Type Hints & Annotations\n- Type hint ALL function signatures and return types\n- Use `from typing import` for complex types (Union, Optional, Callable, etc.)\n- Use `from typing_extensions import` for Python 3.10+ features\n- Use `from collections.abc import` for collection ABCs\n- Example: `def process_data(items: list[str], count: int = 0) -> dict[str, Any]:`\n\n## Naming & Structure\n- Constants: `UPPER_SNAKE_CASE`\n- Functions/methods: `lower_snake_case`\n- Classes: `PascalCase`\n- Private: prefix with `_` (e.g., `_internal_helper`)\n- Modules: descriptive `lower_snake_case` names\n\n## Best Practices\n- Use f-strings: `f\"{var} = {value}\"`\n- Use pathlib for file operations: `from pathlib import Path`\n- Use context managers: `with open(file) as f:`\n- Use list/dict comprehensions for clarity\n- Prefer dataclasses over namedtuples: `from dataclasses import dataclass`\n- Use Pydantic for data validation: `from pydantic import BaseModel, Field`",
+          "value": "## Code Style & PEP 8\n- Follow PEP 8 strictly (line length: 88 chars for Black compatibility)\n- Use Black for auto-formatting: `black --line-length=88 .`\n- Use isort for import organization: `isort .`\n- Imports: Sort in groups (stdlib \u2192 third-party \u2192 local), one per line\n\n## Type Hints & Annotations\n- Type hint ALL function signatures and return types\n- Use `from typing import` for complex types (Union, Optional, Callable, etc.)\n- Use `from typing_extensions import` for Python 3.10+ features\n- Use `from collections.abc import` for collection ABCs\n- Example: `def process_data(items: list[str], count: int = 0) -> dict[str, Any]:`\n\n## Naming & Structure\n- Constants: `UPPER_SNAKE_CASE`\n- Functions/methods: `lower_snake_case`\n- Classes: `PascalCase`\n- Private: prefix with `_` (e.g., `_internal_helper`)\n- Modules: descriptive `lower_snake_case` names\n\n## Best Practices\n- Use f-strings: `f\"{var} = {value}\"`\n- Use pathlib for file operations: `from pathlib import Path`\n- Use context managers: `with open(file) as f:`\n- Use list/dict comprehensions for clarity\n- Prefer dataclasses over namedtuples: `from dataclasses import dataclass`\n- Use Pydantic for data validation: `from pydantic import BaseModel, Field`",
           "mode": "append",
           "tags": [
             "python"
@@ -170,7 +170,7 @@
         {
           "label": "Python PEP 8 + Type Hints",
           "description": "Strict PEP 8 compliance with comprehensive type hints",
-          "value": "## Code Style & PEP 8\n- Follow PEP 8 strictly (line length: 88 chars for Black compatibility)\n- Use Black for auto-formatting: `black --line-length=88 .`\n- Use isort for import organization: `isort .`\n- Imports: Sort in groups (stdlib → third-party → local), one per line\n\n## Type Hints & Annotations\n- Type hint ALL function signatures and return types\n- Use `from typing import` for complex types (Union, Optional, Callable, etc.)\n- Use `from typing_extensions import` for Python 3.10+ features\n- Use `from collections.abc import` for collection ABCs\n- Example: `def process_data(items: list[str], count: int = 0) -> dict[str, Any]:`\n\n## Naming & Structure\n- Constants: `UPPER_SNAKE_CASE`\n- Functions/methods: `lower_snake_case`\n- Classes: `PascalCase`\n- Private: prefix with `_` (e.g., `_internal_helper`)\n- Modules: descriptive `lower_snake_case` names",
+          "value": "## Code Style & PEP 8\n- Follow PEP 8 strictly (line length: 88 chars for Black compatibility)\n- Use Black for auto-formatting: `black --line-length=88 .`\n- Use isort for import organization: `isort .`\n- Imports: Sort in groups (stdlib \u2192 third-party \u2192 local), one per line\n\n## Type Hints & Annotations\n- Type hint ALL function signatures and return types\n- Use `from typing import` for complex types (Union, Optional, Callable, etc.)\n- Use `from typing_extensions import` for Python 3.10+ features\n- Use `from collections.abc import` for collection ABCs\n- Example: `def process_data(items: list[str], count: int = 0) -> dict[str, Any]:`\n\n## Naming & Structure\n- Constants: `UPPER_SNAKE_CASE`\n- Functions/methods: `lower_snake_case`\n- Classes: `PascalCase`\n- Private: prefix with `_` (e.g., `_internal_helper`)\n- Modules: descriptive `lower_snake_case` names",
           "mode": "append",
           "tags": [
             "python"
@@ -214,6 +214,10 @@
     {
       "field_id": "claude_md.coding_conventions",
       "default": "PEP8+Black"
+    },
+    {
+      "field_id": "claude_md.task_workflow_hints",
+      "default": "Test isn't a test"
     }
   ],
   "step_overrides": [

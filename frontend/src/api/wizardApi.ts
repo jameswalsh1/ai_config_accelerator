@@ -344,8 +344,8 @@ export interface AuditDiff {
   has_changes: boolean
   total_changes: number
   metadata_changes: {
-    title: string | null
-    description: string | null
+    title: { changed: boolean; before: string | null; after: string | null } | null
+    description: { changed: boolean; before: string | null; after: string | null } | null
   }
   steps: {
     added: string[]
@@ -355,46 +355,38 @@ export interface AuditDiff {
 }
 
 export interface AuditStepDiff {
-  step_id: string
-  change_type: string
-  title_changed: boolean
-  before_title: string | null
-  after_title: string | null
-  description_changed: boolean
-  before_description: string | null
-  after_description: string | null
-  fields_added: string[]
-  fields_removed: string[]
-  field_diffs: AuditFieldDiff[]
+  id: string
+  changes: string
+  title: { changed: boolean; before: string | null; after: string | null } | null
+  description: { changed: boolean; before: string | null; after: string | null } | null
+  fields: {
+    added: string[]
+    removed: string[]
+    modified: AuditFieldDiff[]
+  }
 }
 
 export interface AuditFieldDiff {
-  field_id: string
-  field_type: string
-  change_type: string
-  value_changed: boolean
-  before_value: unknown
-  after_value: unknown
-  label_changed: boolean
-  before_label: string | null
-  after_label: string | null
-  description_changed: boolean
-  preset_changes: AuditPresetChange[]
-  locking_changes: AuditLockingChange | null
-  hidden_changed: boolean
-  before_hidden: boolean | null
-  after_hidden: boolean | null
+  id: string
+  type: string
+  changes: string
+  value: { changed: boolean; before: unknown; after: unknown } | null
+  label: { changed: boolean; before: string | null; after: string | null } | null
+  description: { changed: boolean; before: string | null; after: string | null } | null
+  hidden: { changed: boolean; before: boolean | null; after: boolean | null } | null
+  presets: AuditPresetChange[] | null
+  locking: AuditLockingChange | null
 }
 
 export interface AuditPresetChange {
-  change_type: string
+  type: string
   label: string
-  before_value: unknown
-  after_value: unknown
+  before: { value: unknown; mode: string | null } | null
+  after: { value: unknown; mode: string | null } | null
 }
 
 export interface AuditLockingChange {
-  change_type: string
+  changed: boolean
   before_state: string | null
   after_state: string | null
 }

@@ -114,14 +114,7 @@
           ]
         }
       ],
-      "merge_mode": "append",
-      "replace_presets_with": [
-        {
-          "label": "PEP8",
-          "value": "Only use pep8 standards",
-          "mode": "replace"
-        }
-      ]
+      "merge_mode": "append"
     },
     {
       "field_id": "claude_md.workflow",
@@ -221,6 +214,10 @@
     {
       "field_id": "claude_md.coding_conventions",
       "default": "PEP8+Black"
+    },
+    {
+      "field_id": "claude_md.task_workflow_hints",
+      "default": "Test is  test"
     }
   ],
   "step_overrides": [
