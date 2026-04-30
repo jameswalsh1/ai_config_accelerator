@@ -48,6 +48,7 @@ export function StepFieldEditor({
     suggested: true,
   })
   const [updating, setUpdating] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [showPresetManagement, setShowPresetManagement] = useState<Record<string, boolean>>({})
   // Per-field inline edit state for default value and lock reason (saved on blur)
   const [inlineEdits, setInlineEdits] = useState<Record<string, { default?: string; lock_reason?: string }>>({})
@@ -95,7 +96,8 @@ export function StepFieldEditor({
 
     try {
       setUpdating(true)
-      const updatedStep = await updateFieldMetadata(scope, target, step.id, fieldId, changes)
+      setActionError(null)
+      const updatedStep = await updateFieldMetadata(scope, target, step.id, fieldId, changes, tool, language)
       onMetadataUpdate?.(updatedStep)
       // Clear any stale inline edit state for this field
       setInlineEdits(prev => {
@@ -104,7 +106,8 @@ export function StepFieldEditor({
         return next
       })
     } catch (error) {
-      console.error('Failed to update metadata:', error)
+      const msg = error instanceof Error ? error.message : 'Failed to update metadata'
+      setActionError(msg)
     } finally {
       setUpdating(false)
     }
@@ -121,10 +124,12 @@ export function StepFieldEditor({
     }
     try {
       setUpdating(true)
-      const updatedStep = await updateFieldMetadata(scope, target, step.id, field.id, changes)
+      setActionError(null)
+      const updatedStep = await updateFieldMetadata(scope, target, step.id, field.id, changes, tool, language)
       onMetadataUpdate?.(updatedStep)
     } catch (error) {
-      console.error('Failed to toggle lock:', error)
+      const msg = error instanceof Error ? error.message : 'Failed to toggle lock'
+      setActionError(msg)
     } finally {
       setUpdating(false)
     }
@@ -136,10 +141,12 @@ export function StepFieldEditor({
     if (!scope || !target) return
     try {
       setUpdating(true)
-      const updatedStep = await resetFieldToBase(scope, target, step.id, field.id)
+      setActionError(null)
+      const updatedStep = await resetFieldToBase(scope, target, step.id, field.id, tool, language)
       onMetadataUpdate?.(updatedStep)
     } catch (error) {
-      console.error('Failed to reset field to base:', error)
+      const msg = error instanceof Error ? error.message : 'Failed to reset field'
+      setActionError(msg)
     } finally {
       setUpdating(false)
     }
@@ -467,6 +474,21 @@ export function StepFieldEditor({
 
   return (
     <div className="flex flex-col gap-8 max-w-5xl">
+      {/* Error Banner */}
+      {actionError && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          <AlertCircle className="size-5 shrink-0 mt-0.5 text-red-500" />
+          <p className="flex-1">{actionError}</p>
+          <button
+            onClick={() => setActionError(null)}
+            className="shrink-0 text-red-400 hover:text-red-600"
+            aria-label="Dismiss error"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Step Header */}
       <div className="border-b border-gray-200 pb-6">
         <h2 className="text-3xl font-bold text-gray-900 mb-3">{step.title}</h2>

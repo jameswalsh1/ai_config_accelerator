@@ -143,7 +143,7 @@ class TestEnhanceFieldWithMetadata:
         assert enhanced["is_locked"] is False
     
     def test_adds_is_locked_true_for_locked_value(self):
-        """Verify is_locked=True when locked_value is set."""
+        """Verify locked_value alone does NOT set is_locked (editability is authoritative)."""
         field = {
             "id": "field1",
             "type": "text",
@@ -154,7 +154,7 @@ class TestEnhanceFieldWithMetadata:
         }
         
         enhanced = _enhance_field_with_metadata(field)
-        assert enhanced["is_locked"] is True
+        assert enhanced["is_locked"] is False
     
     def test_adds_is_default_true_for_schema_source(self):
         """Verify is_default=True when override_source is 'schema'."""

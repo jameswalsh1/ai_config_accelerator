@@ -78,10 +78,8 @@ def _enhance_field_with_metadata(field: dict[str, Any]) -> dict[str, Any]:
     
     # Track if locked
     editability = field.get("editability", "free")
-    has_locked_value = field.get("locked_value") is not None
     enhanced["is_locked"] = (
         editability == "locked" or 
-        has_locked_value or
         editability == "readonly"
     )
     

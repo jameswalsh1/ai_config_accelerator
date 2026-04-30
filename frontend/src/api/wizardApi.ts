@@ -24,15 +24,13 @@ async function fetchWithTimeout(
   }
 }
 
-/** Throw with a simple status message for non-ok responses. */
+/** Throw with error detail parsed from the JSON response body. */
 async function throwIfNotOk(res: Response, context: string): Promise<void> {
-  if (!res.ok) throw new Error(`${context}: ${res.statusText}`)
-}
-
-/** Parse error detail from JSON body, falling back to statusText. */
-async function throwDetailedError(res: Response, context: string): Promise<never> {
-  const detail = await res.json().catch(() => ({ detail: res.statusText }))
-  throw new Error(detail.detail ?? `${context}: ${res.statusText}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const detail = body?.detail
+    throw new Error(detail ? `${context}: ${detail}` : `${context}: ${res.statusText}`)
+  }
 }
 
 export type { EditableStep }
@@ -138,7 +136,7 @@ export async function createLanguageConfig(payload: CreateLanguagePayload): Prom
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) await throwDetailedError(res, 'Failed to create language')
+  await throwIfNotOk(res, 'Failed to create language')
   const data = await res.json() as { language_id: string; metadata?: { title?: string; description?: string } }
   return {
     id: data.language_id,
@@ -170,7 +168,9 @@ export async function updateFieldMetadata(
   target: string,
   stepId: string,
   fieldId: string,
-  changes: Record<string, unknown>
+  changes: Record<string, unknown>,
+  tool: string,
+  language: string
 ): Promise<EditableStep> {
   const res = await fetchWithTimeout(`${BASE}/config/update`, {
     method: 'POST',
@@ -178,6 +178,8 @@ export async function updateFieldMetadata(
     body: JSON.stringify({
       scope,
       target,
+      tool,
+      language,
       step_id: stepId,
       field_id: fieldId,
       changes,
@@ -221,6 +223,8 @@ export async function resetFieldToBase(
   target: string,
   stepId: string,
   fieldId: string,
+  tool: string,
+  language: string,
   overrideType: 'metadata' | 'structure' = 'metadata'
 ): Promise<EditableStep> {
   const res = await fetchWithTimeout(`${BASE}/config/reset`, {
@@ -229,6 +233,8 @@ export async function resetFieldToBase(
     body: JSON.stringify({
       scope,
       target,
+      tool,
+      language,
       step_id: stepId,
       field_id: fieldId,
       override_type: overrideType,
