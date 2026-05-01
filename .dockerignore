@@ -1,0 +1,27 @@
+# Python
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/.mypy_cache/
+**/.pytest_cache/
+**/*.egg-info/
+
+# Node
+**/node_modules/
+frontend/dist/
+
+# Tests
+backend/tests/
+
+# Dev / editor
+.DS_Store
+**/.env
+.git/
+.gitignore
+Makefile
+*.md
+
+# Example content
+example configuration/
+example_configuration/

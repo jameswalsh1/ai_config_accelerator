@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   backend:
     build:
@@ -8,6 +7,9 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
+      # Set ALLOWED_ORIGINS to your production domain(s), comma-separated.
+      # e.g. ALLOWED_ORIGINS=https://example.com,https://www.example.com
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -22,3 +24,8 @@ services:
       - "5173:80"
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

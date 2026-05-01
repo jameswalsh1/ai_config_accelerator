@@ -2,7 +2,7 @@
 name = "ai-accelerator-backend"
 version = "0.1.0"
 description = "AI Config Accelerator — FastAPI backend"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.115.12",
     "uvicorn[standard]==0.34.0",
@@ -25,7 +25,7 @@ dev = [
 ]
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 

@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_CREATE=false
@@ -17,6 +17,10 @@ RUN pip install --no-cache-dir \
     python-multipart==0.0.20
 
 COPY backend /app
+
+RUN useradd --no-create-home --shell /bin/false appuser \
+  && chown -R appuser /app
+USER appuser
 
 EXPOSE 8000
 
