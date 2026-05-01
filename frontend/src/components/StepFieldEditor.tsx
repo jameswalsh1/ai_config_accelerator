@@ -127,7 +127,7 @@ export function StepFieldEditor({
     setFieldValues(Object.fromEntries(step.fields.map(f => [f.id, f.current_value ?? f.default ?? ''])))
     setInlineEdits({})
     setFieldErrors({})
-  }, [step.id])
+  }, [step.id, step.fields])
 
   const toggleGroup = (group: FieldGroupKey) => {
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }))
