@@ -22,7 +22,7 @@ describe('FieldValueInput', () => {
           onSave={onSave}
         />
       )
-      const input = screen.getByPlaceholderText('Enter name') as HTMLInputElement
+      const input = screen.getByPlaceholderText('Enter name')
       expect(input.value).toBe('hello')
     })
 
@@ -104,7 +104,7 @@ describe('FieldValueInput', () => {
           onSave={onSave}
         />
       )
-      const input = screen.getByPlaceholderText('Count') as HTMLInputElement
+      const input = screen.getByPlaceholderText('Count')
       expect(input.type).toBe('number')
       expect(input.value).toBe('42')
     })
@@ -133,7 +133,7 @@ describe('FieldValueInput', () => {
           onSave={onSave}
         />
       )
-      const ta = screen.getByPlaceholderText('Description') as HTMLTextAreaElement
+      const ta = screen.getByPlaceholderText('Description')
       expect(ta.tagName).toBe('TEXTAREA')
       expect(ta.getAttribute('rows')).toBe('6')
     })
@@ -147,7 +147,7 @@ describe('FieldValueInput', () => {
           onSave={onSave}
         />
       )
-      const ta = screen.getByRole('textbox') as HTMLTextAreaElement
+      const ta = screen.getByRole('textbox')
       expect(ta.getAttribute('rows')).toBe('4')
     })
   })

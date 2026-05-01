@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { ChevronDown, Lock, Unlock, Copy, ExternalLink } from 'lucide-react'
 import type { EditableField } from '@/types/wizard'
 
@@ -41,7 +41,7 @@ export function FieldDetailsPanel({
   const handleCopyValue = () => {
     const value = field.current_value ?? field.default ?? ''
     const textToCopy = typeof value === 'string' ? value : JSON.stringify(value, null, 2)
-    navigator.clipboard.writeText(textToCopy)
+    void navigator.clipboard.writeText(textToCopy)
   }
 
   return (

@@ -133,7 +133,7 @@ export function CreateLanguageModal({ existingLanguages, onCreated, onClose }: C
         </div>
 
         {/* Scrollable form body */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5 overflow-y-auto">
+        <form onSubmit={e => { void handleSubmit(e) }} className="px-6 py-5 space-y-5 overflow-y-auto">
           {error && (
             <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
               {error}

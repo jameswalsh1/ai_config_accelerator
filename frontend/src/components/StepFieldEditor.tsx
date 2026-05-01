@@ -369,7 +369,7 @@ export function StepFieldEditor({
             {hasOverride ? (
               <select
                 value={field.editability}
-                onChange={e => handleMetadataUpdate(field.id, { editability: e.target.value })}
+                onChange={e => { void handleMetadataUpdate(field.id, { editability: e.target.value }) }}
                 disabled={updating}
                 title="How wizard users can interact with this field"
                 className={`text-xs px-2 py-1 rounded border font-medium cursor-pointer bg-white disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-indigo-400 ${colors.border} ${colors.text}`}
@@ -387,7 +387,7 @@ export function StepFieldEditor({
 
             {hasOverride && (
               <button
-                onClick={() => handleLockToggle(field)}
+                onClick={() => { void handleLockToggle(field) }}
                 disabled={updating}
                 title={isLocked ? 'Unlock for wizard users' : 'Lock for wizard users'}
                 className={`p-1.5 rounded border transition-colors disabled:opacity-50 ${
@@ -402,7 +402,7 @@ export function StepFieldEditor({
 
             {hasOverride && (
               <button
-                onClick={() => handleResetToBase(field)}
+                onClick={() => { void handleResetToBase(field) }}
                 disabled={updating}
                 title="Reset to base configuration"
                 className="p-1.5 rounded border bg-white border-gray-300 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors disabled:opacity-50"
@@ -430,7 +430,7 @@ export function StepFieldEditor({
                 }
                 onBlur={() => {
                   if (localLockReason !== (field.lock_reason || '')) {
-                    handleMetadataUpdate(field.id, { lock_reason: localLockReason })
+                    void handleMetadataUpdate(field.id, { lock_reason: localLockReason })
                   }
                 }}
                 placeholder="Explain why this field is locked for users…"
@@ -458,7 +458,7 @@ export function StepFieldEditor({
               setFieldValues(prev => ({ ...prev, [field.id]: value }))
               onFieldChange?.(field.id, value)
             }}
-            onSave={(value) => handleValueSave(field.id, value)}
+            onSave={(value) => { void handleValueSave(field.id, value) }}
             isDirty={JSON.stringify(fieldValues[field.id] ?? displayValue) !== JSON.stringify(field.current_value ?? field.default ?? '')}
             isSaving={savingFields.has(field.id)}
             saveError={saveErrors[field.id]}
@@ -478,11 +478,11 @@ export function StepFieldEditor({
                     const currentVal = fieldValues[field.id] ?? displayValue
                     const newValue =
                       preset.mode === 'append' && typeof currentVal === 'string'
-                        ? currentVal + preset.value
+                        ? currentVal + String(preset.value)
                         : preset.value
                     setFieldValues(prev => ({ ...prev, [field.id]: newValue }))
                     onFieldChange?.(field.id, newValue, 'preset')
-                    handleValueSave(field.id, newValue)
+                    void handleValueSave(field.id, newValue)
                   }}
                   title={preset.description || `Apply "${preset.label}"`}
                   className="px-2.5 py-1 rounded-l text-xs bg-white border border-r-0 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors font-medium"
@@ -490,7 +490,7 @@ export function StepFieldEditor({
                   {preset.label}
                 </button>
                 <button
-                  onClick={() => handleRemovePreset(field, preset.label)}
+                  onClick={() => { void handleRemovePreset(field, preset.label) }}
                   title={`Remove "${preset.label}" preset`}
                   className="px-1 py-1 rounded-r text-xs bg-white border border-gray-300 text-gray-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500 transition-colors"
                 >
@@ -515,7 +515,7 @@ export function StepFieldEditor({
           {/* Inline Add Preset Form */}
           {showAddPreset[field.id] && (
             <AddPresetForm
-              onAdd={(label, value, mode) => handleAddPreset(field, label, value, mode)}
+              onAdd={(label, value, mode) => { void handleAddPreset(field, label, value, mode) }}
               onCancel={() => setShowAddPreset(prev => ({ ...prev, [field.id]: false }))}
             />
           )}

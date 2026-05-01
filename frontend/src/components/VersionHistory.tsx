@@ -174,7 +174,7 @@ export function VersionHistory({ scope, target }: VersionHistoryProps) {
                     ))}
                   </select>
                   <button
-                    onClick={handleCompare}
+                    onClick={() => { void handleCompare() }}
                     disabled={v1 === v2 || diffLoading}
                     className="rounded bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
@@ -208,7 +208,7 @@ export function VersionHistory({ scope, target }: VersionHistoryProps) {
                         </div>
                       )}
                       {diff.steps?.modified?.map(sd => (
-                        <StepDiffPanel key={sd.step_id} sd={sd} />
+                        <StepDiffPanel key={sd.id} sd={sd} />
                       ))}
                     </div>
                   )}

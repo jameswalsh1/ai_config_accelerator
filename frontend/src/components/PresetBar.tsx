@@ -52,7 +52,8 @@ export function PresetBar({ presets, fieldType, currentValue, activeTags, target
 
       case 'merge_json': {
         try {
-          const existing = JSON.parse(String(currentValue || '{}')) as Record<string, unknown>
+          const currentStr = typeof currentValue === 'string' ? currentValue : ''
+          const existing = JSON.parse(currentStr || '{}') as Record<string, unknown>
           const fragment = preset.value as Record<string, unknown>
           onChange(JSON.stringify(deepMerge(existing, fragment), null, 2))
         } catch {
@@ -64,11 +65,11 @@ export function PresetBar({ presets, fieldType, currentValue, activeTags, target
       case 'append':
       default: {
         if (fieldType === 'multi_select' || fieldType === 'agent_list') {
-          const current = (currentValue as unknown[] | undefined) ?? []
-          const toAdd = Array.isArray(preset.value) ? preset.value : [preset.value]
+          const current: unknown[] = Array.isArray(currentValue) ? (currentValue as unknown[]) : []
+          const toAdd: unknown[] = Array.isArray(preset.value) ? (preset.value as unknown[]) : [preset.value]
           onChange([...current, ...toAdd])
         } else {
-          const current = String(currentValue ?? '')
+          const current = typeof currentValue === 'string' ? currentValue : ''
           onChange(current ? `${current}\n${String(preset.value)}` : String(preset.value))
         }
         break

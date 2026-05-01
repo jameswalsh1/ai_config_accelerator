@@ -302,7 +302,7 @@ function App() {
               <button
                 key={cfg.id}
                 type="button"
-                onClick={() => handleSelectConfig(cfg.id)}
+                onClick={() => { void handleSelectConfig(cfg.id) }}
                 disabled={loadingConfig === cfg.id}
                 className="group flex w-full items-start gap-4 rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md disabled:opacity-60"
               >

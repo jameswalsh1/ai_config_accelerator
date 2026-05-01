@@ -145,7 +145,7 @@ export function Wizard({ config, onBack }: WizardProps) {
               files={previewFiles_}
               configTitle={currentConfig.title}
               isDownloading={isDownloading}
-              onDownload={handleDownload}
+              onDownload={() => { void handleDownload() }}
             />
             {submitError && (
               <div className="mt-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -188,7 +188,7 @@ export function Wizard({ config, onBack }: WizardProps) {
                 isSubmitting={isSubmitting}
                 onPrev={prevScreen}
                 onNext={nextScreen}
-                onSubmit={handleSubmit}
+                onSubmit={() => { void handleSubmit() }}
               />
             </div>
           </>

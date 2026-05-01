@@ -1,6 +1,6 @@
 import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep, Preset, PresetAssignment } from '@/types/wizard'
 
-const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const BASE: string = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -27,7 +27,7 @@ async function fetchWithTimeout(
 /** Throw with error detail parsed from the JSON response body. */
 async function throwIfNotOk(res: Response, context: string): Promise<void> {
   if (!res.ok) {
-    const body = await res.json().catch(() => null)
+    const body = await res.json().catch(() => null) as { detail?: string } | null
     const detail = body?.detail
     throw new Error(detail ? `${context}: ${detail}` : `${context}: ${res.statusText}`)
   }
@@ -323,6 +323,57 @@ export async function fetchFieldPresetAssignments(
   return res.json() as Promise<PresetAssignment[]>
 }
 
+export async function assignPresetToField(
+  tool: string,
+  language: string,
+  fieldId: string,
+  presetId: string,
+  mode: PresetAssignment['assignment_mode'],
+  position: number,
+): Promise<PresetAssignment> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool, language, field_id: fieldId, preset_id: presetId, assignment_mode: mode, display_order: position }),
+  })
+  await throwIfNotOk(res, 'Failed to assign preset')
+  return res.json() as Promise<PresetAssignment>
+}
+
+export async function updatePresetAssignment(
+  assignmentId: string,
+  updates: { assignment_mode?: PresetAssignment['assignment_mode']; is_visible?: boolean },
+): Promise<PresetAssignment> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  await throwIfNotOk(res, 'Failed to update preset assignment')
+  return res.json() as Promise<PresetAssignment>
+}
+
+export async function removePresetAssignment(assignmentId: string): Promise<void> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/${encodeURIComponent(assignmentId)}`, {
+    method: 'DELETE',
+  })
+  await throwIfNotOk(res, 'Failed to remove preset assignment')
+}
+
+export async function reorderPresetAssignments(
+  tool: string,
+  language: string,
+  fieldId: string,
+  orderedIds: string[],
+): Promise<void> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/field-presets/reorder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool, language, field_id: fieldId, ordered_ids: orderedIds }),
+  })
+  await throwIfNotOk(res, 'Failed to reorder preset assignments')
+}
+
 // ---------------------------------------------------------------------------
 // Audit log
 // ---------------------------------------------------------------------------
@@ -461,7 +512,7 @@ export interface VersionDiff {
   v2: number
   scope: string
   target: string
-  diff: Record<string, unknown>
+  diff: AuditDiff
 }
 
 export async function fetchVersionHistory(scope: string, target: string): Promise<VersionMeta[]> {

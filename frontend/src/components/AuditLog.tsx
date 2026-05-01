@@ -148,7 +148,7 @@ function AuditEntryRow({ entry }: { entry: AuditEntry }) {
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Changed steps</p>
               {modifiedSteps.map(sd => (
-                <StepDiffPanel key={sd.step_id} sd={sd} />
+                <StepDiffPanel key={sd.id} sd={sd} />
               ))}
             </div>
           )}
@@ -212,7 +212,7 @@ export function AuditLog() {
           </p>
         </div>
         <button
-          onClick={() => load(page, scopeFilter, targetFilter)}
+          onClick={() => { void load(page, scopeFilter, targetFilter) }}
           disabled={loading}
           className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
         >

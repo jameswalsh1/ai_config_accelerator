@@ -32,8 +32,6 @@ export function ConfigEditorEntry({ onConfigSelected, initialTool, initialLangua
   const [loadingConfig, setLoadingConfig] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showCreateLanguage, setShowCreateLanguage] = useState(false)
-  // Track whether a config has been loaded at least once (to show step nav)
-  const [configLoaded, setConfigLoaded] = useState(false)
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -55,7 +53,7 @@ export function ConfigEditorEntry({ onConfigSelected, initialTool, initialLangua
       }
     }
 
-    loadInitialData()
+    void loadInitialData()
   }, [])
 
   const loadStep = useCallback(async (stepId: string, tool = selectedTool, language = selectedLanguage) => {
@@ -64,7 +62,6 @@ export function ConfigEditorEntry({ onConfigSelected, initialTool, initialLangua
       setLoadingConfig(true)
       const editableConfig = await fetchEditableConfig(tool, language, stepId)
       onConfigSelected(editableConfig, tool, language)
-      setConfigLoaded(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load config')
     } finally {
@@ -85,7 +82,6 @@ export function ConfigEditorEntry({ onConfigSelected, initialTool, initialLangua
             await loadStep(stepsData[0].id, selectedTool, selectedLanguage)
           } else {
             setSelectedStep('')
-            setConfigLoaded(false)
           }
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to load steps')
@@ -94,11 +90,10 @@ export function ConfigEditorEntry({ onConfigSelected, initialTool, initialLangua
         }
       }
 
-      loadSteps()
+      void loadSteps()
     } else {
       setSteps([])
       setSelectedStep('')
-      setConfigLoaded(false)
     }
   }, [selectedTool, selectedLanguage, loadStep])
 
@@ -108,14 +103,14 @@ export function ConfigEditorEntry({ onConfigSelected, initialTool, initialLangua
     if (currentStepIndex <= 0) return
     const prevId = steps[currentStepIndex - 1].id
     setSelectedStep(prevId)
-    loadStep(prevId)
+    void loadStep(prevId)
   }
 
   const handleNext = () => {
     if (currentStepIndex >= steps.length - 1) return
     const nextId = steps[currentStepIndex + 1].id
     setSelectedStep(nextId)
-    loadStep(nextId)
+    void loadStep(nextId)
   }
 
   if (loading) {
@@ -204,7 +199,7 @@ export function ConfigEditorEntry({ onConfigSelected, initialTool, initialLangua
                   <select
                     id="step-select"
                     value={selectedStep}
-                    onChange={(e) => { setSelectedStep(e.target.value); loadStep(e.target.value) }}
+                    onChange={(e) => { setSelectedStep(e.target.value); void loadStep(e.target.value) }}
                     disabled={loadingConfig}
                     className="text-sm px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed max-w-[240px]"
                   >
