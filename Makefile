@@ -5,7 +5,7 @@ FRONTEND_DIR := frontend
 # Prevent any active venv in the shell from conflicting with uv's project venv
 unexport VIRTUAL_ENV
 
-.PHONY: help install install-backend install-frontend dev backend frontend build lint lint-backend lint-frontend test clean
+.PHONY: help install install-backend install-frontend dev backend frontend build lint lint-backend lint-frontend mypy test clean
 
 help:
 	@echo "Usage: make <target>"
@@ -20,6 +20,7 @@ help:
 	@echo "  lint              Lint both backend and frontend"
 	@echo "  lint-backend      Run mypy type-checking on the backend"
 	@echo "  lint-frontend     Run ESLint on the frontend"
+	@echo "  mypy              Run mypy type-checking on the backend (alias for lint-backend)"
 	@echo "  test              Run the backend test suite"
 	@echo "  clean             Remove frontend build artefacts and Python caches"
 
@@ -49,12 +50,24 @@ backend:
 frontend:
 	cd $(FRONTEND_DIR) && npm run dev -- --host 0.0.0.0
 
+# Start services via Docker Compose (build + run in foreground)
+.PHONY: docker-up docker-down
+docker-up:
+	@echo "Starting services with docker compose (foreground)"
+	docker compose up --build
+
+docker-down:
+	@echo "Stopping and removing docker compose services"
+	docker compose down
+
 # ── Linting ───────────────────────────────────────────────────────────────────
 
 lint: lint-backend lint-frontend
 
 lint-backend:
 	cd $(BACKEND_DIR) && uv run mypy app tests
+
+mypy: lint-backend
 
 lint-frontend:
 	cd $(FRONTEND_DIR) && npm run lint

@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Wizard Schema",
+  "description": "JSON Schema for base wizard schema.json - defines all available steps and fields",
+  "type": "object",
+  "required": ["schema_version", "steps"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Version of the schema format"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the schema"
+    },
+    "steps": {
+      "type": "array",
+      "description": "Array of wizard steps",
+      "items": {
+        "type": "object",
+        "required": ["id", "title"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the step",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "title": {
+            "type": "string",
+            "description": "Human-readable step title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of the step"
+          },
+          "hint": {
+            "type": "string",
+            "description": "Additional hints for users"
+          },
+          "output_file": {
+            "type": "string",
+            "description": "Output file path or pattern"
+          },
+          "output_format": {
+            "type": "string",
+            "enum": ["text", "markdown", "json", "yaml"],
+            "description": "Format of the output"
+          },
+          "fields": {
+            "type": "array",
+            "description": "Fields within this step",
+            "items": { "$ref": "#/definitions/field" }
+          },
+          "_source_tool": {
+            "type": "string",
+            "description": "Internal: tool that provided this step"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "field": {
+      "type": "object",
+      "required": ["id", "type", "label"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique field identifier",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["text", "textarea", "select", "multiselect", "repeatable_group", "boolean", "number"],
+          "description": "Field type"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable field label"
+        },
+        "description": {
+          "type": "string",
+          "description": "Field description"
+        },
+        "default": {
+          "description": "Default value for the field"
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether the field is required",
+          "default": false
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Whether the field is hidden from UI",
+          "default": false
+        },
+        "editability": {
+          "type": "string",
+          "enum": ["free", "locked", "suggested", "defaulted"],
+          "description": "Editability state of the field",
+          "default": "free"
+        },
+        "rows": {
+          "type": "integer",
+          "description": "Number of rows for textarea fields",
+          "minimum": 1
+        },
+        "options": {
+          "type": "array",
+          "description": "Available options for select fields",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "value": { "type": "string" }
+            },
+            "required": ["label", "value"]
+          }
+        },
+        "presets": {
+          "type": "array",
+          "description": "Preset values for the field",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "description": { "type": "string" },
+              "value": { "type": "string" },
+              "mode": { "type": "string", "enum": ["append", "merge_by_label", "replace"] }
+            }
+          }
+        },
+        "merge_presets": {
+          "type": "array",
+          "description": "Presets to merge with existing presets"
+        },
+        "validation": {
+          "type": "object",
+          "description": "Validation rules",
+          "properties": {
+            "pattern": { "type": "string" },
+            "min_length": { "type": "integer", "minimum": 0 },
+            "max_length": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "fields": {
+          "type": "array",
+          "description": "Nested fields for repeatable groups",
+          "items": { "$ref": "#/definitions/field" }
+        },
+        "override_source": {
+          "type": "string",
+          "description": "Which layer provided this field's override"
+        }
+      }
+    }
+  }
+}

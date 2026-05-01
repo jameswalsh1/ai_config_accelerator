@@ -5,6 +5,8 @@ interface PresetBarProps {
   presets: Preset[]
   fieldType: FieldType
   currentValue: unknown
+  activeTags?: string[]
+  targetTag?: string
   onChange: (newValue: unknown) => void
 }
 
@@ -28,7 +30,18 @@ function deepMerge(
   return result
 }
 
-export function PresetBar({ presets, fieldType, currentValue, onChange }: PresetBarProps) {
+export function PresetBar({ presets, fieldType, currentValue, activeTags, targetTag, onChange }: PresetBarProps) {
+  const visiblePresets = presets.filter(preset => {
+    if (!preset.tags?.length) return true
+
+    if (targetTag && !preset.tags.includes(targetTag)) {
+      return false
+    }
+
+    if (!activeTags?.length) return true
+    return preset.tags.some(tag => activeTags.includes(tag))
+  })
+
   const applyPreset = (preset: Preset) => {
     const mode = preset.mode ?? 'append'
 
@@ -70,7 +83,7 @@ export function PresetBar({ presets, fieldType, currentValue, onChange }: Preset
         <span>Quick fill</span>
       </div>
       <div className="flex flex-wrap gap-2">
-        {presets.map((preset, idx) => (
+        {visiblePresets.map((preset, idx) => (
           <button
             key={idx}
             type="button"

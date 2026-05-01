@@ -1,0 +1,32 @@
+{
+  "language_id": "react-typescript",
+  "version": "1.0",
+  "applies_to": {
+    "languages": [
+      "react-typescript"
+    ]
+  },
+  "metadata_overrides": [],
+  "field_overrides": [
+    {
+      "field_id": "claude_md.tech_stack",
+      "merge_presets": [
+        {
+          "label": "React + TypeScript strict",
+          "description": "React with TypeScript strict mode",
+          "value": "- Frontend: React 19 + TypeScript strict mode\n- Build: Vite\n- Styling: Tailwind CSS v4\n- State management: React Context + hooks (no Redux)",
+          "mode": "append",
+          "tags": [
+            "react-typescript"
+          ]
+        }
+      ],
+      "merge_mode": "append"
+    }
+  ],
+  "step_overrides": [],
+  "metadata": {
+    "title": "React + TypeScript",
+    "description": "React 19 with TypeScript and Vite or Next.js"
+  }
+}

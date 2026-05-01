@@ -1,0 +1,33 @@
+{
+    // ----------------------------
+    // Python Testing Configuration
+    // ----------------------------
+    "python.testing.pytestArgs": [
+        "backend"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+
+    // ----------------------------
+    // Python Interpreter (CRITICAL)
+    // ----------------------------
+    "python.defaultInterpreterPath": "/home/repos/ai_accelerator/backend/.venv/bin/python",
+
+    // ----------------------------
+    // Mypy Configuration
+    // ----------------------------
+    "mypy.dmypyExecutable": "/home/repos/ai_accelerator/backend/.venv/bin/dmypy",
+    "mypy.useDaemon": true,
+
+    // Optional but recommended (avoids ambiguity)
+    "mypy.runUsingActiveInterpreter": true,
+
+    // ----------------------------
+    // Quality of Life / Stability
+    // ----------------------------
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+
+    // Ensures terminal activates the venv correctly
+    "python.terminal.activateEnvironment": true
+}

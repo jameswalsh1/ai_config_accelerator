@@ -31,7 +31,7 @@ class TestFieldType:
 
     def test_all_members_present(self):
         members = {m.value for m in FieldType}
-        assert members == {"text", "textarea", "select", "multi_select", "checkbox", "agent_list"}
+        assert members == {"text", "textarea", "select", "multi_select", "checkbox", "agent_list", "repeatable_group"}
 
 
 class TestOutputFormat:
@@ -67,11 +67,11 @@ class TestPresetMode:
 
     def test_equality_with_plain_string(self):
         assert PresetMode.append == "append"
-        assert PresetMode.replace == "replace"
+        assert PresetMode.overwrite == "overwrite"
         assert PresetMode.merge_json == "merge_json"
 
     def test_usable_in_f_string_without_dot_value(self):
-        assert f"{PresetMode.replace}" == "replace"
+        assert f"{PresetMode.overwrite}" == "overwrite"
 
     def test_lookup_by_value(self):
         assert PresetMode("append") is PresetMode.append
@@ -82,4 +82,4 @@ class TestPresetMode:
 
     def test_all_members_present(self):
         members = {m.value for m in PresetMode}
-        assert members == {"append", "replace", "merge_json"}
+        assert members == {"append", "overwrite", "merge_json"}

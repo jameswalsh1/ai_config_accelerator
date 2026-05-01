@@ -1,0 +1,108 @@
+{
+  "tool_id": "cursor",
+  "tool_metadata": {
+    "title": "Cursor Configuration",
+    "description": "Generate rule files, ignore patterns, and indexing config for Cursor AI editor.",
+    "target": "cursor",
+    "schema_version": "1.0",
+    "target_version_constraints": {
+      "cursor": "latest"
+    },
+    "output_preview_targets": [
+      {
+        "target": "rule_files",
+        "label": ".cursor/rules/*.mdc"
+      },
+      {
+        "target": "agents_md",
+        "label": "AGENTS.md"
+      },
+      {
+        "target": "cursor_ignore",
+        "label": ".cursorignore"
+      },
+      {
+        "target": "cursor_indexing_ignore",
+        "label": ".cursorindexingignore"
+      },
+      {
+        "target": "ignore_verification",
+        "label": ".cursor/ignore-verification.md"
+      },
+      {
+        "target": "cursor_settings",
+        "label": "Cursor Settings"
+      }
+    ]
+  },
+  "version": "1.0",
+  "applies_to": {
+    "tools": [
+      "cursor"
+    ]
+  },
+  "metadata_overrides": [],
+  "field_overrides": [],
+  "step_overrides": [
+    {
+      "step_id": "agent_definitions",
+      "hidden": true
+    },
+    {
+      "step_id": "agent_instruction_files",
+      "hidden": true
+    },
+    {
+      "step_id": "agent_skills",
+      "hidden": true
+    },
+    {
+      "step_id": "build_test_commands",
+      "hidden": true
+    },
+    {
+      "step_id": "claude_md",
+      "hidden": true
+    },
+    {
+      "step_id": "claude_settings",
+      "hidden": true
+    },
+    {
+      "step_id": "custom_agents",
+      "hidden": true
+    },
+    {
+      "step_id": "hooks",
+      "hidden": true
+    },
+    {
+      "step_id": "mcp_config",
+      "hidden": true
+    },
+    {
+      "step_id": "path_instructions",
+      "hidden": true
+    },
+    {
+      "step_id": "prompt_files",
+      "hidden": true
+    },
+    {
+      "step_id": "repo_instructions",
+      "hidden": true
+    },
+    {
+      "step_id": "repo_settings",
+      "hidden": true
+    },
+    {
+      "step_id": "skill_definitions",
+      "hidden": true
+    },
+    {
+      "step_id": "verification_policy",
+      "hidden": true
+    }
+  ]
+}

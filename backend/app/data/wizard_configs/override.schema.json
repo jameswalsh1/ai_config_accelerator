@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Override Schema",
+  "description": "Schema for composable config overrides (tool, language, tool+language)",
+  "type": "object",
+  "properties": {
+    "tool_id": {
+      "type": "string",
+      "description": "Tool identifier (e.g., 'claude', 'copilot', 'cursor'). Used to identify this override belongs to a tool."
+    },
+    "language_id": {
+      "type": "string",
+      "description": "Language identifier (e.g., 'python', 'dotnet', 'typescript'). Used to identify this override belongs to a language."
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0",
+      "description": "Override schema version"
+    },
+    "applies_to": {
+      "type": "object",
+      "description": "Conditions for when this override should be applied",
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of tool IDs this override applies to. If empty/absent, applies to all tools."
+        },
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of language IDs this override applies to. If empty/absent, applies to all languages."
+        }
+      }
+    },
+    "metadata_overrides": {
+      "type": "array",
+      "description": "Metadata updates to fields (editability, defaults, etc)",
+      "items": {
+        "type": "object",
+        "required": ["field_id"],
+        "properties": {
+          "field_id": {
+            "type": "string",
+            "description": "Path to field: 'step_id.field_id' or nested 'step_id.field_id.nested_id'"
+          },
+          "default": {
+            "description": "Override the field's default value"
+          },
+          "editability": {
+            "type": "string",
+            "enum": ["free", "locked", "suggested", "defaulted"],
+            "description": "Set field editability: 'free' (user can edit), 'locked' (readonly), 'suggested' (recommended), 'defaulted' (pre-filled but editable)"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Override the required flag"
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hide this field from the UI"
+          }
+        }
+      }
+    },
+    "field_overrides": {
+      "type": "array",
+      "description": "Structural field updates (options, presets, validation, etc)",
+      "items": {
+        "type": "object",
+        "required": ["field_id"],
+        "properties": {
+          "field_id": {
+            "type": "string",
+            "description": "Path to field: 'step_id.field_id'"
+          },
+          "replace_options_with": {
+            "type": "array",
+            "description": "Replace all field options with these"
+          },
+          "merge_options": {
+            "type": "array",
+            "description": "Add options to the field"
+          },
+          "replace_presets_with": {
+            "type": "array",
+            "description": "Replace all presets with these"
+          },
+          "merge_presets": {
+            "type": "array",
+            "description": "Add presets to the field"
+          },
+          "merge_mode": {
+            "type": "string",
+            "enum": ["append", "merge_by_label", "replace"],
+            "default": "append",
+            "description": "How to merge presets: 'append' (add to end), 'merge_by_label' (update if label exists), 'replace' (replace all)"
+          },
+          "preset_files_to_add": {
+            "type": "array",
+            "description": "Add external preset file references"
+          }
+        }
+      }
+    },
+    "step_overrides": {
+      "type": "array",
+      "description": "Step-level updates",
+      "items": {
+        "type": "object",
+        "required": ["step_id"],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "description": "ID of the step to override"
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hide this step from the wizard flow"
+          },
+          "title_override": {
+            "type": "string",
+            "description": "Replace the step title"
+          },
+          "description_override": {
+            "type": "string",
+            "description": "Replace the step description"
+          },
+          "hint_override": {
+            "type": "string",
+            "description": "Replace the step hint"
+          }
+        }
+      }
+    }
+  }
+}

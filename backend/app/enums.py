@@ -15,6 +15,7 @@ class FieldType(StrEnum):
     multi_select = "multi_select"
     checkbox = "checkbox"
     agent_list = "agent_list"  # one-or-more agent definitions; generates one file per agent
+    repeatable_group = "repeatable_group"  # one-or-more grouped entries, e.g. multiple rule files
 
 
 class OutputFormat(StrEnum):
@@ -26,5 +27,5 @@ class OutputFormat(StrEnum):
 
 class PresetMode(StrEnum):
     append = "append"  # concat to existing text (text / textarea)
-    replace = "replace"  # type: ignore[assignment]  # shadows str.replace; intentional StrEnum value
+    overwrite = "overwrite"  # replace entire field value
     merge_json = "merge_json"  # deep-merge JSON objects (verbatim JSON fields)

@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tool+Language Override Schema",
+  "description": "JSON Schema for overrides/*.json - defines tool+language specific customizations",
+  "type": "object",
+  "properties": {
+    "combo": {
+      "type": "string",
+      "description": "Tool+language combination (e.g., 'claude+python')",
+      "pattern": "^[a-z0-9_]\\+[a-z0-9_-]+$"
+    },
+    "version": {
+      "type": "string",
+      "description": "Override file version"
+    },
+    "metadata_overrides": {
+      "type": "array",
+      "description": "Overrides for field metadata",
+      "items": {
+        "type": "object",
+        "required": ["field_id"],
+        "properties": {
+          "field_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_.]+$"
+          },
+          "default": { "description": "New default value" },
+          "editability": {
+            "type": "string",
+            "enum": ["free", "locked", "suggested", "defaulted"]
+          },
+          "required": { "type": "boolean" },
+          "hidden": { "type": "boolean" }
+        }
+      }
+    },
+    "field_overrides": {
+      "type": "array",
+      "description": "Overrides for field structure",
+      "items": {
+        "type": "object",
+        "required": ["field_id"],
+        "properties": {
+          "field_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_.]+$"
+          },
+          "options": { "type": "array" },
+          "presets": { "type": "array" },
+          "merge_presets": { "type": "array" },
+          "validation": { "type": "object" }
+        }
+      }
+    },
+    "step_overrides": {
+      "type": "array",
+      "description": "Overrides for step visibility",
+      "items": {
+        "type": "object",
+        "required": ["step_id"],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "hidden": { "type": "boolean" },
+          "title": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

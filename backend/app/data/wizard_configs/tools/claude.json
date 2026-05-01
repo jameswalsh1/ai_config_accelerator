@@ -1,0 +1,129 @@
+{
+  "tool_id": "claude",
+  "tool_metadata": {
+    "title": "Claude Code Configuration",
+    "description": "Generate CLAUDE.md instructions, project settings, and MCP configuration for Claude Code.",
+    "target": "claude",
+    "schema_version": "1.0",
+    "target_version_constraints": {
+      "claude_code": ">=1.0.0"
+    },
+    "output_preview_targets": [
+      {
+        "target": "claude_md",
+        "label": "Claude Code CLAUDE.md"
+      },
+      {
+        "target": "claude_settings",
+        "label": ".claude/settings.json"
+      },
+      {
+        "target": "mcp_config",
+        "label": ".mcp.json"
+      },
+      {
+        "target": "agent_definitions",
+        "label": "Agent files"
+      },
+      {
+        "target": "skill_definitions",
+        "label": "Skill files"
+      },
+      {
+        "target": "build_test_commands",
+        "label": ".claude/build_test_commands.json"
+      },
+      {
+        "target": "verification_policy",
+        "label": ".claude/verification_policy.json"
+      },
+      {
+        "target": "hooks",
+        "label": ".claude/hooks/"
+      }
+    ],
+    "file_classification": {
+      "claude_native": [
+        "CLAUDE.md",
+        ".claude/settings.json",
+        ".claude/skills/",
+        ".claude/agents/",
+        ".mcp.json"
+      ],
+      "accelerator_native": [
+        ".claude/build_test_commands.json",
+        ".claude/verification_policy.json"
+      ]
+    }
+  },
+  "version": "1.0",
+  "applies_to": {
+    "tools": [
+      "claude"
+    ]
+  },
+  "metadata_overrides": [],
+  "field_overrides": [],
+  "step_overrides": [
+    {
+      "step_id": "agent_instruction_files",
+      "hidden": true
+    },
+    {
+      "step_id": "agent_skills",
+      "hidden": true
+    },
+    {
+      "step_id": "agents_guidance",
+      "hidden": true
+    },
+    {
+      "step_id": "agents_heading",
+      "hidden": true
+    },
+    {
+      "step_id": "cursor_ignore",
+      "hidden": true
+    },
+    {
+      "step_id": "cursor_indexing_content",
+      "hidden": true
+    },
+    {
+      "step_id": "cursor_indexing_strategy",
+      "hidden": true
+    },
+    {
+      "step_id": "cursor_settings",
+      "hidden": true
+    },
+    {
+      "step_id": "custom_agents",
+      "hidden": true
+    },
+    {
+      "step_id": "ignore_verification",
+      "hidden": true
+    },
+    {
+      "step_id": "path_instructions",
+      "hidden": true
+    },
+    {
+      "step_id": "prompt_files",
+      "hidden": true
+    },
+    {
+      "step_id": "repo_instructions",
+      "hidden": true
+    },
+    {
+      "step_id": "repo_settings",
+      "hidden": true
+    },
+    {
+      "step_id": "rule_files",
+      "hidden": true
+    }
+  ]
+}
