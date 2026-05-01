@@ -42,9 +42,9 @@ def _redirect_data_dir():
 
     Cleaned up automatically after all tests finish.
     """
-    # Clean slate
+    # Clean slate (ignore errors from concurrent test discovery runs)
     if _TEST_OUTPUT_DIR.exists():
-        shutil.rmtree(_TEST_OUTPUT_DIR)
+        shutil.rmtree(_TEST_OUTPUT_DIR, ignore_errors=True)
 
     # Copy production data (ignoring audit.jsonl and history/)
     shutil.copytree(

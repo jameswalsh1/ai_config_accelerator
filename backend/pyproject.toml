@@ -39,3 +39,11 @@ warn_required_dynamic_aliases = true
 module = ["tests.*"]
 disallow_untyped_defs = false
 disallow_untyped_calls = false
+
+[tool.pytest.ini_options]
+# Pytest configuration for IDE test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v"
