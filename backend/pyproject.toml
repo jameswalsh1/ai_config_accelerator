@@ -38,6 +38,7 @@ warn_required_dynamic_aliases = true
 # Test functions don't need return-type annotations; they're not public API
 module = ["tests.*"]
 disallow_untyped_defs = false
+disallow_incomplete_defs = false
 disallow_untyped_calls = false
 
 [tool.pytest.ini_options]

@@ -31,7 +31,7 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
 HISTORY_DIR = DATA_DIR / "history"
@@ -158,7 +158,7 @@ def get_version(scope: str, target: str, version: int) -> dict[str, Any]:
             f"Version {version} not found for {scope}/{target}"
         )
     with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        return cast(dict[str, Any], json.load(f))
 
 
 def get_version_data(scope: str, target: str, version: int) -> dict[str, Any]:
@@ -169,7 +169,7 @@ def get_version_data(scope: str, target: str, version: int) -> dict[str, Any]:
         FileNotFoundError: If the version does not exist.
     """
     envelope = get_version(scope, target, version)
-    return envelope["data"]
+    return cast(dict[str, Any], envelope["data"])
 
 
 def get_latest_version_number(scope: str, target: str) -> int | None:

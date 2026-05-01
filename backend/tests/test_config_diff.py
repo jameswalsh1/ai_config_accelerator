@@ -861,7 +861,7 @@ class TestOverrideFileDiff:
         assert fd.locking_changes.after_state == "locked"
 
     def test_new_field_override_added(self):
-        before = {"field_overrides": []}
+        before: dict[str, Any] = {"field_overrides": []}
         after = {
             "field_overrides": [
                 {"field_id": "step1.new_field", "merge_presets": [
@@ -889,7 +889,7 @@ class TestOverrideFileDiff:
         assert not result.has_changes()
 
     def test_serializes_to_dict(self):
-        before = {"field_overrides": []}
+        before: dict[str, Any] = {"field_overrides": []}
         after = {
             "field_overrides": [
                 {"field_id": "step1.field1", "merge_presets": [

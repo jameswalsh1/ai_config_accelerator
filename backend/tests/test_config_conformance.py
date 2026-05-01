@@ -14,7 +14,7 @@ The tests check:
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -44,7 +44,7 @@ def _discover_json_files(subdir: str) -> list[Path]:
 
 def _load_json(path: Path) -> dict[str, Any]:
     with path.open() as f:
-        return json.load(f)
+        return cast(dict[str, Any], json.load(f))
 
 
 def _load_schema() -> dict[str, Any]:
