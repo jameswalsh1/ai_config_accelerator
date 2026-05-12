@@ -7,9 +7,14 @@ A unique temporary directory is created by pytest for each test session via
 ``tmp_path_factory``.  pytest handles cleanup automatically, which prevents
 stale directories from interfering with subsequent runs (e.g. when VS Code
 terminates a session before teardown completes).
+
+By default all tests run with CONFIG_SOURCE=json so that non-DB tests are
+unaffected by the production default of CONFIG_SOURCE=database.  Tests that
+specifically exercise database mode set CONFIG_SOURCE=database themselves.
 """
 
 import importlib
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -78,3 +83,29 @@ def _redirect_data_dir(tmp_path_factory):
         setattr(mod, "DATA_DIR", original)
     audit_mod.LOG_PATH = original_log_path
     history_mod.HISTORY_DIR = original_history_dir
+
+
+@pytest.fixture(autouse=True)
+def _default_config_source_json():
+    """Set CONFIG_SOURCE=json for every test unless it overrides the env var.
+
+    The production default is now ``database``, but most existing tests test
+    JSON-mode behaviour and do not provision a test database.  This fixture
+    ensures tests that don't explicitly set CONFIG_SOURCE still work.
+
+    Tests that need ``CONFIG_SOURCE=database`` set it themselves and reset
+    ``app.settings._config_source_settings = None`` after the test.
+    """
+    import app.settings as settings_mod
+
+    prev = os.environ.get("CONFIG_SOURCE")
+    os.environ["CONFIG_SOURCE"] = "json"
+    settings_mod._config_source_settings = None
+
+    yield
+
+    if prev is None:
+        os.environ.pop("CONFIG_SOURCE", None)
+    else:
+        os.environ["CONFIG_SOURCE"] = prev
+    settings_mod._config_source_settings = None

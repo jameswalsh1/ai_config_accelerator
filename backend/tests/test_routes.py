@@ -801,7 +801,7 @@ class TestConfigUpdateEndpoint:
         assert language_field["editability"] == "locked"
     
     def test_returns_400_for_missing_required_fields(self):
-        # Missing scope
+        # Missing scope (and tool/language/step_id/field_id) — Pydantic returns 422
         payload = {
             "target": "python",
             "step_id": "language_selection",
@@ -809,7 +809,7 @@ class TestConfigUpdateEndpoint:
             "changes": {"default": "javascript"}
         }
         response = client.post("/config/update", json=payload)
-        assert response.status_code == 400
+        assert response.status_code == 422
     
     def test_returns_400_for_invalid_scope(self):
         payload = {
@@ -822,7 +822,7 @@ class TestConfigUpdateEndpoint:
             "changes": {"default": "javascript"}
         }
         response = client.post("/config/update", json=payload)
-        assert response.status_code == 400
+        assert response.status_code == 422
     
     def test_returns_404_for_invalid_target(self):
         payload = {
@@ -957,7 +957,7 @@ class TestPresetEndpoints:
         assert response.status_code == 200
     
     def test_add_preset_returns_400_for_missing_required_fields(self):
-        # Missing preset (and tool/language)
+        # Missing preset (and tool/language) — Pydantic returns 422
         payload = {
             "scope": "language",
             "target": "python",
@@ -965,7 +965,7 @@ class TestPresetEndpoints:
             "field_id": "language"
         }
         response = client.post("/config/presets/add", json=payload)
-        assert response.status_code == 400
+        assert response.status_code == 422
     
     def test_remove_preset_returns_400_for_missing_identifier(self):
         payload = {
@@ -977,7 +977,7 @@ class TestPresetEndpoints:
             "field_id": "language"
         }
         response = client.post("/config/presets/remove", json=payload)
-        assert response.status_code == 400
+        assert response.status_code == 422
     
     def test_add_preset_returns_400_for_invalid_scope(self):
         payload = {
@@ -993,7 +993,7 @@ class TestPresetEndpoints:
             }
         }
         response = client.post("/config/presets/add", json=payload)
-        assert response.status_code == 400
+        assert response.status_code == 422
     
     def test_remove_preset_returns_400_for_invalid_scope(self):
         payload = {
@@ -1006,4 +1006,4 @@ class TestPresetEndpoints:
             "preset_label": "Test"
         }
         response = client.post("/config/presets/remove", json=payload)
-        assert response.status_code == 400
+        assert response.status_code == 422

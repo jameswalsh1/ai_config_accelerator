@@ -612,7 +612,7 @@ class TestLanguageTagsEndpoint:
         assert data["language_id"] == "test-route-tag-remap"
 
     def test_create_language_invalid_tag_remap(self):
-        """POST /config/languages with non-dict tag_remap returns 400."""
+        """POST /config/languages with non-dict tag_remap returns 422 (Pydantic validation)."""
         from fastapi.testclient import TestClient
         from app.main import app
         client = TestClient(app)
@@ -620,7 +620,7 @@ class TestLanguageTagsEndpoint:
             "title": "Bad Remap",
             "tag_remap": ["not", "a", "dict"],
         })
-        assert resp.status_code == 400
+        assert resp.status_code == 422
 
 
 if __name__ == "__main__":

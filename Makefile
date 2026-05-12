@@ -5,7 +5,7 @@ FRONTEND_DIR := frontend
 # Prevent any active venv in the shell from conflicting with uv's project venv
 unexport VIRTUAL_ENV
 
-.PHONY: help install install-backend install-frontend dev backend frontend build lint lint-backend lint-frontend typecheck-frontend mypy test clean check-ts-deprecations fix-ts-deprecations
+.PHONY: help install install-backend install-frontend dev backend frontend build lint lint-backend lint-frontend typecheck-frontend mypy test clean check-ts-deprecations fix-ts-deprecations db-import db-import-dry-run db-readiness verify-phase2
 
 help:
 	@echo "Usage: make <target>"
@@ -26,6 +26,9 @@ help:
 	@echo "  clean             Remove frontend build artefacts and Python caches"
 	@echo "  check-ts-deprecations  Report deprecated baseUrl usage in tsconfig files"
 	@echo "  fix-ts-deprecations    Remove deprecated baseUrl (when paths is set) and verify"
+	@echo "  db-upgrade        Apply all pending Alembic migrations (requires DB)"
+	@echo "  db-downgrade      Roll back one Alembic migration step (requires DB)"
+	@echo "  db-revision       Create a new Alembic revision (pass message= arg)"
 
 # ── Dependencies ─────────────────────────────────────────────────────────────
 
@@ -82,6 +85,40 @@ typecheck-frontend:
 
 test:
 	cd $(BACKEND_DIR) && uv run pytest tests/ -v
+
+# ── Database import (Phase 2) ─────────────────────────────────────────────────
+.PHONY: db-import db-import-dry-run db-readiness verify-phase2
+
+db-import:
+	@echo "Importing JSON wizard configs into the database..."
+	cd $(BACKEND_DIR) && uv run python -m app.commands.import_json_to_db
+
+db-import-dry-run:
+	@echo "Dry-run: computing changes without writing to the database..."
+	cd $(BACKEND_DIR) && uv run python -m app.commands.import_json_to_db --dry-run
+
+db-readiness:
+	@echo "Checking database import status..."
+	@curl -s http://localhost:8000/health/config-db | python3 -m json.tool || echo "(server not running)"
+
+verify-phase2:
+	@echo "Running Phase 2 verification tests..."
+	cd $(BACKEND_DIR) && uv run pytest tests/test_phase2_models.py tests/test_config_db_serialiser.py tests/test_import_services.py tests/test_db_repository.py tests/test_db_parity.py tests/test_phase2_feature_flag.py -v
+
+
+.PHONY: db-upgrade db-downgrade db-revision
+
+db-upgrade:
+	@echo "Applying all pending Alembic migrations..."
+	cd $(BACKEND_DIR) && uv run alembic upgrade head
+
+db-downgrade:
+	@echo "Rolling back one Alembic migration step..."
+	cd $(BACKEND_DIR) && uv run alembic downgrade -1
+
+db-revision:
+	@echo "Creating new Alembic revision: $(message)"
+	cd $(BACKEND_DIR) && uv run alembic revision --autogenerate -m "$(message)"
 
 # ── TypeScript deprecation helpers ───────────────────────────────────────────
 

@@ -207,6 +207,7 @@ def update_field_metadata(
     step_id: str,
     field_id: str,
     changes: dict[str, Any],
+    actor: str = "system",
 ) -> dict[str, Any]:
     """
     Update metadata for a specific field in an override file.
@@ -263,7 +264,7 @@ def update_field_metadata(
                 raise PatchError(f"Unknown metadata field: {key}. Use: default, editability, required, hidden, lock_reason")
         
         # Write back
-        _write_json_file(target_file, config, context={"scope": scope, "target": target})
+        _write_json_file(target_file, config, context={"scope": scope, "target": target, "actor": actor})
         
         return config
         
@@ -515,6 +516,7 @@ def remove_field_override(
     step_id: str,
     field_id: str,
     override_type: Literal["metadata", "structure"] = "metadata",
+    actor: str = "system",
 ) -> dict[str, Any]:
     """
     Remove an override entry for a field.
@@ -560,7 +562,7 @@ def remove_field_override(
                 ]
         
         # Write back
-        _write_json_file(target_file, config, context={"scope": scope, "target": target})
+        _write_json_file(target_file, config, context={"scope": scope, "target": target, "actor": actor})
         
         return config
         
@@ -575,6 +577,7 @@ def add_preset_to_field(
     field_id: str,
     preset: dict[str, Any],
     position: int | None = None,
+    actor: str = "system",
 ) -> dict[str, Any]:
     """
     Add a preset to a field's presets list at the specified position.
@@ -634,7 +637,7 @@ def add_preset_to_field(
         override["replace_presets_with"] = current_presets
         
         # Write back
-        _write_json_file(target_file, config, context={"scope": scope, "target": target})
+        _write_json_file(target_file, config, context={"scope": scope, "target": target, "actor": actor})
         
         return config
         
@@ -649,6 +652,7 @@ def remove_preset_from_field(
     field_id: str,
     preset_label: str | None = None,
     position: int | None = None,
+    actor: str = "system",
 ) -> dict[str, Any]:
     """
     Remove a preset from a field's presets list.
@@ -717,7 +721,7 @@ def remove_preset_from_field(
         override["replace_presets_with"] = current_presets
         
         # Write back
-        _write_json_file(target_file, config, context={"scope": scope, "target": target})
+        _write_json_file(target_file, config, context={"scope": scope, "target": target, "actor": actor})
         
         return config
         

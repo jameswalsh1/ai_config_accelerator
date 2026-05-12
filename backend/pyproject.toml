@@ -7,12 +7,17 @@ dependencies = [
     "fastapi==0.115.12",
     "uvicorn[standard]==0.34.0",
     "pydantic==2.12.5",
+    "pydantic-settings==2.7.0",
     "python-multipart==0.0.20",
+    "sqlalchemy[asyncio]==2.0.41",
+    "alembic==1.14.1",
+    "asyncmy==0.2.10",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest==8.3.5",
+    "pytest-asyncio==0.24.0",
     "httpx==0.28.1",
     "mypy==1.20.0",
 ]
@@ -20,8 +25,10 @@ dev = [
 [dependency-groups]
 dev = [
     "pytest==8.3.5",
+    "pytest-asyncio==0.24.0",
     "httpx==0.28.1",
     "mypy==1.20.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [tool.mypy]
@@ -48,3 +55,4 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v"
+asyncio_mode = "auto"
