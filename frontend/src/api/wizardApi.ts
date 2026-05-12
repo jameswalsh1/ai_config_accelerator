@@ -136,12 +136,8 @@ export async function createLanguageConfig(payload: CreateLanguagePayload): Prom
     body: JSON.stringify(payload),
   })
   await throwIfNotOk(res, 'Failed to create language')
-  const data = await res.json() as { language_id: string; metadata?: { title?: string; description?: string } }
-  return {
-    id: data.language_id,
-    title: data.metadata?.title ?? data.language_id,
-    description: data.metadata?.description ?? '',
-  }
+  const data = await res.json() as { language_key: string; title: string; description: string }
+  return { id: data.language_key, title: data.title, description: data.description }
 }
 
 export async function fetchLanguageTags(languageId: string): Promise<string[]> {

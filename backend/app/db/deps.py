@@ -22,3 +22,14 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI-compatible dependency that yields a managed ``AsyncSession``."""
     async for session in _get_db_session():
         yield session
+
+
+async def require_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Yield an AsyncSession for DB-only endpoints.
+
+    This is the canonical dependency used by all DB-only routers.
+    Override this in tests via ``app.dependency_overrides`` to supply a
+    test SQLite session.
+    """
+    async for session in _get_db_session():
+        yield session

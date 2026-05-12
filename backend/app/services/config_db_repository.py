@@ -341,6 +341,117 @@ class DatabaseConfigReadRepository:
             for la in res.scalars().all()
         ]
 
+    async def get_available_steps(self, tool_id: str, language_id: str) -> list[dict[str, str]]:
+        """Return non-hidden steps for a tool+language as id/title/description dicts."""
+        resolved = await self.load_resolved_config(tool_id, language_id)
+        return [
+            {
+                "id": step.get("id", ""),
+                "title": step.get("title", step.get("id", "")),
+                "description": step.get("description", ""),
+            }
+            for step in resolved.get("steps", [])
+            if not step.get("hidden", False)
+        ]
+
+    async def get_language_tags(self, language_id: str) -> list[str]:
+        """Return sorted unique preset tags for a language layer."""
+        lang_res = await self._session.execute(
+            select(Language).where(Language.language_key == language_id)
+        )
+        lang_row = lang_res.scalar_one_or_none()
+        if lang_row is None:
+            raise ValueError(f"Language '{language_id}' not found")
+        lang_layer = await _get_layer(self._session, "language", language_id=lang_row.id)
+        if lang_layer is None:
+            return []
+        overrides = await _get_field_content_overrides(self._session, lang_layer)
+        tags: set[str] = set()
+        for co in overrides.values():
+            for preset in (co.merge_presets_json or []):
+                tags.update(preset.get("tags", []))
+            for preset in (co.replace_presets_with_json or []):
+                tags.update(preset.get("tags", []))
+        return sorted(tags)
+
+    async def get_coverage_matrix(self) -> dict[str, Any]:
+        """Return the tool × language coverage matrix from the database."""
+        tools = await self.get_available_tools()
+        languages = await self.get_available_languages()
+
+        schema = await _get_active_schema(self._session)
+        if schema is None:
+            return {"tools": tools, "languages": languages, "matrix": {}}
+
+        # All non-hidden steps
+        all_steps = await _get_steps(self._session, schema)
+
+        # Build matrix
+        matrix: dict[str, dict[str, dict[str, Any]]] = {}
+        for tool in tools:
+            tool_id = tool["id"]
+            tool_res = await self._session.execute(
+                select(AITool).where(AITool.tool_key == tool_id)
+            )
+            tool_row = tool_res.scalar_one_or_none()
+            tool_layer = await _get_layer(self._session, "tool", tool_id=tool_row.id) if tool_row else None
+
+            # Steps hidden by this tool's layer
+            tool_hidden: set[int] = set()
+            if tool_layer:
+                so_res = await _get_step_overrides(self._session, tool_layer)
+                tool_hidden = {s.step_id for s in so_res if s.hidden}
+
+            # Visible step DB ids for this tool
+            visible_step_ids = {
+                s.id for s in all_steps
+                if not s.hidden
+                and s.id not in tool_hidden
+                and s.step_key != "language_selection"
+            }
+
+            matrix[tool_id] = {}
+            for lang in languages:
+                lang_id = lang["id"]
+                lang_res = await self._session.execute(
+                    select(Language).where(Language.language_key == lang_id)
+                )
+                lang_row = lang_res.scalar_one_or_none()
+                lang_layer = await _get_layer(self._session, "language", language_id=lang_row.id) if lang_row else None
+
+                if lang_layer is None:
+                    matrix[tool_id][lang_id] = {"status": "none", "field_count": 0, "fields": []}
+                    continue
+
+                # Count field overrides whose step is visible for this tool
+                meta_ov = await _get_field_metadata_overrides(self._session, lang_layer)
+                content_ov = await _get_field_content_overrides(self._session, lang_layer)
+                all_override_field_ids = set(meta_ov.keys()) | set(content_ov.keys())
+
+                # Resolve field_id → step_id
+                if all_override_field_ids:
+                    field_res = await self._session.execute(
+                        select(ConfigField.id, ConfigField.step_id, ConfigField.field_key)
+                        .where(ConfigField.id.in_(all_override_field_ids))
+                    )
+                    relevant_fields = [
+                        f"{row.step_id}.{row.field_key}"
+                        for row in field_res
+                        if row.step_id in visible_step_ids
+                    ]
+                else:
+                    relevant_fields = []
+
+                count = len(relevant_fields)
+                status = "full" if count >= 2 else ("partial" if count == 1 else "none")
+                matrix[tool_id][lang_id] = {
+                    "status": status,
+                    "field_count": count,
+                    "fields": relevant_fields,
+                }
+
+        return {"tools": tools, "languages": languages, "matrix": matrix}
+
 
 def _apply_lang_overrides_to_fields(
     fields: list[dict[str, Any]],

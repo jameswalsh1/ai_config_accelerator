@@ -77,7 +77,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("owner_actor", sa.String(255), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False, server_default=""),
+        sa.Column("description", sa.Text(), nullable=True),
         sa.Column("source_schema_id", sa.Integer(), nullable=True),
         sa.Column("source_tool_id", sa.Integer(), nullable=True),
         sa.Column("is_default", sa.Boolean(), nullable=False, server_default="0"),

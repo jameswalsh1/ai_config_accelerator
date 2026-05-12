@@ -85,6 +85,62 @@ def _redirect_data_dir(tmp_path_factory):
     history_mod.HISTORY_DIR = original_history_dir
 
 
+# ---------------------------------------------------------------------------
+# Shared file-based SQLite DB — seeded once per session for all route tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _seed_shared_test_db(tmp_path_factory: pytest.TempPathFactory) -> None:  # type: ignore[type-arg]
+    """Create and seed a file-based SQLite DB once per test session.
+
+    A fresh engine is created per-request inside the dependency override so
+    that each anyio event loop (used by TestClient) gets its own connection,
+    avoiding the 'Future attached to a different loop' error.
+    """
+    import asyncio
+    from pathlib import Path as _Path
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession as _AsyncSession,
+        async_sessionmaker as _asm,
+        create_async_engine as _cae,
+    )
+    from app.db.base import Base as _Base
+    from app.commands.import_json_to_db import run_import as _run_import
+    from app.db.deps import require_db_session as _rdb
+    from app.main import app as _app
+
+    data_dir = _Path(__file__).parent / "wizard_configs"
+    db_file = tmp_path_factory.mktemp("route_test_db") / "test.db"
+    sqlite_url = f"sqlite+aiosqlite:///{db_file}"
+
+    async def _setup() -> None:
+        engine = _cae(sqlite_url, echo=False)
+        factory = _asm(engine, expire_on_commit=False, class_=_AsyncSession)
+        async with engine.begin() as conn:
+            await conn.run_sync(_Base.metadata.create_all)
+        async with factory() as session:
+            await _run_import(session, data_dir)
+            await session.commit()
+        await engine.dispose()
+
+    asyncio.run(_setup())
+
+    async def _db_override():  # type: ignore[return]
+        # Create a fresh engine per-request so anyio's event loop owns the connection.
+        engine = _cae(sqlite_url, echo=False)
+        factory = _asm(engine, expire_on_commit=False, class_=_AsyncSession)
+        async with factory() as session:
+            yield session
+        await engine.dispose()
+
+    _app.dependency_overrides[_rdb] = _db_override
+
+    yield
+
+    _app.dependency_overrides.pop(_rdb, None)
+
+
 @pytest.fixture(autouse=True)
 def _default_config_source_json():
     """Set CONFIG_SOURCE=json for every test unless it overrides the env var.

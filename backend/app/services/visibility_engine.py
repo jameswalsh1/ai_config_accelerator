@@ -26,9 +26,9 @@ def _evaluate_condition(
 ) -> bool:
     """Evaluate a single condition operator against an answer value."""
     if operator == "equals":
-        return field_value == rule_value
+        return bool(field_value == rule_value)
     if operator == "not_equals":
-        return field_value != rule_value
+        return bool(field_value != rule_value)
     if operator == "in":
         if isinstance(rule_value, list):
             return field_value in rule_value

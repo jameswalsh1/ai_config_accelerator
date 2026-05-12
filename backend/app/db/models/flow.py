@@ -45,7 +45,7 @@ class WizardFlow(AuditMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     owner_actor: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_schema_id: Mapped[int | None] = mapped_column(
         ForeignKey("config_schema.id", ondelete="SET NULL"), nullable=True
     )

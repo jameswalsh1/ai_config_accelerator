@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AgentEntry, VisibilityRule, WizardAnswers, WizardConfig, WizardField, WizardFlowStep, WizardStep } from '@/types/wizard'
 
 export interface Screen {
@@ -182,13 +182,49 @@ export interface UseWizardOptions {
   flowSteps?: WizardFlowStep[]
 }
 
+/** Build initial answers pre-seeded from field defaults. */
+function buildInitialAnswers(config: WizardConfig): WizardAnswers {
+  const answers: WizardAnswers = {}
+  for (const step of config.steps) {
+    const stepAnswers: Record<string, unknown> = {}
+    for (const field of step.fields) {
+      if (field.default !== undefined && field.default !== null && field.default !== '') {
+        stepAnswers[field.id] = field.default
+      }
+    }
+    if (Object.keys(stepAnswers).length > 0) {
+      answers[step.id] = stepAnswers
+    }
+  }
+  return answers
+}
+
 export function useWizard(config: WizardConfig, options?: UseWizardOptions): UseWizardReturn {
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0)
-  const [answers, setAnswers] = useState<WizardAnswers>({})
+  const [answers, setAnswers] = useState<WizardAnswers>(() => buildInitialAnswers(config))
   const [fieldError, setFieldError] = useState<string | null>(null)
 
   const rules = options?.visibilityRules ?? []
   const flowSteps = options?.flowSteps
+
+  // When config steps change (e.g. language filter applied), merge new defaults
+  // into answers without overwriting values the user has already typed.
+  useEffect(() => {
+    setAnswers(prev => {
+      const merged: WizardAnswers = { ...prev }
+      for (const step of config.steps) {
+        for (const field of step.fields) {
+          if (field.default !== undefined && field.default !== null && field.default !== '') {
+            if (merged[step.id]?.[field.id] === undefined) {
+              merged[step.id] = { ...merged[step.id], [field.id]: field.default }
+            }
+          }
+        }
+      }
+      return merged
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.steps])
 
   // Evaluate visibility rules reactively based on answers
   const visibility = useMemo(() => {

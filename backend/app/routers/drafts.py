@@ -21,6 +21,17 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.auth import AuthUser, require_config_editor
+from app.services.draft_service import (
+    ActiveLayerNotFoundError,
+    DraftServiceError,
+    archive_draft as _archive,
+    create_draft_from_active,
+    diff_draft_vs_source,
+    list_drafts as _list_drafts,
+    load_draft_preview,
+    promote_draft as _promote,
+)
+from app.services.layer_comparison import ComparisonError, compare_layers as _compare
 
 router = APIRouter(prefix="/config", tags=["drafts"])
 
@@ -82,12 +93,6 @@ async def create_draft(
     session: AsyncSession = Depends(_require_db_session),
 ) -> dict[str, Any]:
     """Ticket 3 — Create a draft layer from the active layer."""
-    from app.services.draft_service import (
-        ActiveLayerNotFoundError,
-        DraftServiceError,
-        create_draft_from_active,
-    )
-
     try:
         result = await create_draft_from_active(
             session,
@@ -105,6 +110,7 @@ async def create_draft(
         raise HTTPException(status_code=422, detail=str(exc))
 
 
+
 @router.get("/drafts")
 async def list_drafts(
     layer_type: str | None = Query(None),
@@ -117,8 +123,6 @@ async def list_drafts(
     session: AsyncSession = Depends(_require_db_session),
 ) -> list[dict[str, Any]]:
     """Ticket 10 — List draft layers."""
-    from app.services.draft_service import list_drafts as _list_drafts
-
     return await _list_drafts(
         session,
         layer_type=layer_type,
@@ -139,8 +143,6 @@ async def get_draft_preview(
     session: AsyncSession = Depends(_require_db_session),
 ) -> dict[str, Any]:
     """Ticket 5 — Preview resolved config with the draft layer applied."""
-    from app.services.draft_service import DraftServiceError, load_draft_preview
-
     try:
         return await load_draft_preview(session, draft_layer_id, tool_id, language_id)
     except DraftServiceError as exc:
@@ -154,8 +156,6 @@ async def get_draft_diff(
     session: AsyncSession = Depends(_require_db_session),
 ) -> dict[str, Any]:
     """Ticket 6 — Diff a draft layer against its source layer."""
-    from app.services.draft_service import DraftServiceError, diff_draft_vs_source
-
     try:
         return await diff_draft_vs_source(session, draft_layer_id)
     except DraftServiceError as exc:
@@ -170,8 +170,6 @@ async def promote_draft(
     session: AsyncSession = Depends(_require_db_session),
 ) -> dict[str, Any]:
     """Ticket 7/8 — Promote a draft layer to active."""
-    from app.services.draft_service import DraftServiceError, promote_draft as _promote
-
     try:
         result = await _promote(
             session,
@@ -193,8 +191,6 @@ async def archive_draft(
     session: AsyncSession = Depends(_require_db_session),
 ) -> dict[str, Any]:
     """Ticket 9 — Archive a draft layer."""
-    from app.services.draft_service import DraftServiceError, archive_draft as _archive
-
     try:
         result = await _archive(
             session,
@@ -216,8 +212,6 @@ async def compare_layers(
     session: AsyncSession = Depends(_require_db_session),
 ) -> dict[str, Any]:
     """Ticket 11 — Compare any two config layers by their DB IDs."""
-    from app.services.layer_comparison import ComparisonError, compare_layers as _compare
-
     try:
         return await _compare(session, left_layer_id, right_layer_id)
     except ComparisonError as exc:

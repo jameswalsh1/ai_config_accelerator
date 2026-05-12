@@ -598,7 +598,7 @@ class TestLanguageTagsEndpoint:
         assert resp.status_code == 404
 
     def test_create_language_with_tag_remap(self):
-        """POST /config/languages with tag_remap applies remapping."""
+        """POST /config/languages creates a language (based_on/tag_remap are ignored in DB mode)."""
         from fastapi.testclient import TestClient
         from app.main import app
         client = TestClient(app)
@@ -609,7 +609,9 @@ class TestLanguageTagsEndpoint:
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["language_id"] == "test-route-tag-remap"
+        # DB mode returns language_key, not language_id
+        assert "language_key" in data
+        assert data["language_key"] == "test_route_tag_remap"
 
     def test_create_language_invalid_tag_remap(self):
         """POST /config/languages with non-dict tag_remap returns 422 (Pydantic validation)."""

@@ -100,7 +100,11 @@ export function Wizard({ config, onBack }: WizardProps) {
       })
   }, [answers, currentConfig.id, currentConfig.steps, languageLoaded])
 
-  const stepsFieldCounts = currentConfig.steps.map(s => s.fields.length)
+  // Group screens by step to get per-step field counts (flow-aware)
+  const stepsFieldCounts = screens.reduce<number[]>((acc, screen) => {
+    acc[screen.stepIndex] = (acc[screen.stepIndex] ?? 0) + 1
+    return acc
+  }, [])
 
   const handleSubmit = async () => {
     const canProceed = nextScreen()

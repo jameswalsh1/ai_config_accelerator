@@ -196,61 +196,37 @@ class TestActorPropagation:
 
     def test_update_records_actor_in_version(self, monkeypatch, tmp_path):
         """When a write succeeds the actor should appear in the version history."""
-        import json
-        from app.services import version_history as vh
+        from app.services.config_db_write_repository import DatabaseConfigWriteRepository
 
         monkeypatch.setattr("app.services.auth.AUTH_ENABLED", True)
 
-        # Use a temp dir so we don't mutate real config files
-        import app.services.config_patcher as patcher
-        import app.services.config_persistence as persistence
-
-        lang_file = tmp_path / "python.json"
-        lang_file.write_text(json.dumps({
-            "language_id": "python",
-            "metadata_overrides": [],
-        }))
-
         captured: list[str] = []
+        original_update = DatabaseConfigWriteRepository.update_field_metadata
 
-        original_write = persistence.save_config
-
-        def _spy_save(path, data, **kwargs):
-            actor = (kwargs.get("context") or {}).get("actor", "system")
+        async def _spy_update(self, scope, target, step_id, field_id, changes, *, actor="system"):
             captured.append(actor)
-            # Don't actually write to real files
-            return None
+            # Call through to actual implementation (which will try DB write)
+            # We only care about capturing the actor, so we can raise after recording
+            raise RuntimeError("spy captured actor, skipping actual write")
 
-        monkeypatch.setattr(persistence, "save_config", _spy_save)
-        monkeypatch.setattr(patcher, "_get_target_file", lambda scope, target: lang_file)
+        monkeypatch.setattr(DatabaseConfigWriteRepository, "update_field_metadata", _spy_update)
 
         authed = TestClient(app, headers={"x-auth-user": "testuser", "x-auth-roles": "config_editor"})
         authed.post("/config/update", json=_update_payload())
 
-        # The actor should have been passed as "testuser"
         assert "testuser" in captured
 
     def test_anonymous_actor_when_auth_disabled(self, monkeypatch, tmp_path):
         """With AUTH_ENABLED=false the actor is 'anonymous'."""
-        import json
-        import app.services.config_patcher as patcher
-        import app.services.config_persistence as persistence
-
-        lang_file = tmp_path / "python.json"
-        lang_file.write_text(json.dumps({
-            "language_id": "python",
-            "metadata_overrides": [],
-        }))
+        from app.services.config_db_write_repository import DatabaseConfigWriteRepository
 
         captured: list[str] = []
 
-        def _spy_save(path, data, **kwargs):
-            actor = (kwargs.get("context") or {}).get("actor", "system")
+        async def _spy_update(self, scope, target, step_id, field_id, changes, *, actor="system"):
             captured.append(actor)
-            return None
+            raise RuntimeError("spy captured actor, skipping actual write")
 
-        monkeypatch.setattr(persistence, "save_config", _spy_save)
-        monkeypatch.setattr(patcher, "_get_target_file", lambda scope, target: lang_file)
+        monkeypatch.setattr(DatabaseConfigWriteRepository, "update_field_metadata", _spy_update)
 
         client.post("/config/update", json=_update_payload())
 
