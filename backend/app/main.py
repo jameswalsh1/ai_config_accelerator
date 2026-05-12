@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import candidates, config, drafts, generate, revisions, wizard
+from app.routers import candidates, config, drafts, flows, generate, revisions, visibility, wizard
 from app.settings import CORS_ORIGIN_REGEX
 
 logger = logging.getLogger(__name__)
@@ -107,6 +107,8 @@ app.include_router(config.router)
 app.include_router(drafts.router)
 app.include_router(revisions.router)
 app.include_router(candidates.router)
+app.include_router(visibility.router)
+app.include_router(flows.router)
 
 
 @app.get("/health")

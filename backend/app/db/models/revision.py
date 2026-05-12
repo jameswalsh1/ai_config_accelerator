@@ -94,6 +94,9 @@ class UserConfigRevisionValue(AuditMixin, Base):
         ForeignKey("user_config_revision.id", ondelete="CASCADE"), nullable=False
     )
     field_path: Mapped[str] = mapped_column(String(255), nullable=False)
+    field_id: Mapped[int | None] = mapped_column(
+        ForeignKey("config_field.id", ondelete="SET NULL"), nullable=True
+    )
     value_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
@@ -107,6 +110,7 @@ class UserConfigRevisionValue(AuditMixin, Base):
         ),
         Index("ix_revision_value_revision_id", "revision_id"),
         Index("ix_revision_value_field_path", "field_path"),
+        Index("ix_revision_value_field_id", "field_id"),
     )
 
     def __repr__(self) -> str:

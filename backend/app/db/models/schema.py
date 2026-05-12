@@ -168,6 +168,9 @@ class ConfigField(AuditMixin, Base):
     agent_config_json: Mapped[Any] = mapped_column(JSON, nullable=True)
     rows: Mapped[int | None] = mapped_column(Integer, nullable=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Phase 5C — extensible attribute store for rare/field-type-specific attrs.
+    # New capabilities should be added here instead of as top-level columns.
+    attributes_json: Mapped[Any] = mapped_column(JSON, nullable=True)
 
     # Relationships
     schema: Mapped[ConfigSchema] = relationship("ConfigSchema", back_populates="fields")
