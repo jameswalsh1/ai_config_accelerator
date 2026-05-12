@@ -24,7 +24,7 @@ from app.services.config_validator import (
     SchemaValidationError,
 )
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent.parent.parent / "tests" / "wizard_configs"
 
 # Merge mode for presets and options
 MergeMode = Literal["append", "merge_by_label", "replace"]

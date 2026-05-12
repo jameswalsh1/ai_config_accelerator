@@ -32,7 +32,7 @@ DATABASE_URL = "sqlite+aiosqlite:///file:test_db_parity_db?mode=memory&cache=sha
 
 # Use the module-level DATA_DIR that conftest.py may redirect to a temp directory
 # This ensures the DB is seeded from the same source as the JSON resolver
-DATA_DIR = Path(__file__).resolve().parents[1] / "app" / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).resolve().parent / "wizard_configs"
 
 
 # ---------------------------------------------------------------------------

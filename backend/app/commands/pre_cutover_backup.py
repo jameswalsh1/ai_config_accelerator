@@ -34,7 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.commands.export_config_db_to_json import run_export
 
 
-_DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "wizard_configs"
+_DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "tests" / "wizard_configs"
 _DEFAULT_BACKUP_ROOT = Path(__file__).resolve().parents[4] / "backups"
 
 

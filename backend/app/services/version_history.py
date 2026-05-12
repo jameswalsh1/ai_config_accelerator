@@ -33,7 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent.parent.parent / "tests" / "wizard_configs"
 HISTORY_DIR = DATA_DIR / "history"
 
 

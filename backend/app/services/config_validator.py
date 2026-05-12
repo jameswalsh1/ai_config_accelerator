@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent.parent.parent / "tests" / "wizard_configs"
 
 
 class SchemaValidationError(Exception):

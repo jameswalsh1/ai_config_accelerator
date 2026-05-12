@@ -17,6 +17,7 @@ class TestDatabaseSettings:
         from app.settings import DatabaseSettings
 
         s = DatabaseSettings(
+            database_url=None,
             database_user="user",
             database_password="pass",
             database_host="localhost",
@@ -38,6 +39,7 @@ class TestDatabaseSettings:
         from app.settings import DatabaseSettings
 
         s = DatabaseSettings(
+            database_url=None,
             database_user="user",
             database_password="supersecret",
             database_host="localhost",

@@ -1,7 +1,7 @@
 """
 Production config conformance tests.
 
-These tests scan the live ``app/data/wizard_configs/`` directory and validate
+These tests scan the ``tests/wizard_configs/`` directory and validate
 every file found there.  When a new language or tool is added, it is
 automatically picked up and validated — no test changes required.
 
@@ -31,7 +31,7 @@ from app.models.wizard import WizardConfig
 
 # ── Discovery helpers ────────────────────────────────────────────────────────
 
-_PROD_DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+_PROD_DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 
 def _discover_json_files(subdir: str) -> list[Path]:

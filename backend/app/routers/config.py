@@ -606,7 +606,7 @@ async def get_audit_log(
                     "action":    "update",
                     "scope":     "language",
                     "target":    "python",
-                    "file":      "backend/app/data/wizard_configs/languages/python.json",
+                    "file":      "backend/tests/wizard_configs/languages/python.json",
                     "actor":     "system",
                     "diff_summary": "step 'claude_md': 1 field(s) modified",
                     "diff":      { ... }

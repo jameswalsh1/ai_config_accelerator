@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent.parent.parent / "tests" / "wizard_configs"
 LOG_PATH = DATA_DIR / "audit.jsonl"
 
 # Module-level lock so concurrent requests don't interleave JSONL lines

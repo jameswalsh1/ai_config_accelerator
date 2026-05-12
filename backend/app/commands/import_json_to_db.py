@@ -33,7 +33,7 @@ from app.services.import_ import (
 # Default data directory
 # ---------------------------------------------------------------------------
 
-_DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "wizard_configs"
+_DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "tests" / "wizard_configs"
 
 
 # ---------------------------------------------------------------------------

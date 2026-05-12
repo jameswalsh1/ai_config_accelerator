@@ -657,7 +657,7 @@ class TestDiffSerialization:
 class TestIntegrationWithRealConfigs:
     """Test diff with actual configuration files."""
     
-    DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+    DATA_DIR = Path(__file__).parent / "wizard_configs"
     
     def test_diff_real_tool_configs(self):
         """Test diffing real tool override files."""

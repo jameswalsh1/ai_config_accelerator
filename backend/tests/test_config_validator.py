@@ -25,7 +25,7 @@ from app.services.config_validator import (
     SchemaLoadError,
 )
 
-DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 
 class TestWizardSchemaValidation:
@@ -423,7 +423,7 @@ class TestIntegrationWithLoader:
         from pathlib import Path
         from app.services.config_validator import validate_override_references
 
-        data_dir = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+        data_dir = Path(__file__).parent / "wizard_configs"
         with (data_dir / "schema.json").open() as f:
             schema = json.load(f)
 

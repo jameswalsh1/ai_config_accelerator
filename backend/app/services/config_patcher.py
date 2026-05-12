@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 from copy import deepcopy
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent.parent.parent / "tests" / "wizard_configs"
 
 # Scope types
 PatchScope = Literal["tool", "language", "override"]

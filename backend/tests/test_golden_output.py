@@ -27,7 +27,7 @@ from app.services.file_generator import generate_files
 GOLDEN_DIR = Path(__file__).parent / "fixtures" / "golden"
 GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
 
-DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 # Representative minimal answers per language
 _LANGUAGE_ANSWERS: dict[str, dict] = {

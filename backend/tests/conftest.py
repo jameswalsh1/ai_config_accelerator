@@ -21,8 +21,8 @@ from typing import Any
 
 import pytest
 
-# Production config data
-_PROD_DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+# JSON fixture data (used by JSON-mode tests only)
+_PROD_DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 # All modules whose DATA_DIR needs redirecting
 _DATA_DIR_MODULES = [

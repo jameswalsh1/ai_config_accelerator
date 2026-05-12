@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.services.config_db_exporter import export_all
 
 
-_DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[2] / "data" / "wizard_configs"
+_DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[2] / "tests" / "wizard_configs"
 
 
 async def run_export(
