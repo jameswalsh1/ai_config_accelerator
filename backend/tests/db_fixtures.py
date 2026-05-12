@@ -22,7 +22,7 @@ import os
 from collections.abc import AsyncGenerator
 
 import pytest
-import pytest_asyncio  # type: ignore[import-untyped]
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,

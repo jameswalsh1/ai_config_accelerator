@@ -6,7 +6,7 @@ functions so the router and frontend remain unchanged.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import asc, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,4 +72,4 @@ async def db_get_version_data(
 ) -> dict[str, Any]:
     """Return only the ``data`` payload for a version (used for diff)."""
     envelope = await db_get_version(session, scope, target, version)
-    return envelope["data"]
+    return cast(dict[str, Any], envelope["data"])

@@ -500,7 +500,7 @@ class TestRevisionService:
 
 
 class TestCandidateService:
-    async def _create_revision(self, factory, actor: str, name: str) -> dict:
+    async def _create_revision(self, factory, actor: str, name: str) -> dict[str, Any]:
         from app.services.revision_service import save_revision
 
         async with factory() as session:

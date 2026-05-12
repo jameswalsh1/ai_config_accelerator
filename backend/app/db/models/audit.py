@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import DateTime, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -29,8 +30,8 @@ class ConfigAuditEvent(Base):
     scope: Mapped[str | None] = mapped_column(String(50), nullable=True)
     target_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    before_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    after_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    before_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    after_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=_utcnow,
@@ -62,7 +63,7 @@ class ConfigVersion(Base):
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     actor: Mapped[str] = mapped_column(String(255), nullable=False, default="system")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    data_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    data_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=_utcnow,

@@ -9,6 +9,7 @@ Verifies:
 """
 import os
 import pytest
+from typing import Any
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -29,11 +30,11 @@ _BASE_PAYLOAD = {
 }
 
 
-def _update_payload(**kwargs) -> dict:
+def _update_payload(**kwargs) -> dict[str, Any]:
     return {**_BASE_PAYLOAD, "changes": {"default": "python"}, **kwargs}
 
 
-def _add_preset_payload(**kwargs) -> dict:
+def _add_preset_payload(**kwargs) -> dict[str, Any]:
     return {
         **_BASE_PAYLOAD,
         "preset": {"label": "__compat_test__", "value": "__compat__"},
@@ -41,11 +42,11 @@ def _add_preset_payload(**kwargs) -> dict:
     }
 
 
-def _remove_preset_payload(**kwargs) -> dict:
+def _remove_preset_payload(**kwargs) -> dict[str, Any]:
     return {**_BASE_PAYLOAD, "preset_label": "__compat_test__", **kwargs}
 
 
-def _reset_payload(**kwargs) -> dict:
+def _reset_payload(**kwargs) -> dict[str, Any]:
     return {**_BASE_PAYLOAD, **kwargs}
 
 

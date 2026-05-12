@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -110,7 +111,7 @@ async def import_tools_and_languages(
             try:
                 raw = json.loads(json_file.read_text(encoding="utf-8"))
                 tool_key: str = raw["tool_id"]
-                tool_meta: dict = raw.get("tool_metadata", {})
+                tool_meta: dict[str, Any] = raw.get("tool_metadata", {})
                 title: str = tool_meta.get("title", tool_key)
                 description: str = tool_meta.get("description", "")
                 outcome = await _upsert_tool(session, tool_key, title, description, dry_run)
@@ -132,7 +133,7 @@ async def import_tools_and_languages(
             try:
                 raw = json.loads(json_file.read_text(encoding="utf-8"))
                 lang_key: str = raw["language_id"]
-                metadata: dict = raw.get("metadata", {})
+                metadata: dict[str, Any] = raw.get("metadata", {})
                 title = metadata.get("title", lang_key)
                 description = metadata.get("description", "")
                 outcome = await _upsert_language(session, lang_key, title, description, dry_run)

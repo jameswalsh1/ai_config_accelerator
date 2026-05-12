@@ -7,7 +7,7 @@ Provides clear error messages for validation failures.
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 DATA_DIR = Path(__file__).parent.parent.parent / "tests" / "wizard_configs"
 
@@ -367,7 +367,7 @@ def _load_schema_steps() -> list[dict[str, Any]]:
         return []
     with schema_file.open(encoding="utf-8") as f:
         schema = json.load(f)
-    return schema.get("steps", [])
+    return cast(list[dict[str, Any]], schema.get("steps", []))
 
 
 def _build_valid_step_ids(steps: list[dict[str, Any]]) -> set[str]:

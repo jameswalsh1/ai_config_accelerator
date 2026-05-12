@@ -13,6 +13,8 @@ becomes a *draft* layer — it does not directly modify active configuration.
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import (
     DateTime,
     ForeignKey,
@@ -66,7 +68,7 @@ class TemplateCandidate(AuditMixin, Base):
     # Review metadata
     review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    reviewed_at: Mapped[str | None] = mapped_column(
+    reviewed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
@@ -76,7 +78,7 @@ class TemplateCandidate(AuditMixin, Base):
     )
 
     # Relationships
-    source_revision: Mapped["UserConfigRevision"] = relationship(  # type: ignore[name-defined]
+    source_revision: Mapped["UserConfigRevision"] = relationship(
         "UserConfigRevision", foreign_keys=[source_revision_id], lazy="select"
     )
 

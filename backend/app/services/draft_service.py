@@ -176,8 +176,8 @@ async def create_draft_from_active(
 async def load_draft_preview(
     session: AsyncSession,
     draft_layer_id: int,
-    tool_id: str,
-    language_id: str,
+    tool_id: str | None,
+    language_id: str | None,
 ) -> dict[str, Any]:
     """Resolve wizard config with the draft layer substituted in for its scope.
 
@@ -234,6 +234,8 @@ async def load_draft_preview(
     # Determine which layer to use for each scope:
     # if the draft is for the tool scope, replace tool_layer with draft
     # if the draft is for the language scope, replace lang_layer with draft
+    tool_layer: ConfigLayer | None
+    lang_layer: ConfigLayer | None
     if draft.layer_type == "tool":
         tool_layer = draft
         lang_layer = (

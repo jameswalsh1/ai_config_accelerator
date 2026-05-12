@@ -14,6 +14,7 @@ To regenerate snapshots after an intentional change:
 import json
 import pytest
 from pathlib import Path
+from typing import Any
 from app.services.config_loader_composable import load_composable_config
 
 SNAPSHOT_DIR = Path(__file__).parent / "fixtures" / "snapshots"
@@ -45,7 +46,7 @@ COMBOS = [
 _SNAPSHOT_KEYS = {"id", "schema_version", "steps"}
 
 
-def _clean_for_snapshot(config: dict) -> dict:
+def _clean_for_snapshot(config: dict[str, Any]) -> dict[str, Any]:
     """Remove volatile keys that shouldn't be part of the snapshot comparison."""
     result = {k: v for k, v in config.items() if not k.startswith("_")}
     return result

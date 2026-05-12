@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Any, AsyncGenerator, Literal, cast
+from typing import Any, AsyncGenerator, Literal
 
 from app.services.auth import AuthUser, require_config_editor, require_audit_viewer
 from app.services.config_loader_composable import (
@@ -226,7 +226,7 @@ async def update_field_config(
             resolved_dict = await read_repo.load_resolved_config(tool_str, language_str)
         else:
             # Update the override file
-            updated_config = update_field_metadata(cast(Literal["tool", "language", "override"], scope_str), target_str, step_id_str, field_id_str, transformed_changes, actor=_user.username)
+            updated_config = update_field_metadata(scope_str, target_str, step_id_str, field_id_str, transformed_changes, actor=_user.username)
 
             # Validate the updated config
             if scope_str == "language":
@@ -304,7 +304,7 @@ async def reset_field_to_base(
             read_repo = DatabaseConfigReadRepository(db)
             resolved_dict = await read_repo.load_resolved_config(tool_str, language_str)
         else:
-            updated_config = remove_field_override(cast(Literal["tool", "language", "override"], scope_str), target_str, step_id_str, field_id_str, cast(Literal["metadata", "structure"], override_type_str), actor=_user.username)
+            updated_config = remove_field_override(scope_str, target_str, step_id_str, field_id_str, override_type_str, actor=_user.username)
             resolved_dict = load_composable_config(tool_str, language_str)
 
         result = get_editable_step(resolved_dict, step_id_str)
@@ -380,7 +380,7 @@ async def add_preset(
             read_repo = DatabaseConfigReadRepository(db)
             resolved_dict = await read_repo.load_resolved_config(tool_str, language_str)
         else:
-            updated_config = add_preset_to_field(cast(Literal["tool", "language", "override"], scope_str), target_str, step_id_str, field_id_str, preset_dict, position, actor=_user.username)
+            updated_config = add_preset_to_field(scope_str, target_str, step_id_str, field_id_str, preset_dict, position, actor=_user.username)
             resolved_dict = load_composable_config(tool_str, language_str)
 
         result = get_editable_step(resolved_dict, step_id_str)
@@ -450,7 +450,7 @@ async def remove_preset(
             read_repo = DatabaseConfigReadRepository(db)
             resolved_dict = await read_repo.load_resolved_config(tool_str, language_str)
         else:
-            updated_config = remove_preset_from_field(cast(Literal["tool", "language", "override"], scope_str), target_str, step_id_str, field_id_str, preset_label, position, actor=_user.username)
+            updated_config = remove_preset_from_field(scope_str, target_str, step_id_str, field_id_str, preset_label, position, actor=_user.username)
             resolved_dict = load_composable_config(tool_str, language_str)
 
         result = get_editable_step(resolved_dict, step_id_str)

@@ -130,7 +130,7 @@ class TestTransactionHelper:
         session.rollback = AsyncMock()
         called_with_session = []
 
-        async def work(s):  # type: ignore[no-untyped-def]
+        async def work(s):
             called_with_session.append(s)
 
         await db_transaction(session, work)
@@ -145,7 +145,7 @@ class TestTransactionHelper:
         session.commit = AsyncMock()
         session.rollback = AsyncMock()
 
-        async def failing_work(s):  # type: ignore[no-untyped-def]
+        async def failing_work(s):
             raise RuntimeError("db error")
 
         with pytest.raises(RuntimeError, match="db error"):

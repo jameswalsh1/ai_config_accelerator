@@ -20,6 +20,7 @@ import json
 import pytest
 from pathlib import Path
 from copy import deepcopy
+from typing import Any
 from app.services.config_loader_composable import load_composable_config
 from app.models.wizard import WizardConfig
 from app.services.file_generator import generate_files
@@ -30,7 +31,7 @@ GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
 DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 # Representative minimal answers per language
-_LANGUAGE_ANSWERS: dict[str, dict] = {
+_LANGUAGE_ANSWERS: dict[str, dict[str, Any]] = {
     "python": {"language_selection": {"language": "python"}},
     "java": {"language_selection": {"language": "java"}},
     "typescript": {"language_selection": {"language": "typescript"}},

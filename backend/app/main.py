@@ -1,4 +1,5 @@
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -85,7 +86,7 @@ async def _check_database_readiness() -> None:
 
 
 @asynccontextmanager
-async def lifespan(application: FastAPI):  # type: ignore[type-arg]
+async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     await _check_database_readiness()
     yield
 
@@ -161,6 +162,7 @@ async def health_config_db() -> dict[str, Any]:
 
             break
 
+        assert active_schema is not None
         return {
             "database_config_ready": True,
             "active_schema": active_schema.schema_version,

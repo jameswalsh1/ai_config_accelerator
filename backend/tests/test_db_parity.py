@@ -163,7 +163,7 @@ class TestConfigStructureParity:
 class TestGeneratedOutputParity:
     """Compare file_generator output between JSON and DB resolver for key combos."""
 
-    async def _get_db_config(self, session: AsyncSession, tool_id: str, lang_id: str) -> dict:
+    async def _get_db_config(self, session: AsyncSession, tool_id: str, lang_id: str) -> dict[str, Any]:
         repo = DatabaseConfigReadRepository(session)
         return await repo.load_resolved_config(tool_id, lang_id)
 
@@ -178,7 +178,7 @@ class TestGeneratedOutputParity:
         db_config = await self._get_db_config(seeded_session, tool_id, lang_id)
 
         # Compare output_file values for non-hidden steps with non-empty output_file
-        def step_output_files(config: dict) -> set[str]:
+        def step_output_files(config: dict[str, Any]) -> set[str]:
             return {
                 s["output_file"]
                 for s in config.get("steps", [])
@@ -199,7 +199,7 @@ class TestGeneratedOutputParity:
         json_config = load_composable_config(tool_id, lang_id)
         db_config = await self._get_db_config(seeded_session, tool_id, lang_id)
 
-        def visible_step_count(config: dict) -> int:
+        def visible_step_count(config: dict[str, Any]) -> int:
             return sum(1 for s in config.get("steps", []) if not s.get("hidden"))
 
         assert visible_step_count(json_config) == visible_step_count(db_config)

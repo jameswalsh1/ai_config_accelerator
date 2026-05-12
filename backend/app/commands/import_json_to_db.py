@@ -98,8 +98,8 @@ async def _main(argv: list[str] | None = None) -> int:
         db_url = args.db_url
     else:
         try:
-            from app.settings import get_settings  # type: ignore[import]
-            db_url = get_settings().database.url
+            from app.settings import get_settings
+            db_url = get_settings().database.get_url()
         except Exception:  # noqa: BLE001
             print(
                 "ERROR: Could not read DATABASE_URL from settings. "

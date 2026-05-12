@@ -28,6 +28,7 @@ import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -44,7 +45,7 @@ async def run_backup(
     source_data_dir: Path,
     *,
     dry_run: bool = False,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Create the backup in ``backup_dir``.
 
     Returns a manifest dict with the results of both the JSON-file copy and

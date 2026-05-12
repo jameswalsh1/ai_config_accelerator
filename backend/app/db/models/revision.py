@@ -13,6 +13,8 @@ user_config_revision_value  : Per-field answer values (one row per field path).
 """
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy import (
     Boolean,
     ForeignKey,
@@ -59,7 +61,7 @@ class UserConfigRevision(AuditMixin, Base):
         ForeignKey("config_schema.id", ondelete="SET NULL"), nullable=True
     )
     # JSON snapshot of which layers were active when revision was saved
-    source_layers_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    source_layers_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
     values: Mapped[list[UserConfigRevisionValue]] = relationship(
@@ -92,7 +94,7 @@ class UserConfigRevisionValue(AuditMixin, Base):
         ForeignKey("user_config_revision.id", ondelete="CASCADE"), nullable=False
     )
     field_path: Mapped[str] = mapped_column(String(255), nullable=False)
-    value_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    value_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Relationships
     revision: Mapped[UserConfigRevision] = relationship(
