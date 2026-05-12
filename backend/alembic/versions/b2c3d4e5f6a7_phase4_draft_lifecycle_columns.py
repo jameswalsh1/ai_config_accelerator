@@ -32,15 +32,15 @@ def upgrade() -> None:
     # Draft provenance
     op.add_column(
         "config_layer",
-        sa.Column("parent_layer_id", sa.Integer, sa.ForeignKey("config_layer.id", ondelete="SET NULL"), nullable=True),
+        sa.Column("parent_layer_id", sa.Integer, nullable=True),
     )
     op.add_column(
         "config_layer",
-        sa.Column("created_from_layer_id", sa.Integer, sa.ForeignKey("config_layer.id", ondelete="SET NULL"), nullable=True),
+        sa.Column("created_from_layer_id", sa.Integer, nullable=True),
     )
     op.add_column(
         "config_layer",
-        sa.Column("published_from_layer_id", sa.Integer, sa.ForeignKey("config_layer.id", ondelete="SET NULL"), nullable=True),
+        sa.Column("published_from_layer_id", sa.Integer, nullable=True),
     )
     op.add_column(
         "config_layer",
