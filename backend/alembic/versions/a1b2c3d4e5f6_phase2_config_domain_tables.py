@@ -74,7 +74,7 @@ def upgrade() -> None:
         "config_schema",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
         sa.Column("schema_version", sa.String(50), nullable=False),
-        sa.Column("description", sa.Text, nullable=False, server_default=""),
+        sa.Column("description", sa.Text, nullable=True),
         sa.Column("status", sa.String(20), nullable=False, server_default="draft"),
         sa.Column("source_checksum", sa.String(64), nullable=True),
         sa.Column("source_path", sa.String(500), nullable=True),

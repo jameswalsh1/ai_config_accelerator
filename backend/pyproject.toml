@@ -12,6 +12,7 @@ dependencies = [
     "sqlalchemy[asyncio]==2.0.41",
     "alembic==1.14.1",
     "asyncmy==0.2.10",
+    "cryptography>=48.0.0",
 ]
 
 [project.optional-dependencies]
