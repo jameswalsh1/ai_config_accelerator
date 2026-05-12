@@ -40,7 +40,6 @@ class ConfigLayer(AuditMixin, Base):
     Phase 4 lifecycle columns
     -------------------------
     parent_layer_id        : The layer this draft was cloned from (active layer).
-    created_from_layer_id  : Same as parent_layer_id; explicit alias for clarity.
     published_from_layer_id: The draft layer that was promoted to create this active layer.
     draft_name             : Human-readable name for the draft (optional).
     draft_summary          : Description of what the draft changes.
@@ -76,9 +75,6 @@ class ConfigLayer(AuditMixin, Base):
     # Phase 4 — Draft lifecycle provenance columns
     # ------------------------------------------------------------------
     parent_layer_id: Mapped[int | None] = mapped_column(
-        ForeignKey("config_layer.id", ondelete="SET NULL"), nullable=True
-    )
-    created_from_layer_id: Mapped[int | None] = mapped_column(
         ForeignKey("config_layer.id", ondelete="SET NULL"), nullable=True
     )
     published_from_layer_id: Mapped[int | None] = mapped_column(
@@ -135,6 +131,7 @@ class ConfigLayer(AuditMixin, Base):
         Index("ix_config_layer_lang_id", "language_id"),
         Index("ix_config_layer_status", "status"),
         Index("ix_config_layer_parent_id", "parent_layer_id"),
+        Index("ix_config_layer_tool_lang_status", "tool_id", "language_id", "status"),
     )
 
     def __repr__(self) -> str:

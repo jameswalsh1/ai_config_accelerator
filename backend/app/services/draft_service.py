@@ -121,7 +121,7 @@ def _layer_to_summary_dict(layer: ConfigLayer) -> dict[str, Any]:
         "draft_name": layer.draft_name,
         "draft_summary": layer.draft_summary,
         "parent_layer_id": layer.parent_layer_id,
-        "created_from_layer_id": layer.created_from_layer_id,
+
         "published_at": layer.published_at.isoformat() if layer.published_at else None,
         "published_by": layer.published_by,
         "archived_at": layer.archived_at.isoformat() if layer.archived_at else None,
@@ -454,7 +454,7 @@ async def diff_draft_vs_source(
             f"Draft layer id={draft_layer_id} not found or not in 'draft' status"
         )
 
-    source_id = draft.created_from_layer_id or draft.parent_layer_id
+    source_id = draft.parent_layer_id
     if source_id is None:
         # No known parent — diff against empty
         source_overrides: dict[str, Any] = {}

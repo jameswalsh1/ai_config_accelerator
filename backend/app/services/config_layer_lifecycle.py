@@ -193,8 +193,7 @@ class ConfigLayerLifecycleService:
         """Create a draft clone of ``source_layer``.
 
         Copies all step/field-metadata/field-content overrides.  The new
-        draft's ``parent_layer_id`` and ``created_from_layer_id`` are set to
-        ``source_layer.id``.
+        draft's ``parent_layer_id`` is set to ``source_layer.id``.
 
         The source (active) layer is **not** modified.
         """
@@ -213,7 +212,6 @@ class ConfigLayerLifecycleService:
             metadata_json=source_layer.metadata_json,
             applies_to_json=source_layer.applies_to_json,
             parent_layer_id=source_layer.id,
-            created_from_layer_id=source_layer.id,
             draft_name=draft_name,
             draft_summary=draft_summary,
             created_by=actor,

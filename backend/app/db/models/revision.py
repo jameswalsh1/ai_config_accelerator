@@ -93,7 +93,7 @@ class UserConfigRevisionValue(AuditMixin, Base):
     revision_id: Mapped[int] = mapped_column(
         ForeignKey("user_config_revision.id", ondelete="CASCADE"), nullable=False
     )
-    field_path: Mapped[str] = mapped_column(String(255), nullable=False)
+    field_path: Mapped[str] = mapped_column(String(500), nullable=False)
     field_id: Mapped[int | None] = mapped_column(
         ForeignKey("config_field.id", ondelete="SET NULL"), nullable=True
     )
