@@ -3,16 +3,16 @@ Config resolution service (Ticket 16).
 
 Wraps config composition with a clean service boundary.
 Preserves the existing composition order:
-    schema.json → tool override → language override → combo override → preset expansion
+    schema → tool override → language override → combo override → preset expansion
 
-Depends on ConfigReadRepository so the underlying source (JSON or database)
-can be swapped without changing callers.
+Depends on ConfigReadRepository so the underlying source can be swapped
+without changing callers.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from app.services.config_repository import ConfigReadRepository, JsonConfigReadRepository
+from app.services.config_repository import ConfigReadRepository
 
 
 class ConfigResolutionService:
@@ -21,12 +21,12 @@ class ConfigResolutionService:
 
     Usage::
 
-        svc = ConfigResolutionService()  # uses JSON by default
+        svc = ConfigResolutionService(repository=some_repo)
         config = svc.resolve("claude", "python")
     """
 
-    def __init__(self, repository: ConfigReadRepository | None = None) -> None:
-        self._repo: ConfigReadRepository = repository or JsonConfigReadRepository()
+    def __init__(self, repository: ConfigReadRepository) -> None:
+        self._repo: ConfigReadRepository = repository
 
     def resolve(self, tool_id: str, language_id: str) -> dict[str, Any]:
         """

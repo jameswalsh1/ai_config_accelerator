@@ -12,23 +12,23 @@ Combinations tested:
     claude+python, claude+java, copilot+typescript, copilot+react-typescript,
     cursor+java, cursor+react-typescript
 
-NOTE: Golden files capture a baseline from the schema and config only; they are
-independent of user-supplied language overrides so they use a fresh schema load
-rather than full config_loader_composable (which picks up mutable override files).
+NOTE: Golden files capture a baseline from the resolved config.  The configs
+are loaded from the seeded test database.
 """
 import json
 import pytest
 from pathlib import Path
-from copy import deepcopy
 from typing import Any
-from app.services.config_loader_composable import load_composable_config
+from fastapi.testclient import TestClient
+
+from app.main import app as _app
 from app.models.wizard import WizardConfig
 from app.services.file_generator import generate_files
 
 GOLDEN_DIR = Path(__file__).parent / "fixtures" / "golden"
 GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
 
-DATA_DIR = Path(__file__).parent / "wizard_configs"
+_client = TestClient(_app)
 
 # Representative minimal answers per language
 _LANGUAGE_ANSWERS: dict[str, dict[str, Any]] = {
@@ -53,8 +53,9 @@ def _golden_path(tool: str, language: str) -> Path:
 
 
 def _generate(tool: str, language: str) -> dict[str, str]:
-    config_dict = load_composable_config(tool, language)
-    config = WizardConfig(**config_dict)
+    resp = _client.get(f"/api/wizard/config/resolved", params={"tool": tool, "language": language})
+    assert resp.status_code == 200, f"Failed to load {tool}+{language}: {resp.text}"
+    config = WizardConfig.model_validate(resp.json())
     answers = _LANGUAGE_ANSWERS.get(language, {"language_selection": {"language": language}})
     return generate_files(config, answers)
 

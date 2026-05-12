@@ -69,9 +69,8 @@ class DatabaseSettings(BaseSettings):
 class ConfigSourceSettings(BaseSettings):
     """Controls which backend the config system reads from.
 
-    Allowed values:
-      - ``json``     — read from JSON files on disk (default)
-      - ``database`` — read from the relational database (Phase 2)
+    The only supported value is ``database`` — configuration is read from
+    the relational database.
     """
 
     config_source: str = "database"
@@ -81,7 +80,7 @@ class ConfigSourceSettings(BaseSettings):
     @field_validator("config_source", mode="before")
     @classmethod
     def _validate_source(cls, v: str) -> str:
-        allowed = {"json", "database"}
+        allowed = {"database"}
         if v not in allowed:
             raise ValueError(
                 f"Invalid CONFIG_SOURCE '{v}'. Allowed values: {', '.join(sorted(allowed))}"

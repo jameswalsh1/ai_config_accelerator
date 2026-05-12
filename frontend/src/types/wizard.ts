@@ -110,7 +110,6 @@ export interface EditableField extends WizardField {
   is_locked: boolean
   is_default: boolean
   override_source?: string
-  source_file?: string
   current_value?: unknown
   current_value_source?: string
   preset_assignments?: PresetAssignment[]

@@ -5,7 +5,6 @@ import pytest
 from app.services.config_editor import (
     get_editable_step,
     _enhance_field_with_metadata,
-    _map_source_to_file,
     _extract_source_tracking,
 )
 
@@ -76,7 +75,6 @@ class TestGetEditableStep:
         assert "is_locked" in field
         assert "is_default" in field
         assert "override_source" in field
-        assert "source_file" in field
     
     def test_extracts_source_tracking(self):
         """Verify source_tracking is extracted."""
@@ -110,8 +108,8 @@ class TestGetEditableStep:
         tracking = result["source_tracking"]
         
         assert tracking["total_fields"] == 2
-        assert "schema.json" in tracking["by_source"]
-        assert "tools/claude.json" in tracking["by_source"]
+        assert "schema" in tracking["by_source"]
+        assert "tool:claude" in tracking["by_source"]
         assert tracking["locked_fields"] == 1
 
 
@@ -182,8 +180,8 @@ class TestEnhanceFieldWithMetadata:
         enhanced = _enhance_field_with_metadata(field)
         assert enhanced["is_default"] is False
     
-    def test_adds_source_file_mapping(self):
-        """Verify source_file is correctly mapped."""
+    def test_preserves_override_source(self):
+        """Verify override_source is preserved on enhanced field."""
         field = {
             "id": "field1",
             "type": "text",
@@ -193,7 +191,7 @@ class TestEnhanceFieldWithMetadata:
         }
         
         enhanced = _enhance_field_with_metadata(field)
-        assert enhanced["source_file"] == "languages/python.json"
+        assert enhanced["override_source"] == "language:python"
     
     def test_preserves_existing_field_data(self):
         """Verify original field data is preserved."""
@@ -218,30 +216,6 @@ class TestEnhanceFieldWithMetadata:
         assert enhanced["required"] == field["required"]
 
 
-class TestMapSourceToFile:
-    def test_schema_source(self):
-        assert _map_source_to_file("schema") == "schema.json"
-        assert _map_source_to_file(None) == "schema.json"
-    
-    def test_tool_source(self):
-        assert _map_source_to_file("tool:claude") == "tools/claude.json"
-        assert _map_source_to_file("tool:copilot") == "tools/copilot.json"
-        assert _map_source_to_file("tool:cursor") == "tools/cursor.json"
-    
-    def test_language_source(self):
-        assert _map_source_to_file("language:python") == "languages/python.json"
-        assert _map_source_to_file("language:javascript") == "languages/javascript.json"
-        assert _map_source_to_file("language:java") == "languages/java.json"
-    
-    def test_override_source(self):
-        assert _map_source_to_file("override:claude+python") == "overrides/claude+python.json"
-        assert _map_source_to_file("override:copilot+javascript") == "overrides/copilot+javascript.json"
-    
-    def test_unknown_source(self):
-        assert _map_source_to_file("unknown") == "unknown"
-        assert _map_source_to_file("invalid_format") == "unknown"
-
-
 class TestExtractSourceTracking:
     def test_counts_total_fields(self):
         """Verify total_fields count."""
@@ -250,14 +224,14 @@ class TestExtractSourceTracking:
             "fields": [
                 {
                     "id": "f1",
-                    "source_file": "schema.json",
+                    "override_source": "schema",
                     "is_locked": False,
                     "is_default": True,
                     "editability": "free",
                 },
                 {
                     "id": "f2",
-                    "source_file": "tools/claude.json",
+                    "override_source": "tool:claude",
                     "is_locked": False,
                     "is_default": False,
                     "editability": "free",
@@ -273,24 +247,24 @@ class TestExtractSourceTracking:
         step = {
             "id": "test",
             "fields": [
-                {"id": "f1", "source_file": "schema.json", "is_locked": False, "is_default": True, "editability": "free"},
-                {"id": "f2", "source_file": "schema.json", "is_locked": False, "is_default": True, "editability": "free"},
-                {"id": "f3", "source_file": "tools/claude.json", "is_locked": False, "is_default": False, "editability": "free"},
+                {"id": "f1", "override_source": "schema", "is_locked": False, "is_default": True, "editability": "free"},
+                {"id": "f2", "override_source": "schema", "is_locked": False, "is_default": True, "editability": "free"},
+                {"id": "f3", "override_source": "tool:claude", "is_locked": False, "is_default": False, "editability": "free"},
             ],
         }
         
         tracking = _extract_source_tracking(step)
-        assert tracking["by_source"]["schema.json"] == 2
-        assert tracking["by_source"]["tools/claude.json"] == 1
+        assert tracking["by_source"]["schema"] == 2
+        assert tracking["by_source"]["tool:claude"] == 1
     
     def test_counts_by_editability(self):
         """Verify by_editability counts."""
         step = {
             "id": "test",
             "fields": [
-                {"id": "f1", "source_file": "schema.json", "is_locked": False, "is_default": True, "editability": "free"},
-                {"id": "f2", "source_file": "schema.json", "is_locked": True, "is_default": True, "editability": "locked"},
-                {"id": "f3", "source_file": "tools/claude.json", "is_locked": False, "is_default": False, "editability": "suggested"},
+                {"id": "f1", "override_source": "schema", "is_locked": False, "is_default": True, "editability": "free"},
+                {"id": "f2", "override_source": "schema", "is_locked": True, "is_default": True, "editability": "locked"},
+                {"id": "f3", "override_source": "tool:claude", "is_locked": False, "is_default": False, "editability": "suggested"},
             ],
         }
         

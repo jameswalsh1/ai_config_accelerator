@@ -13,6 +13,7 @@ Tests are organised by ticket area:
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any, AsyncGenerator
 
 import pytest
@@ -20,7 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db.base import Base
 import app.db.models  # noqa: F401 — registers all ORM models with Base.metadata
-import app.services.config_loader_composable as _loader_mod
+
+_DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 DATABASE_URL = (
     "sqlite+aiosqlite:///file:test_phase4_db"
@@ -55,7 +57,7 @@ async def seed_db(factory):
     """Seed the in-memory DB with real config data before any tests run."""
     from app.commands.import_json_to_db import run_import
 
-    data_dir = _loader_mod.DATA_DIR
+    data_dir = _DATA_DIR
     async with factory() as session:
         await run_import(session, data_dir)
         await session.commit()

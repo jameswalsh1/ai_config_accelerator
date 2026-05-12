@@ -5,7 +5,7 @@ Provides functionality to extract and track editable configuration slices
 for specific steps, including override sources and editability status.
 """
 
-from typing import Any, Literal
+from typing import Any
 
 
 def get_editable_step(
@@ -15,7 +15,7 @@ def get_editable_step(
     Extract editable configuration slice for a specific step.
 
     Args:
-        config: Fully resolved wizard configuration (from config_loader_composable)
+        config: Fully resolved wizard configuration
         step_id: The step ID to extract
 
     Returns:
@@ -57,7 +57,6 @@ def _enhance_step_with_metadata(step: dict[str, Any]) -> dict[str, Any]:
     - is_locked: True if field is read-only
     - is_default: True if using schema default (not overridden)
     - override_source: Layer where override came from
-    - source_file: Human-readable source (base/tool/language/combo)
     """
     enhanced = {**step}
     enhanced_fields = []
@@ -87,9 +86,6 @@ def _enhance_field_with_metadata(field: dict[str, Any]) -> dict[str, Any]:
     override_source = field.get("override_source", "schema")
     enhanced["is_default"] = override_source == "schema"
     
-    # Map override_source to human-readable source_file
-    enhanced["source_file"] = _map_source_to_file(override_source)
-    
     # Ensure editability is present
     enhanced["editability"] = editability
     enhanced["override_source"] = override_source
@@ -99,34 +95,6 @@ def _enhance_field_with_metadata(field: dict[str, Any]) -> dict[str, Any]:
         enhanced["lock_reason"] = field["lock_reason"]
     
     return enhanced
-
-
-def _map_source_to_file(override_source: str | None) -> str:
-    """
-    Map override_source identifier to human-readable source file name.
-    
-    Examples:
-        "schema" -> "schema.json"
-        "tool:claude" -> "tools/claude.json"
-        "language:python" -> "languages/python.json"
-        "override:claude+python" -> "overrides/claude+python.json"
-    """
-    if not override_source or override_source == "schema":
-        return "schema.json"
-    
-    if override_source.startswith("tool:"):
-        tool_id = override_source.split(":", 1)[1]
-        return f"tools/{tool_id}.json"
-    
-    if override_source.startswith("language:"):
-        language_id = override_source.split(":", 1)[1]
-        return f"languages/{language_id}.json"
-    
-    if override_source.startswith("override:"):
-        combo = override_source.split(":", 1)[1]
-        return f"overrides/{combo}.json"
-    
-    return "unknown"
 
 
 def _extract_source_tracking(step: dict[str, Any]) -> dict[str, Any]:
@@ -145,7 +113,7 @@ def _extract_source_tracking(step: dict[str, Any]) -> dict[str, Any]:
     
     for field in fields:
         # Count by source
-        source = field.get("source_file", "unknown")
+        source = field.get("override_source", "schema")
         sources[source] = sources.get(source, 0) + 1
         
         # Count by editability

@@ -8,9 +8,8 @@ A unique temporary directory is created by pytest for each test session via
 stale directories from interfering with subsequent runs (e.g. when VS Code
 terminates a session before teardown completes).
 
-By default all tests run with CONFIG_SOURCE=json so that non-DB tests are
-unaffected by the production default of CONFIG_SOURCE=database.  Tests that
-specifically exercise database mode set CONFIG_SOURCE=database themselves.
+All tests run with CONFIG_SOURCE=database.  The shared test DB is seeded
+once per session from the JSON wizard config fixtures.
 """
 
 import importlib
@@ -26,9 +25,7 @@ _PROD_DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 # All modules whose DATA_DIR needs redirecting
 _DATA_DIR_MODULES = [
-    "app.services.config_persistence",
     "app.services.config_patcher",
-    "app.services.config_loader_composable",
     "app.services.audit_log",
     "app.services.version_history",
 ]
@@ -142,20 +139,16 @@ def _seed_shared_test_db(tmp_path_factory: pytest.TempPathFactory) -> None:  # t
 
 
 @pytest.fixture(autouse=True)
-def _default_config_source_json():
-    """Set CONFIG_SOURCE=json for every test unless it overrides the env var.
+def _default_config_source_database():
+    """Set CONFIG_SOURCE=database for every test.
 
-    The production default is now ``database``, but most existing tests test
-    JSON-mode behaviour and do not provision a test database.  This fixture
-    ensures tests that don't explicitly set CONFIG_SOURCE still work.
-
-    Tests that need ``CONFIG_SOURCE=database`` set it themselves and reset
-    ``app.settings._config_source_settings = None`` after the test.
+    The only supported config source is ``database``.  This fixture ensures
+    the environment variable is set consistently for all tests.
     """
     import app.settings as settings_mod
 
     prev = os.environ.get("CONFIG_SOURCE")
-    os.environ["CONFIG_SOURCE"] = "json"
+    os.environ["CONFIG_SOURCE"] = "database"
     settings_mod._config_source_settings = None
 
     yield

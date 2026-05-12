@@ -80,9 +80,9 @@ export function FieldDetailsPanel({
                 {field.editability}
               </span>
             </div>
-            {field.source_file && (
+            {field.override_source && field.override_source !== 'schema' && (
               <p className="text-xs text-gray-500 italic break-all">
-                <span className="font-medium">File:</span> {field.source_file}
+                <span className="font-medium">Source:</span> {field.override_source}
               </p>
             )}
           </div>

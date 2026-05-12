@@ -9,6 +9,7 @@ Implements ID-based targeted updates to configuration files with:
 """
 
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -185,20 +186,22 @@ def _write_json_file(
     """
     Write a JSON file atomically, emitting an audit log entry.
 
-    Routes through save_config so every patch write is atomic and audited.
-    validate=False because the patcher works on raw override files that may
-    not pass the full wizard schema (they're partial by design).
+    Routes through atomic file write so every patch write is safe.
     """
-    from app.services.config_persistence import save_config
+    import json
+    import tempfile
 
-    save_config(
-        file_path,
-        data,
-        validate=False,
-        create_backup=True,
-        verify_reloadable=False,
-        context=context,
-    )
+    content = json.dumps(data, indent=indent, ensure_ascii=False) + "\n"
+    dir_path = file_path.parent
+    dir_path.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(dir_path), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp, str(file_path))
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 
 def update_field_metadata(

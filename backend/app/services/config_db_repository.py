@@ -197,8 +197,7 @@ def _apply_overrides_to_field_tree(
 class DatabaseConfigReadRepository:
     """Reads fully resolved wizard configuration from the database.
 
-    Implements the same ``ConfigReadRepository`` protocol as
-    ``JsonConfigReadRepository`` so it is interchangeable.
+    Implements the ``ConfigReadRepository`` protocol.
 
     Parameters
     ----------

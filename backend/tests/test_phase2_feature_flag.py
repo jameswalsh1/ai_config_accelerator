@@ -66,10 +66,25 @@ class TestConfigSourceFeatureFlag:
             os.environ.pop("CONFIG_SOURCE", None)
             settings_mod._config_source_settings = None
 
+    def test_json_value_now_raises(self):
+        """CONFIG_SOURCE=json is no longer supported."""
+        from app.settings import ConfigSourceSettings
+        from pydantic import ValidationError
+        import os
+        os.environ["CONFIG_SOURCE"] = "json"
+        import app.settings as settings_mod
+        settings_mod._config_source_settings = None
+        try:
+            with pytest.raises(ValidationError):
+                ConfigSourceSettings()
+        finally:
+            os.environ.pop("CONFIG_SOURCE", None)
+            settings_mod._config_source_settings = None
+
     def test_get_settings_proxy_exposes_config_source(self):
         from app.settings import get_settings
         settings = get_settings()
-        assert settings.config_source in ("json", "database")
+        assert settings.config_source == "database"
 
     def test_get_settings_proxy_exposes_database(self):
         from app.settings import get_settings
@@ -84,7 +99,7 @@ class TestConfigSourceFeatureFlag:
 
 
 class TestReadOnlyEndpoints:
-    """The existing GET endpoints must continue to work normally with JSON source."""
+    """The existing GET endpoints must continue to work normally."""
 
     def test_tools_endpoint_returns_list(self, auth_headers):
         resp = client.get("/config/tools", headers=auth_headers)

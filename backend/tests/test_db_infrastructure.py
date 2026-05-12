@@ -60,14 +60,14 @@ class TestDatabaseSettings:
 
 
 class TestConfigSourceSettings:
-    def test_json_is_accepted(self):
+    def test_json_is_rejected(self):
+        from pydantic import ValidationError
         from app.settings import ConfigSourceSettings
 
-        s = ConfigSourceSettings(config_source="json")
-        assert s.config_source == "json"
+        with pytest.raises(ValidationError, match="Invalid CONFIG_SOURCE"):
+            ConfigSourceSettings(config_source="json")
 
-    def test_database_is_now_valid(self):
-        """Phase 2: CONFIG_SOURCE=database is a supported value."""
+    def test_database_is_accepted(self):
         from app.settings import ConfigSourceSettings
 
         s = ConfigSourceSettings(config_source="database")

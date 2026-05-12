@@ -327,9 +327,6 @@ export function StepFieldEditor({
       return field.override_source
     }
     
-    // Fallback to source_file parsing
-    if (field.source_file?.includes('tool')) return 'tool'
-    if (field.source_file?.includes('language')) return 'language'
     return 'base'
   }
 

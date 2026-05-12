@@ -23,7 +23,8 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.commands.import_json_to_db import run_import
 from app.services.config_db_write_repository import DatabaseConfigWriteRepository
-import app.services.config_loader_composable as _loader_mod
+
+_DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 DATABASE_URL = (
     "sqlite+aiosqlite:///file:test_db_write_integration_db"
@@ -57,9 +58,8 @@ async def factory(engine):
 @pytest.fixture(scope="module", autouse=True)
 async def seed_db(engine, factory):
     """Seed the in-memory DB with real config data before any test runs."""
-    data_dir = _loader_mod.DATA_DIR
     async with factory() as session:
-        await run_import(session, data_dir)
+        await run_import(session, _DATA_DIR)
         await session.commit()
 
 

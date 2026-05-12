@@ -119,7 +119,7 @@ async def get_available_presets(
     from sqlalchemy import select
     from app.db.models.tool import AITool
     from app.services.config_db_repository import DatabaseConfigReadRepository
-    from app.services.config_loader_composable import extract_presets_from_config
+    from app.services.preset_utils import extract_presets_from_config
 
     tool_res = await db.execute(select(AITool).where(AITool.tool_key == tool).where(AITool.is_active.is_(True)))
     if tool_res.scalar_one_or_none() is None:

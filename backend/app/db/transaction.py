@@ -22,12 +22,9 @@ Option 2 — explicit helper for a single callable::
 
 Why this pattern
 ----------------
-The current JSON file-based write path (config_persistence.py) has no
-transaction boundary across the config write, audit-log append, and
-version-history save.  When those operations migrate to the database,
-wrapping them in a single transaction ensures that either all three
-succeed or none do — eliminating the current partial-failure modes
-documented in the pre-migration baseline.
+Wrapping the config write, audit-log append, and version-history save
+in a single transaction ensures that either all three succeed or none
+do — eliminating partial-failure modes.
 """
 
 from collections.abc import AsyncGenerator, Callable, Coroutine

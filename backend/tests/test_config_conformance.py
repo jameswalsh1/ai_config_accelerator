@@ -8,7 +8,7 @@ automatically picked up and validated — no test changes required.
 The tests check:
 - JSON schema compliance (structure)
 - Override reference integrity (all field_id / step_id refs point to real schema entries)
-- Composable config loading (each tool × language combination resolves without error)
+- DB-resolved config loading (each tool × language combination resolves without error)
 - File generation (each tool produces non-empty output)
 """
 
@@ -17,7 +17,9 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from fastapi.testclient import TestClient
 
+from app.main import app as _app
 from app.services.config_validator import (
     validate_language_override,
     validate_tool_override,
@@ -25,7 +27,6 @@ from app.services.config_validator import (
     validate_wizard_schema,
     validate_override_references,
 )
-from app.services.config_loader_composable import load_composable_config
 from app.services.file_generator import generate_files
 from app.models.wizard import WizardConfig
 
@@ -228,7 +229,7 @@ class TestOverrideConformance:
         assert not warnings, "\n".join(warnings)
 
 
-# ── Cross-cutting: composable loading ────────────────────────────────────────
+# ── Cross-cutting: DB-resolved loading ───────────────────────────────────────
 
 _tool_language_combos = [
     (tool, lang)
@@ -236,22 +237,28 @@ _tool_language_combos = [
     for lang in _language_ids
 ]
 
+_client = TestClient(_app)
+
 
 @pytest.mark.parametrize("tool,language", _tool_language_combos, ids=[f"{t}+{l}" for t, l in _tool_language_combos])
-class TestComposableLoading:
-    """Every tool × language combination must resolve without error."""
+class TestResolvedLoading:
+    """Every tool × language combination must resolve without error via the DB."""
 
     def test_loads_without_error(self, tool: str, language: str):
-        config = load_composable_config(tool, language)
+        resp = _client.get(f"/api/wizard/config/resolved", params={"tool": tool, "language": language})
+        assert resp.status_code == 200
+        config = resp.json()
         assert config is not None
         assert config.get("id") == tool
 
     def test_has_steps(self, tool: str, language: str):
-        config = load_composable_config(tool, language)
+        resp = _client.get(f"/api/wizard/config/resolved", params={"tool": tool, "language": language})
+        config = resp.json()
         assert len(config.get("steps", [])) > 0
 
     def test_every_field_has_id_and_type(self, tool: str, language: str):
-        config = load_composable_config(tool, language)
+        resp = _client.get(f"/api/wizard/config/resolved", params={"tool": tool, "language": language})
+        config = resp.json()
         for step in config["steps"]:
             for field in step.get("fields", []):
                 assert "id" in field, f"Field in step '{step['id']}' missing 'id'"
@@ -265,14 +272,16 @@ class TestFileGeneration:
     """Every tool must generate at least one non-empty output file."""
 
     def test_generates_files(self, tool: str):
-        raw = load_composable_config(tool, _language_ids[0] if _language_ids else "python")
-        config = WizardConfig(**raw)
+        lang = _language_ids[0] if _language_ids else "python"
+        resp = _client.get(f"/api/wizard/config/resolved", params={"tool": tool, "language": lang})
+        config = WizardConfig.model_validate(resp.json())
         files = generate_files(config, {})
         assert len(files) > 0, f"Tool '{tool}' generated no output files"
 
     def test_all_files_non_empty(self, tool: str):
-        raw = load_composable_config(tool, _language_ids[0] if _language_ids else "python")
-        config = WizardConfig(**raw)
+        lang = _language_ids[0] if _language_ids else "python"
+        resp = _client.get(f"/api/wizard/config/resolved", params={"tool": tool, "language": lang})
+        config = WizardConfig.model_validate(resp.json())
         files = generate_files(config, {})
         for path, content in files.items():
             assert content.strip(), f"Tool '{tool}' generated empty file: {path}"

@@ -13,18 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 async def _check_database_readiness() -> None:
-    """Ticket 15 — Startup readiness guard for CONFIG_SOURCE=database.
+    """Startup readiness guard.
 
-    When the application is configured to use the database as the config
-    source, validate that the database has an active schema, at least one
-    tool, and at least one language.  Log a clear warning (but do not
-    crash) so operators notice immediately.
+    Validate that the database has an active schema, at least one tool,
+    and at least one language.  Log a clear warning (but do not crash) so
+    operators notice immediately.
     """
-    from app.settings import get_config_source_settings
-
-    if get_config_source_settings().config_source != "database":
-        return
-
     try:
         from sqlalchemy import func, select
 
