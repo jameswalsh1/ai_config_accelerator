@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Loader2, RefreshCw, AlertCircle, CheckCircle2, CircleDot, Circle } from 'lucide-react'
 import { fetchCoverageMatrix, type CoverageMatrix, type CoverageStatus } from '@/api/wizardApi'
 
@@ -135,16 +135,20 @@ export function CoverageMatrix({ onNavigateToEditor }: CoverageMatrixProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const load = () => {
-    setLoading(true)
-    setError(null)
+  const load = useCallback(() => {
     fetchCoverageMatrix()
-      .then(setData)
-      .catch(e => setError(e instanceof Error ? e.message : 'Failed to load coverage matrix'))
-      .finally(() => setLoading(false))
-  }
+      .then(result => {
+        setData(result)
+        setError(null)
+        setLoading(false)
+      })
+      .catch(e => {
+        setError(e instanceof Error ? e.message : 'Failed to load coverage matrix')
+        setLoading(false)
+      })
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { void load() }, [load])
 
   return (
     <div className="space-y-5">

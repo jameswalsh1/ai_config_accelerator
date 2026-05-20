@@ -657,7 +657,7 @@ class TestDiffSerialization:
 class TestIntegrationWithRealConfigs:
     """Test diff with actual configuration files."""
     
-    DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+    DATA_DIR = Path(__file__).parent / "wizard_configs"
     
     def test_diff_real_tool_configs(self):
         """Test diffing real tool override files."""
@@ -861,7 +861,7 @@ class TestOverrideFileDiff:
         assert fd.locking_changes.after_state == "locked"
 
     def test_new_field_override_added(self):
-        before = {"field_overrides": []}
+        before: dict[str, Any] = {"field_overrides": []}
         after = {
             "field_overrides": [
                 {"field_id": "step1.new_field", "merge_presets": [
@@ -889,7 +889,7 @@ class TestOverrideFileDiff:
         assert not result.has_changes()
 
     def test_serializes_to_dict(self):
-        before = {"field_overrides": []}
+        before: dict[str, Any] = {"field_overrides": []}
         after = {
             "field_overrides": [
                 {"field_id": "step1.field1", "merge_presets": [

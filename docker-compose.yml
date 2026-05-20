@@ -1,5 +1,22 @@
-version: '3.8'
 services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ai_config_wizard}
+      MYSQL_USER: ${MYSQL_USER:-ai_config_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ai_config_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ai_config_root_password}
+    ports:
+      - "${DATABASE_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=${MYSQL_ROOT_PASSWORD:-ai_config_root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   backend:
     build:
       context: .
@@ -8,6 +25,13 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
+      # Set ALLOWED_ORIGINS to your production domain(s), comma-separated.
+      # e.g. ALLOWED_ORIGINS=https://example.com,https://www.example.com
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      - DATABASE_URL=${DATABASE_URL:-mysql+asyncmy://ai_config_user:ai_config_password@mysql:3306/ai_config_wizard}
+    depends_on:
+      mysql:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -22,3 +46,11 @@ services:
       - "5173:80"
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:

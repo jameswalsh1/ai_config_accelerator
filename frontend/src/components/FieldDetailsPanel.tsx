@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { ChevronDown, Lock, Unlock, Copy, ExternalLink } from 'lucide-react'
 import type { EditableField } from '@/types/wizard'
 
@@ -41,7 +41,7 @@ export function FieldDetailsPanel({
   const handleCopyValue = () => {
     const value = field.current_value ?? field.default ?? ''
     const textToCopy = typeof value === 'string' ? value : JSON.stringify(value, null, 2)
-    navigator.clipboard.writeText(textToCopy)
+    void navigator.clipboard.writeText(textToCopy)
   }
 
   return (
@@ -80,9 +80,9 @@ export function FieldDetailsPanel({
                 {field.editability}
               </span>
             </div>
-            {field.source_file && (
+            {field.override_source && field.override_source !== 'schema' && (
               <p className="text-xs text-gray-500 italic break-all">
-                <span className="font-medium">File:</span> {field.source_file}
+                <span className="font-medium">Source:</span> {field.override_source}
               </p>
             )}
           </div>

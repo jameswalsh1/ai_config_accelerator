@@ -67,7 +67,7 @@ function renderNestedField(
           )}
           <TextField
             {...commonProps}
-            value={String(value ?? '')}
+            value={String(value as string ?? '')}
             onChange={v => onUpdate({ [nestedField.id]: v })}
           />
         </div>
@@ -89,7 +89,7 @@ function renderNestedField(
           )}
           <TextAreaField
             {...commonProps}
-            value={String(value ?? '')}
+            value={String(value as string ?? '')}
             onChange={v => onUpdate({ [nestedField.id]: v })}
           />
         </div>
@@ -111,7 +111,7 @@ function renderNestedField(
           )}
           <SelectField
             {...commonProps}
-            value={String(value ?? '')}
+            value={String(value as string ?? '')}
             onChange={v => onUpdate({ [nestedField.id]: v })}
           />
         </div>

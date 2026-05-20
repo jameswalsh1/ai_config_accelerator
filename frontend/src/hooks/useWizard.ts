@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import type { AgentEntry, WizardAnswers, WizardConfig, WizardField, WizardStep } from '@/types/wizard'
+import type { AgentEntry, VisibilityRule, WizardAnswers, WizardConfig, WizardField, WizardFlowStep, WizardStep } from '@/types/wizard'
 
 export interface Screen {
   stepIndex: number
@@ -7,11 +7,106 @@ export interface Screen {
   fields: WizardField[]
 }
 
-function buildScreens(config: WizardConfig): Screen[] {
+// ---------------------------------------------------------------------------
+// Client-side visibility rule evaluation
+// ---------------------------------------------------------------------------
+
+function resolveFieldValue(
+  dependsOnFieldPath: string,
+  answers: WizardAnswers,
+  config: WizardConfig,
+): unknown {
+  const parts = dependsOnFieldPath.split('.', 2)
+  if (parts.length !== 2) return undefined
+  const [stepKey, fieldKey] = parts
+  const explicit = answers[stepKey]?.[fieldKey]
+  if (explicit !== undefined) return explicit
+  // Fall back to field default
+  const step = config.steps.find(s => s.id === stepKey)
+  if (!step) return undefined
+  const field = step.fields.find(f => f.id === fieldKey)
+  return field?.default
+}
+
+function evaluateCondition(operator: string, fieldValue: unknown, ruleValue: unknown): boolean {
+  switch (operator) {
+    case 'equals': return fieldValue === ruleValue
+    case 'not_equals': return fieldValue !== ruleValue
+    case 'in': return Array.isArray(ruleValue) ? ruleValue.includes(fieldValue) : false
+    case 'not_in': return Array.isArray(ruleValue) ? !ruleValue.includes(fieldValue) : true
+    case 'is_empty':
+      return fieldValue === null || fieldValue === undefined || fieldValue === '' ||
+        (Array.isArray(fieldValue) && fieldValue.length === 0)
+    case 'is_not_empty':
+      return !(fieldValue === null || fieldValue === undefined || fieldValue === '' ||
+        (Array.isArray(fieldValue) && fieldValue.length === 0))
+    default: return false
+  }
+}
+
+export function evaluateVisibilityRules(
+  rules: VisibilityRule[],
+  answers: WizardAnswers,
+  config: WizardConfig,
+): { steps: Record<string, boolean>; fields: Record<string, boolean> } {
+  const steps: Record<string, boolean> = {}
+  const fields: Record<string, boolean> = {}
+
+  // Sort by priority (lower first, higher wins by overwriting)
+  const sorted = [...rules].sort((a, b) => a.priority - b.priority)
+
+  for (const rule of sorted) {
+    const fieldValue = resolveFieldValue(rule.depends_on_field_path, answers, config)
+    const conditionMet = evaluateCondition(rule.operator, fieldValue, rule.value)
+    const visible = rule.action === 'show' ? conditionMet : !conditionMet
+
+    if (rule.target_type === 'step') {
+      steps[rule.target_step_key] = visible
+    } else if (rule.target_field_path) {
+      fields[rule.target_field_path] = visible
+    }
+  }
+
+  return { steps, fields }
+}
+
+// ---------------------------------------------------------------------------
+// Screen building with visibility + flow support
+// ---------------------------------------------------------------------------
+
+function buildScreens(
+  config: WizardConfig,
+  visibilitySteps?: Record<string, boolean>,
+  flowSteps?: WizardFlowStep[],
+): Screen[] {
   const screens: Screen[] = []
-  for (let si = 0; si < config.steps.length; si++) {
-    const step = config.steps[si]
+
+  // Determine step order — use flow if provided, otherwise config order
+  let orderedSteps: WizardStep[]
+  if (flowSteps && flowSteps.length > 0) {
+    const stepsByKey = new Map(config.steps.map(s => [s.id, s]))
+    orderedSteps = []
+    for (const fs of flowSteps) {
+      if (!fs.is_enabled) continue
+      const step = stepsByKey.get(fs.step_key)
+      if (!step) continue
+      // Apply custom title/description from flow
+      const customized = { ...step }
+      if (fs.custom_title) customized.title = fs.custom_title
+      if (fs.custom_description) customized.description = fs.custom_description
+      orderedSteps.push(customized)
+    }
+  } else {
+    orderedSteps = config.steps
+  }
+
+  for (let si = 0; si < orderedSteps.length; si++) {
+    const step = orderedSteps[si]
+    // Static hidden flag
     if (step.hidden) continue
+    // Dynamic visibility rule
+    if (visibilitySteps && step.id in visibilitySteps && !visibilitySteps[step.id]) continue
+
     screens.push({ stepIndex: si, step, fields: step.fields })
   }
   return screens
@@ -75,24 +170,76 @@ export interface UseWizardReturn {
   fieldError: string | null
   isFirstScreen: boolean
   isLastScreen: boolean
+  visibleFields: Record<string, boolean>
   setFieldValue: (stepId: string, fieldId: string, value: unknown) => void
   nextScreen: () => boolean
   prevScreen: () => void
   reset: () => void
 }
 
-export function useWizard(config: WizardConfig): UseWizardReturn {
-  const screens = useMemo(() => buildScreens(config), [config])
+export interface UseWizardOptions {
+  visibilityRules?: VisibilityRule[]
+  flowSteps?: WizardFlowStep[]
+}
+
+/** Build initial answers pre-seeded from field defaults. */
+function buildInitialAnswers(config: WizardConfig): WizardAnswers {
+  const answers: WizardAnswers = {}
+  for (const step of config.steps) {
+    const stepAnswers: Record<string, unknown> = {}
+    for (const field of step.fields) {
+      if (field.default !== undefined && field.default !== null && field.default !== '') {
+        stepAnswers[field.id] = field.default
+      }
+    }
+    if (Object.keys(stepAnswers).length > 0) {
+      answers[step.id] = stepAnswers
+    }
+  }
+  return answers
+}
+
+export function useWizard(config: WizardConfig, options?: UseWizardOptions): UseWizardReturn {
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0)
-  const [answers, setAnswers] = useState<WizardAnswers>({})
+  const [answers, setAnswers] = useState<WizardAnswers>(() => buildInitialAnswers(config))
   const [fieldError, setFieldError] = useState<string | null>(null)
+
+  const flowSteps = options?.flowSteps
+
+  // Merge current config defaults into answers without overwriting user-entered values.
+  // This is a pure derivation — no state mutation — so new steps/defaults are always reflected.
+  const effectiveAnswers = useMemo(() => {
+    const merged: WizardAnswers = { ...answers }
+    for (const step of config.steps) {
+      for (const field of step.fields) {
+        if (field.default !== undefined && field.default !== null && field.default !== '') {
+          if (merged[step.id]?.[field.id] === undefined) {
+            merged[step.id] = { ...merged[step.id], [field.id]: field.default }
+          }
+        }
+      }
+    }
+    return merged
+  }, [answers, config.steps])
+
+  // Evaluate visibility rules reactively based on answers
+  const visibility = useMemo(() => {
+    const rules = options?.visibilityRules ?? []
+    if (rules.length === 0) return { steps: {} as Record<string, boolean>, fields: {} as Record<string, boolean> }
+    return evaluateVisibilityRules(rules, effectiveAnswers, config)
+  }, [options?.visibilityRules, effectiveAnswers, config])
+
+  const screens = useMemo(
+    () => buildScreens(config, visibility.steps, flowSteps),
+    [config, visibility.steps, flowSteps]
+  )
 
   const activeTags = useMemo(() => {
     const tags = new Set<string>()
     for (const step of config.steps) {
       for (const field of step.fields) {
         if (!field.tag_source) continue
-        const value = answers[step.id]?.[field.id] ?? field.default
+        const value = effectiveAnswers[step.id]?.[field.id] ?? field.default
         if (Array.isArray(value)) {
           value.forEach(item => {
             if (typeof item === 'string' && item.trim()) {
@@ -105,7 +252,7 @@ export function useWizard(config: WizardConfig): UseWizardReturn {
       }
     }
     return Array.from(tags)
-  }, [config.steps, answers])
+  }, [config.steps, effectiveAnswers])
 
   const setFieldValue = useCallback((stepId: string, fieldId: string, value: unknown) => {
     setAnswers(prev => ({ ...prev, [stepId]: { ...prev[stepId], [fieldId]: value } }))
@@ -117,7 +264,7 @@ export function useWizard(config: WizardConfig): UseWizardReturn {
     
     // Validate all fields on the current step
     for (const field of fields) {
-      const value = answers[step.id]?.[field.id] ?? field.default
+      const value = effectiveAnswers[step.id]?.[field.id] ?? field.default
       const error = validateField(field, value)
       if (error) {
         setFieldError(error)
@@ -130,7 +277,7 @@ export function useWizard(config: WizardConfig): UseWizardReturn {
       setCurrentScreenIndex(i => i + 1)
     }
     return true
-  }, [screens, currentScreenIndex, answers])
+  }, [screens, currentScreenIndex, effectiveAnswers])
 
   const prevScreen = useCallback(() => {
     setFieldError(null)
@@ -143,15 +290,19 @@ export function useWizard(config: WizardConfig): UseWizardReturn {
     setFieldError(null)
   }, [])
 
+  // Clamp index when screens shrink due to visibility changes
+  const clampedIndex = Math.min(currentScreenIndex, Math.max(0, screens.length - 1))
+
   return {
     screens,
-    currentScreenIndex,
-    currentScreen: screens[currentScreenIndex],
-    answers,
+    currentScreenIndex: clampedIndex,
+    currentScreen: screens[clampedIndex],
+    answers: effectiveAnswers,
     activeTags,
     fieldError,
-    isFirstScreen: currentScreenIndex === 0,
-    isLastScreen: currentScreenIndex === screens.length - 1,
+    isFirstScreen: clampedIndex === 0,
+    isLastScreen: clampedIndex === screens.length - 1,
+    visibleFields: visibility.fields,
     setFieldValue,
     nextScreen,
     prevScreen,

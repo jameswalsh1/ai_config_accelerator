@@ -259,24 +259,30 @@ class TestDirectoryOutputResolver:
 
 
 # ---------------------------------------------------------------------------
-# Integration — real configs
+# Integration — real configs (loaded via API from seeded DB)
 # ---------------------------------------------------------------------------
+
+from fastapi.testclient import TestClient
+from app.main import app as _app
+
+_client = TestClient(_app)
+
+
+def _load_config_from_api(tool_id: str, language_id: str = "python"):
+    """Load a WizardConfig via the wizard API backed by the seeded test DB."""
+    resp = _client.get(f"/api/wizard/config/{tool_id}", params={"language": language_id})
+    assert resp.status_code == 200, f"Failed to load {tool_id}: {resp.text}"
+    return WizardConfig.model_validate(resp.json())
 
 
 class TestGenerateFilesIntegration:
     def test_claude_config_generates_claude_md(self):
-        from app.services.config_loader_composable import get_config
-
-        config = get_config("claude")
-        assert config is not None
+        config = _load_config_from_api("claude")
         files = generate_files(config, {})
         assert "CLAUDE.md" in files
 
     def test_claude_locked_values_always_in_output(self):
-        from app.services.config_loader_composable import get_config
-
-        config = get_config("claude")
-        assert config is not None
+        config = _load_config_from_api("claude")
         files = generate_files(config, {})
         md = files["CLAUDE.md"]
         assert "Do not modify generated, vendored, or third-party files unless the task explicitly requires it." in md
@@ -284,19 +290,13 @@ class TestGenerateFilesIntegration:
         assert "Review every change for security implications" in md
 
     def test_claude_settings_locked_value_always_in_output(self):
-        from app.services.config_loader_composable import get_config
-
-        config = get_config("claude")
-        assert config is not None
+        config = _load_config_from_api("claude")
         files = generate_files(config, {})
         settings = files[".claude/settings.json"]
         assert "CLAUDE_CODE_ENABLE_TELEMETRY" in settings
 
     def test_user_answers_combined_with_locked_values(self):
-        from app.services.config_loader_composable import get_config
-
-        config = get_config("claude")
-        assert config is not None
+        config = _load_config_from_api("claude")
         answers = {"claude_md": {"coding_conventions": "- Project-specific rule."}}
         files = generate_files(config, answers)
         md = files["CLAUDE.md"]
@@ -304,10 +304,7 @@ class TestGenerateFilesIntegration:
         assert "- Project-specific rule." in md
 
     def test_copilot_config_generates_instructions_file(self):
-        from app.services.config_loader_composable import get_config
-
-        config = get_config("copilot")
-        assert config is not None
+        config = _load_config_from_api("copilot")
         answers = {
             "path_instructions": {
                 "instruction_files": "---\napplyTo: '**/*.test.ts'\n---\n# Test guidance\n- Use Arrange / Act / Assert structure.\n"
@@ -317,20 +314,14 @@ class TestGenerateFilesIntegration:
         assert ".github/instructions/copilot-instructions.md" in files
 
     def test_cursor_config_generates_cursorignore(self):
-        from app.services.config_loader_composable import get_config
-
-        config = get_config("cursor")
-        assert config is not None
+        config = _load_config_from_api("cursor")
         files = generate_files(config, {})
         assert ".cursorignore" in files
         assert ".env" in files[".cursorignore"]
 
     def test_generate_returns_only_non_empty_files(self):
-        from app.services.config_loader_composable import get_config
-
         for config_id in ("claude", "copilot", "cursor"):
-            config = get_config(config_id)
-            assert config is not None
+            config = _load_config_from_api(config_id)
             files = generate_files(config, {})
             for filename, content in files.items():
                 assert content.strip(), f"Empty file '{filename}' in '{config_id}'"

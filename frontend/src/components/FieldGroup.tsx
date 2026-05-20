@@ -66,6 +66,7 @@ export function FieldGroup({ title, count, isExpanded, onToggle, icon, children 
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- utility co-located with component it serves
 export function groupFieldsByStatus(
   fields: EditableField[]
 ): Record<FieldGroupKey, EditableField[]> {

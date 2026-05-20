@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ActionBadge, ScopeBadge, Value, DiffRow, FieldDiffPanel, StepDiffPanel } from './AuditDiffPanels'
 import type { AuditFieldDiff, AuditStepDiff } from '@/api/wizardApi'

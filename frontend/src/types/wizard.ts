@@ -110,7 +110,6 @@ export interface EditableField extends WizardField {
   is_locked: boolean
   is_default: boolean
   override_source?: string
-  source_file?: string
   current_value?: unknown
   current_value_source?: string
   preset_assignments?: PresetAssignment[]
@@ -136,4 +135,51 @@ export interface SourceTracking {
 export interface EditableStep {
   step: EditableStepData
   source_tracking: SourceTracking
+}
+
+// Phase 5A — Visibility rules
+export type RuleOperator = 'equals' | 'not_equals' | 'in' | 'not_in' | 'is_empty' | 'is_not_empty'
+export type RuleAction = 'show' | 'hide'
+export type RuleTargetType = 'step' | 'field'
+
+export interface VisibilityRule {
+  id: number
+  target_type: RuleTargetType
+  target_step_key: string
+  target_field_path?: string
+  depends_on_field_path: string
+  operator: RuleOperator
+  value: unknown
+  action: RuleAction
+  priority: number
+}
+
+export interface VisibilityResult {
+  steps: Record<string, boolean>
+  fields: Record<string, boolean>
+  rules_evaluated: number
+}
+
+// Phase 5B — Wizard flows
+export interface WizardFlowStep {
+  id: number
+  step_key: string
+  position: number
+  is_enabled: boolean
+  custom_title?: string | null
+  custom_description?: string | null
+}
+
+export interface WizardFlow {
+  id: number
+  name: string
+  description: string
+  owner_actor: string
+  source_schema_id: number | null
+  source_tool_id: number | null
+  is_default: boolean
+  status: string
+  steps?: WizardFlowStep[]
+  created_at: string | null
+  updated_at: string | null
 }

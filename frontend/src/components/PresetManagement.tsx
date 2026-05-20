@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -25,7 +25,7 @@ import {
   fetchFieldPresetAssignments,
   assignPresetToField,
   updatePresetAssignment,
-  removePresetFromField,
+  removePresetAssignment,
   reorderPresetAssignments,
 } from '@/api/wizardApi'
 
@@ -165,11 +165,7 @@ export function PresetManagement({
     })
   )
 
-  useEffect(() => {
-    loadData()
-  }, [tool, language, fieldId])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -185,7 +181,11 @@ export function PresetManagement({
     } finally {
       setLoading(false)
     }
-  }
+  }, [tool, language, fieldId, onAssignmentsChange])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
@@ -205,7 +205,7 @@ export function PresetManagement({
           newAssignments.map((a) => a.id)
         )
         onAssignmentsChange?.(newAssignments)
-      } catch (err) {
+      } catch {
         // Revert on error
         setAssignments(assignments)
         setError('Failed to reorder presets - changes reverted')
@@ -230,7 +230,7 @@ export function PresetManagement({
       onAssignmentsChange?.(updatedAssignments)
       setShowAddDialog(false)
       setSelectedPresetId('')
-    } catch (err) {
+    } catch {
       setError('Failed to add preset - please try again')
     }
   }
@@ -238,25 +238,25 @@ export function PresetManagement({
   const handleModeChange = async (assignmentId: string, mode: string) => {
     try {
       const updated = await updatePresetAssignment(assignmentId, {
-        assignment_mode: mode as any,
+        assignment_mode: mode as PresetAssignment['assignment_mode'],
       })
       const updatedAssignments = assignments.map((a) =>
         a.id === assignmentId ? updated : a
       )
       setAssignments(updatedAssignments)
       onAssignmentsChange?.(updatedAssignments)
-    } catch (err) {
+    } catch {
       setError('Failed to update preset mode - please try again')
     }
   }
 
   const handleRemove = async (assignmentId: string) => {
     try {
-      await removePresetFromField(assignmentId)
+      await removePresetAssignment(assignmentId)
       const updatedAssignments = assignments.filter((a) => a.id !== assignmentId)
       setAssignments(updatedAssignments)
       onAssignmentsChange?.(updatedAssignments)
-    } catch (err) {
+    } catch {
       setError('Failed to remove preset - please try again')
     }
   }
@@ -271,7 +271,7 @@ export function PresetManagement({
       )
       setAssignments(updatedAssignments)
       onAssignmentsChange?.(updatedAssignments)
-    } catch (err) {
+    } catch {
       setError('Failed to update preset visibility - please try again')
     }
   }
@@ -300,7 +300,7 @@ export function PresetManagement({
       <div className="p-4 text-center text-red-500">
         Error: {error}
         <button
-          onClick={loadData}
+          onClick={() => { void loadData() }}
           className="ml-2 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
         >
           Retry
@@ -336,7 +336,7 @@ export function PresetManagement({
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
+            onDragEnd={(e) => { void handleDragEnd(e) }}
           >
             <SortableContext
               items={assignments.map((a) => a.id)}
@@ -347,9 +347,9 @@ export function PresetManagement({
                   <SortablePresetAssignment
                     key={assignment.id}
                     assignment={assignment}
-                    onModeChange={handleModeChange}
-                    onRemove={handleRemove}
-                    onToggleVisibility={handleToggleVisibility}
+                    onModeChange={(id, mode) => { void handleModeChange(id, mode) }}
+                    onRemove={(id) => { void handleRemove(id) }}
+                    onToggleVisibility={(id, vis) => { void handleToggleVisibility(id, vis) }}
                   />
                 ))}
               </div>
@@ -384,7 +384,7 @@ export function PresetManagement({
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={handleAddPreset}
+                  onClick={() => { void handleAddPreset() }}
                   disabled={!selectedPresetId}
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
                 >

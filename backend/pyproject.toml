@@ -2,17 +2,23 @@
 name = "ai-accelerator-backend"
 version = "0.1.0"
 description = "AI Config Accelerator — FastAPI backend"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.115.12",
     "uvicorn[standard]==0.34.0",
     "pydantic==2.12.5",
+    "pydantic-settings==2.7.0",
     "python-multipart==0.0.20",
+    "sqlalchemy[asyncio]==2.0.41",
+    "alembic==1.14.1",
+    "asyncmy==0.2.10",
+    "cryptography>=48.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest==8.3.5",
+    "pytest-asyncio==0.24.0",
     "httpx==0.28.1",
     "mypy==1.20.0",
 ]
@@ -20,12 +26,14 @@ dev = [
 [dependency-groups]
 dev = [
     "pytest==8.3.5",
+    "pytest-asyncio==0.24.0",
     "httpx==0.28.1",
     "mypy==1.20.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 
@@ -38,4 +46,14 @@ warn_required_dynamic_aliases = true
 # Test functions don't need return-type annotations; they're not public API
 module = ["tests.*"]
 disallow_untyped_defs = false
+disallow_incomplete_defs = false
 disallow_untyped_calls = false
+
+[tool.pytest.ini_options]
+# Pytest configuration for IDE test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v"
+asyncio_mode = "auto"

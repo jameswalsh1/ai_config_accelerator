@@ -1,6 +1,7 @@
 import { AlertCircle, Check, Loader2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { RepeatableGroupField } from './fields/RepeatableGroupField'
+import type { WizardField } from '@/types/wizard'
 
 interface FieldValueInputProps {
   field: {
@@ -10,7 +11,7 @@ interface FieldValueInputProps {
     rows?: number
     options?: { value: string; label: string; description?: string }[]
     description?: string
-    fields?: any[]
+    fields?: WizardField[]
   }
   value: unknown
   onChange: (value: unknown) => void
@@ -37,17 +38,16 @@ export function FieldValueInput({
   const [showSaved, setShowSaved] = useState(false)
 
   // Show "Saved" briefly when isSaving transitions from true → false (only on success)
-  const [wasSaving, setWasSaving] = useState(false)
+  const prevIsSavingRef = useRef(false)
   useEffect(() => {
-    if (isSaving) {
-      setWasSaving(true)
-    } else if (wasSaving) {
-      setWasSaving(false)
-      if (!saveError) {
+    const wasSaving = prevIsSavingRef.current
+    prevIsSavingRef.current = isSaving
+    if (!isSaving && wasSaving && !saveError) {
+      const t = setTimeout(() => {
         setShowSaved(true)
-        const t = setTimeout(() => setShowSaved(false), 2000)
-        return () => clearTimeout(t)
-      }
+        setTimeout(() => setShowSaved(false), 2000)
+      }, 0)
+      return () => clearTimeout(t)
     }
   }, [isSaving, saveError])
 
@@ -172,7 +172,7 @@ export function FieldValueInput({
 
     case 'multi_select':
     case 'multiselect': {
-      const selectedValues = Array.isArray(value) ? value : []
+      const selectedValues: unknown[] = Array.isArray(value) ? (value as unknown[]) : []
       return (
         <div className="space-y-3 bg-white border border-gray-300 rounded-lg p-4">
           {field.options?.map(opt => (
@@ -183,7 +183,7 @@ export function FieldValueInput({
                 onChange={e => {
                   const newValues = e.target.checked
                     ? [...selectedValues, opt.value]
-                    : selectedValues.filter((v: string) => v !== opt.value)
+                    : selectedValues.filter((v) => v !== opt.value)
                   onChange(newValues)
                   onSave(newValues)
                 }}
@@ -216,10 +216,10 @@ export function FieldValueInput({
       )
 
     case 'repeatable_group': {
-      const groupValues = Array.isArray(value) ? value : []
+      const groupValues: Record<string, unknown>[] = Array.isArray(value) ? (value as Record<string, unknown>[]) : []
       return (
         <RepeatableGroupField
-          field={field as any}
+          field={field as WizardField}
           value={groupValues}
           onChange={v => { onChange(v); onSave(v) }}
         />

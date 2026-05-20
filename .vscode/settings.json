@@ -2,24 +2,24 @@
     // ----------------------------
     // Python Testing Configuration
     // ----------------------------
-    "python.testing.pytestArgs": [
-        "backend"
-    ],
-    "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.cwd": "${workspaceFolder}/backend",
+    "python.testing.pytestArgs": [
+        "tests",
+        "-q"
+    ],
 
     // ----------------------------
     // Python Interpreter (CRITICAL)
     // ----------------------------
-    "python.defaultInterpreterPath": "/home/repos/ai_accelerator/backend/.venv/bin/python",
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
 
     // ----------------------------
     // Mypy Configuration
     // ----------------------------
-    "mypy.dmypyExecutable": "/home/repos/ai_accelerator/backend/.venv/bin/dmypy",
+    "mypy.dmypyExecutable": "${workspaceFolder}/backend/.venv/bin/dmypy",
     "mypy.useDaemon": true,
-
-    // Optional but recommended (avoids ambiguity)
     "mypy.runUsingActiveInterpreter": true,
 
     // ----------------------------
@@ -27,7 +27,5 @@
     // ----------------------------
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
-
-    // Ensures terminal activates the venv correctly
     "python.terminal.activateEnvironment": true
 }
