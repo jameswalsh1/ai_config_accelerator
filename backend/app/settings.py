@@ -1,4 +1,5 @@
 import os
+import ssl
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
@@ -40,6 +41,17 @@ class DatabaseSettings(BaseSettings):
     database_user: str = "ai_config_user"
     database_password: str = ""
 
+    # SSL — set DB_SSL_CA to the path of the CA certificate file for full
+    # verification (recommended for Azure Database for MySQL).  Set
+    # DB_SSL_MODE=REQUIRED to enforce encryption without cert verification.
+    db_ssl_ca: str | None = None
+    db_ssl_mode: str = "DISABLED"
+
+    # Connection pool — tune these for the Azure MySQL SKU in use.
+    db_pool_size: int = 10
+    db_pool_max_overflow: int = 20
+    db_pool_recycle: int = 1800  # seconds; avoids stale connections on Azure
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @field_validator("database_url", mode="before")
@@ -57,6 +69,24 @@ class DatabaseSettings(BaseSettings):
             f"mysql+asyncmy://{self.database_user}:{self.database_password}"
             f"@{self.database_host}:{self.database_port}/{self.database_name}"
         )
+
+    def get_connect_args(self) -> dict:
+        """Return SSL connect_args for the async engine.
+
+        - DB_SSL_CA set: full certificate verification using the supplied CA file.
+        - DB_SSL_MODE=REQUIRED/VERIFY_CA/VERIFY_IDENTITY (no CA file): TLS
+          required but without CA verification — still encrypts traffic.
+        - Default (DISABLED): no SSL; suitable for local development only.
+        """
+        if self.db_ssl_ca:
+            ctx = ssl.create_default_context(cafile=self.db_ssl_ca)
+            return {"ssl": ctx}
+        if self.db_ssl_mode.upper() in ("REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY"):
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            return {"ssl": ctx}
+        return {}
 
     def get_safe_url(self) -> str:
         """Return the connection URL with the password replaced by *** — safe to log."""

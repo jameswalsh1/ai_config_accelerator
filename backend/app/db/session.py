@@ -33,6 +33,10 @@ def _get_engine() -> AsyncEngine:
             settings.get_url(),
             echo=False,
             pool_pre_ping=True,  # verifies connections before use
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_pool_max_overflow,
+            pool_recycle=settings.db_pool_recycle,
+            connect_args=settings.get_connect_args(),
         )
     return _engine
 
