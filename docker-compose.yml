@@ -1,6 +1,7 @@
 services:
   mysql:
     image: mysql:8.4
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-ai_config_wizard}
       MYSQL_USER: ${MYSQL_USER:-ai_config_user}
@@ -21,6 +22,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -28,7 +30,14 @@ services:
       # Set ALLOWED_ORIGINS to your production domain(s), comma-separated.
       # e.g. ALLOWED_ORIGINS=https://example.com,https://www.example.com
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
       - DATABASE_URL=${DATABASE_URL:-mysql+asyncmy://ai_config_user:ai_config_password@mysql:3306/ai_config_wizard}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DB_SSL_CA=${DB_SSL_CA:-}
+      - DB_SSL_MODE=${DB_SSL_MODE:-DISABLED}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-10}
+      - DB_POOL_MAX_OVERFLOW=${DB_POOL_MAX_OVERFLOW:-20}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE:-1800}
     depends_on:
       mysql:
         condition: service_healthy
@@ -42,10 +51,12 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    restart: unless-stopped
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost/health"]
       interval: 10s
