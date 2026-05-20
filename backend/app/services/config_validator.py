@@ -85,6 +85,17 @@ def _validate_array_items(items: Any, item_schema: dict[str, Any], path: str, re
             )
 
 
+def _validate_override_arrays(data: dict[str, Any]) -> None:
+    """Validate the three standard override arrays shared by all override file types."""
+    for key, required_key in [
+        ("metadata_overrides", "field_id"),
+        ("field_overrides", "field_id"),
+        ("step_overrides", "step_id"),
+    ]:
+        if key in data:
+            _validate_array_items(data[key], {}, key, required_key)
+
+
 def validate_wizard_schema(data: dict[str, Any]) -> None:
     """
     Validate base wizard schema (schema.json).
@@ -128,35 +139,8 @@ def validate_tool_override(data: dict[str, Any]) -> None:
     Raises:
         SchemaValidationError: If validation fails
     """
-    # Check required fields
     _validate_required_fields(data, ["tool_id"])
-    
-    # Validate metadata_overrides if present
-    if "metadata_overrides" in data:
-        _validate_array_items(
-            data["metadata_overrides"], 
-            {},
-            "metadata_overrides",
-            "field_id"
-        )
-    
-    # Validate field_overrides if present
-    if "field_overrides" in data:
-        _validate_array_items(
-            data["field_overrides"],
-            {},
-            "field_overrides",
-            "field_id"
-        )
-    
-    # Validate step_overrides if present
-    if "step_overrides" in data:
-        _validate_array_items(
-            data["step_overrides"],
-            {},
-            "step_overrides",
-            "step_id"
-        )
+    _validate_override_arrays(data)
 
 
 def validate_language_override(data: dict[str, Any]) -> None:
@@ -169,35 +153,8 @@ def validate_language_override(data: dict[str, Any]) -> None:
     Raises:
         SchemaValidationError: If validation fails
     """
-    # Check required fields
     _validate_required_fields(data, ["language_id"])
-    
-    # Validate metadata_overrides if present
-    if "metadata_overrides" in data:
-        _validate_array_items(
-            data["metadata_overrides"],
-            {},
-            "metadata_overrides",
-            "field_id"
-        )
-    
-    # Validate field_overrides if present
-    if "field_overrides" in data:
-        _validate_array_items(
-            data["field_overrides"],
-            {},
-            "field_overrides",
-            "field_id"
-        )
-    
-    # Validate step_overrides if present
-    if "step_overrides" in data:
-        _validate_array_items(
-            data["step_overrides"],
-            {},
-            "step_overrides",
-            "step_id"
-        )
+    _validate_override_arrays(data)
 
 
 def validate_combo_override(data: dict[str, Any]) -> None:
@@ -210,32 +167,7 @@ def validate_combo_override(data: dict[str, Any]) -> None:
     Raises:
         SchemaValidationError: If validation fails
     """
-    # Validate metadata_overrides if present
-    if "metadata_overrides" in data:
-        _validate_array_items(
-            data["metadata_overrides"],
-            {},
-            "metadata_overrides",
-            "field_id"
-        )
-    
-    # Validate field_overrides if present
-    if "field_overrides" in data:
-        _validate_array_items(
-            data["field_overrides"],
-            {},
-            "field_overrides",
-            "field_id"
-        )
-    
-    # Validate step_overrides if present
-    if "step_overrides" in data:
-        _validate_array_items(
-            data["step_overrides"],
-            {},
-            "step_overrides",
-            "step_id"
-        )
+    _validate_override_arrays(data)
 
 
 def validate_config_file(file_path: Path, data: dict[str, Any]) -> None:

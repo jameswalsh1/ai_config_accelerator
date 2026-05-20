@@ -21,7 +21,7 @@ import {
   setDefaultFlow,
   updateFlow,
 } from '@/api/wizardApi'
-import type { WizardFlow, WizardFlowStep } from '@/types/wizard'
+import type { WizardFlow } from '@/types/wizard'
 
 interface FlowManagerProps {
   onClose: () => void

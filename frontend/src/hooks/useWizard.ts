@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { AgentEntry, VisibilityRule, WizardAnswers, WizardConfig, WizardField, WizardFlowStep, WizardStep } from '@/types/wizard'
 
 export interface Screen {
@@ -204,33 +204,30 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
   const [answers, setAnswers] = useState<WizardAnswers>(() => buildInitialAnswers(config))
   const [fieldError, setFieldError] = useState<string | null>(null)
 
-  const rules = options?.visibilityRules ?? []
   const flowSteps = options?.flowSteps
 
-  // When config steps change (e.g. language filter applied), merge new defaults
-  // into answers without overwriting values the user has already typed.
-  useEffect(() => {
-    setAnswers(prev => {
-      const merged: WizardAnswers = { ...prev }
-      for (const step of config.steps) {
-        for (const field of step.fields) {
-          if (field.default !== undefined && field.default !== null && field.default !== '') {
-            if (merged[step.id]?.[field.id] === undefined) {
-              merged[step.id] = { ...merged[step.id], [field.id]: field.default }
-            }
+  // Merge current config defaults into answers without overwriting user-entered values.
+  // This is a pure derivation — no state mutation — so new steps/defaults are always reflected.
+  const effectiveAnswers = useMemo(() => {
+    const merged: WizardAnswers = { ...answers }
+    for (const step of config.steps) {
+      for (const field of step.fields) {
+        if (field.default !== undefined && field.default !== null && field.default !== '') {
+          if (merged[step.id]?.[field.id] === undefined) {
+            merged[step.id] = { ...merged[step.id], [field.id]: field.default }
           }
         }
       }
-      return merged
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.steps])
+    }
+    return merged
+  }, [answers, config.steps])
 
   // Evaluate visibility rules reactively based on answers
   const visibility = useMemo(() => {
+    const rules = options?.visibilityRules ?? []
     if (rules.length === 0) return { steps: {} as Record<string, boolean>, fields: {} as Record<string, boolean> }
-    return evaluateVisibilityRules(rules, answers, config)
-  }, [rules, answers, config])
+    return evaluateVisibilityRules(rules, effectiveAnswers, config)
+  }, [options?.visibilityRules, effectiveAnswers, config])
 
   const screens = useMemo(
     () => buildScreens(config, visibility.steps, flowSteps),
@@ -242,7 +239,7 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
     for (const step of config.steps) {
       for (const field of step.fields) {
         if (!field.tag_source) continue
-        const value = answers[step.id]?.[field.id] ?? field.default
+        const value = effectiveAnswers[step.id]?.[field.id] ?? field.default
         if (Array.isArray(value)) {
           value.forEach(item => {
             if (typeof item === 'string' && item.trim()) {
@@ -255,7 +252,7 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
       }
     }
     return Array.from(tags)
-  }, [config.steps, answers])
+  }, [config.steps, effectiveAnswers])
 
   const setFieldValue = useCallback((stepId: string, fieldId: string, value: unknown) => {
     setAnswers(prev => ({ ...prev, [stepId]: { ...prev[stepId], [fieldId]: value } }))
@@ -267,7 +264,7 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
     
     // Validate all fields on the current step
     for (const field of fields) {
-      const value = answers[step.id]?.[field.id] ?? field.default
+      const value = effectiveAnswers[step.id]?.[field.id] ?? field.default
       const error = validateField(field, value)
       if (error) {
         setFieldError(error)
@@ -280,7 +277,7 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
       setCurrentScreenIndex(i => i + 1)
     }
     return true
-  }, [screens, currentScreenIndex, answers])
+  }, [screens, currentScreenIndex, effectiveAnswers])
 
   const prevScreen = useCallback(() => {
     setFieldError(null)
@@ -300,7 +297,7 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
     screens,
     currentScreenIndex: clampedIndex,
     currentScreen: screens[clampedIndex],
-    answers,
+    answers: effectiveAnswers,
     activeTags,
     fieldError,
     isFirstScreen: clampedIndex === 0,

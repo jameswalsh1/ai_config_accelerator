@@ -176,14 +176,16 @@ export function Wizard({ config, onBack }: WizardProps) {
               activeFlow={activeFlow}
               isOpen={showFlowSelector}
               onToggle={() => setShowFlowSelector(v => !v)}
-              onSelectFlow={async (flow) => {
-                if (flow) {
-                  const full = await fetchFlow(flow.id)
-                  setActiveFlow(full)
-                } else {
-                  setActiveFlow(null)
-                }
-                setShowFlowSelector(false)
+              onSelectFlow={(flow) => {
+                void (async () => {
+                  if (flow) {
+                    const full = await fetchFlow(flow.id)
+                    setActiveFlow(full)
+                  } else {
+                    setActiveFlow(null)
+                  }
+                  setShowFlowSelector(false)
+                })()
               }}
               onManageFlows={() => setShowFlowManager(true)}
             />

@@ -88,7 +88,7 @@ def _redirect_data_dir(tmp_path_factory):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _seed_shared_test_db(tmp_path_factory: pytest.TempPathFactory) -> None:  # type: ignore[type-arg]
+def _seed_shared_test_db(tmp_path_factory: pytest.TempPathFactory) -> None:  # type: ignore[misc]
     """Create and seed a file-based SQLite DB once per test session.
 
     A fresh engine is created per-request inside the dependency override so
@@ -123,7 +123,7 @@ def _seed_shared_test_db(tmp_path_factory: pytest.TempPathFactory) -> None:  # t
 
     asyncio.run(_setup())
 
-    async def _db_override():  # type: ignore[return]
+    async def _db_override():
         # Create a fresh engine per-request so anyio's event loop owns the connection.
         engine = _cae(sqlite_url, echo=False)
         factory = _asm(engine, expire_on_commit=False, class_=_AsyncSession)

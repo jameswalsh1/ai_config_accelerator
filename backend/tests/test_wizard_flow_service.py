@@ -6,6 +6,8 @@ via the SQLAlchemy async engine.
 """
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -57,14 +59,14 @@ async def session(db_engine):
 
 
 class TestApplyFlowToConfig:
-    def _config(self, step_ids: list[str]) -> dict:
+    def _config(self, step_ids: list[str]) -> dict[str, Any]:
         return {
             "id": "my-config",
             "title": "Test",
             "steps": [{"id": k, "title": k.title(), "fields": []} for k in step_ids],
         }
 
-    def _flow_steps(self, keys: list[str], enabled: list[bool] | None = None) -> list[dict]:
+    def _flow_steps(self, keys: list[str], enabled: list[bool] | None = None) -> list[dict[str, Any]]:
         enabled = enabled or [True] * len(keys)
         return [
             {"step_key": k, "is_enabled": e, "custom_title": None, "custom_description": None}

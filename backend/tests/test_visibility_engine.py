@@ -1,6 +1,8 @@
 """Tests for the Phase 5A visibility rule evaluation engine."""
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from app.services.visibility_engine import (
@@ -82,11 +84,11 @@ class TestResolveFieldValue:
         assert _resolve_field_value("setup.language", answers) == "python"
 
     def test_missing_step_returns_none(self):
-        answers: dict = {}
+        answers: dict[str, Any] = {}
         assert _resolve_field_value("setup.language", answers) is None
 
     def test_missing_field_returns_none(self):
-        answers = {"setup": {}}
+        answers: dict[str, Any] = {"setup": {}}
         assert _resolve_field_value("setup.language", answers) is None
 
     def test_invalid_path_no_dot_returns_none(self):
@@ -100,7 +102,7 @@ class TestResolveFieldValue:
 
 
 class TestEvaluateRulesFromList:
-    def _rule(self, **kwargs) -> dict:
+    def _rule(self, **kwargs) -> dict[str, Any]:
         defaults = {
             "id": 1,
             "target_type": "step",
