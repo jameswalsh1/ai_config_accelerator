@@ -109,6 +109,50 @@ describe('useWizard', () => {
       expect(result.current.answers.step1.f1).toBe('value1')
       expect(result.current.answers.step2.f2).toBe('value2')
     })
+
+    it('re-bases untouched fields to new config defaults on rerender', () => {
+      const initialConfig = makeConfig({
+        steps: [
+          makeStep({
+            id: 'step1',
+            fields: [
+              makeField({ id: 'language', label: 'Language', type: 'select', default: 'typescript' }),
+              makeField({ id: 'conventions', label: 'Conventions', default: 'TS defaults' }),
+            ],
+          }),
+        ],
+      })
+
+      const pythonConfig = makeConfig({
+        steps: [
+          makeStep({
+            id: 'step1',
+            fields: [
+              makeField({ id: 'language', label: 'Language', type: 'select', default: 'python' }),
+              makeField({ id: 'conventions', label: 'Conventions', default: 'Python defaults' }),
+            ],
+          }),
+        ],
+      })
+
+      const { result, rerender } = renderHook(
+        ({ cfg }) => useWizard(cfg),
+        { initialProps: { cfg: initialConfig } },
+      )
+
+      // User explicitly changes only the language field.
+      act(() => {
+        result.current.setFieldValue('step1', 'language', 'python')
+      })
+
+      // Simulate wizard language switch loading language-specific config.
+      rerender({ cfg: pythonConfig })
+
+      // Touched field is preserved.
+      expect(result.current.answers.step1.language).toBe('python')
+      // Untouched field follows the new config defaults.
+      expect(result.current.answers.step1.conventions).toBe('Python defaults')
+    })
   })
 
   describe('validation', () => {

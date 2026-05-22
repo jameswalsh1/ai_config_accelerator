@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { generateFiles, previewFiles, fetchWizardConfig, fetchVisibilityRules, fetchFlows, fetchFlow } from '@/api/wizardApi'
 import type { PreviewFile } from '@/api/wizardApi'
 import type { VisibilityRule, WizardConfig, WizardFlow } from '@/types/wizard'
@@ -19,7 +19,9 @@ interface WizardProps {
 
 export function Wizard({ config, onBack }: WizardProps) {
   const [currentConfig, setCurrentConfig] = useState<WizardConfig>(config)
-  const [languageLoaded, setLanguageLoaded] = useState(false)
+  const [resolvedLanguage, setResolvedLanguage] = useState<string | null>(null)
+  // Tracks a fetch that has been initiated but not yet resolved, to prevent duplicate requests.
+  const pendingLanguageRef = useRef<string | null>(null)
   const [visibilityRules, setVisibilityRules] = useState<VisibilityRule[]>([])
   const [flows, setFlows] = useState<WizardFlow[]>([])
   const [activeFlow, setActiveFlow] = useState<WizardFlow | null>(null)
@@ -69,10 +71,9 @@ export function Wizard({ config, onBack }: WizardProps) {
       .catch(() => {}) // Graceful: no flows = default step order
   }, [currentConfig.target])
 
-  // Detect when language is selected and refetch config with language filter
+  // Refetch config whenever the selected language answer changes.
+  // This keeps the wizard aligned with per-language editor overrides.
   useEffect(() => {
-    if (languageLoaded) return
-
     // Look for language selection in any step containing primary_language or language field
     let selectedLanguage: string | undefined
     for (const step of currentConfig.steps) {
@@ -87,18 +88,32 @@ export function Wizard({ config, onBack }: WizardProps) {
     }
 
     if (!selectedLanguage) return
+    if (selectedLanguage === resolvedLanguage) return
+    if (selectedLanguage === pendingLanguageRef.current) return
 
-    // Language selected - refetch config with language filter
-    setLanguageLoaded(true)
+    pendingLanguageRef.current = selectedLanguage
+    let cancelled = false
     fetchWizardConfig(currentConfig.id, selectedLanguage)
       .then(filteredConfig => {
-        setCurrentConfig(filteredConfig)
+        if (!cancelled) {
+          pendingLanguageRef.current = null
+          setCurrentConfig(filteredConfig)
+          setResolvedLanguage(selectedLanguage)
+        }
       })
       .catch(err => {
         console.error('Failed to fetch language-filtered config:', err)
-        // Continue with unfiltered config if fetch fails
+        if (!cancelled) {
+          pendingLanguageRef.current = null
+          setResolvedLanguage(null)
+        }
       })
-  }, [answers, currentConfig.id, currentConfig.steps, languageLoaded])
+
+    return () => {
+      cancelled = true
+      pendingLanguageRef.current = null
+    }
+  }, [answers, currentConfig.id, currentConfig.steps, resolvedLanguage])
 
   // Group screens by step to get per-step field counts (flow-aware)
   const stepsFieldCounts = screens.reduce<number[]>((acc, screen) => {
