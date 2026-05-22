@@ -202,25 +202,44 @@ function buildInitialAnswers(config: WizardConfig): WizardAnswers {
 export function useWizard(config: WizardConfig, options?: UseWizardOptions): UseWizardReturn {
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0)
   const [answers, setAnswers] = useState<WizardAnswers>(() => buildInitialAnswers(config))
+  const [touchedFieldPaths, setTouchedFieldPaths] = useState<Record<string, true>>({})
   const [fieldError, setFieldError] = useState<string | null>(null)
 
   const flowSteps = options?.flowSteps
 
-  // Merge current config defaults into answers without overwriting user-entered values.
-  // This is a pure derivation — no state mutation — so new steps/defaults are always reflected.
+  // Re-derive answers from the latest config defaults.
+  // User-touched values always win; untouched values follow current config defaults.
   const effectiveAnswers = useMemo(() => {
-    const merged: WizardAnswers = { ...answers }
+    const merged: WizardAnswers = {}
     for (const step of config.steps) {
       for (const field of step.fields) {
+        const path = `${step.id}.${field.id}`
+        const explicitValue = answers[step.id]?.[field.id]
+        const isTouched = touchedFieldPaths[path] === true
+
+        if (isTouched && explicitValue !== undefined) {
+          merged[step.id] = { ...merged[step.id], [field.id]: explicitValue }
+          continue
+        }
+
         if (field.default !== undefined && field.default !== null && field.default !== '') {
-          if (merged[step.id]?.[field.id] === undefined) {
-            merged[step.id] = { ...merged[step.id], [field.id]: field.default }
-          }
+          merged[step.id] = { ...merged[step.id], [field.id]: field.default }
         }
       }
     }
+
+    // Keep touched values for fields that may not have defaults.
+    for (const [stepId, stepAnswers] of Object.entries(answers)) {
+      for (const [fieldId, value] of Object.entries(stepAnswers)) {
+        const path = `${stepId}.${fieldId}`
+        if (touchedFieldPaths[path] === true) {
+          merged[stepId] = { ...merged[stepId], [fieldId]: value }
+        }
+      }
+    }
+
     return merged
-  }, [answers, config.steps])
+  }, [answers, config.steps, touchedFieldPaths])
 
   // Evaluate visibility rules reactively based on answers
   const visibility = useMemo(() => {
@@ -238,7 +257,11 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
     const tags = new Set<string>()
     for (const step of config.steps) {
       for (const field of step.fields) {
-        if (!field.tag_source) continue
+        const isTagSource =
+          field.tag_source ||
+          field.id === 'language' ||
+          field.id === 'primary_language'
+        if (!isTagSource) continue
         const value = effectiveAnswers[step.id]?.[field.id] ?? field.default
         if (Array.isArray(value)) {
           value.forEach(item => {
@@ -255,6 +278,8 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
   }, [config.steps, effectiveAnswers])
 
   const setFieldValue = useCallback((stepId: string, fieldId: string, value: unknown) => {
+    const path = `${stepId}.${fieldId}`
+    setTouchedFieldPaths(prev => ({ ...prev, [path]: true }))
     setAnswers(prev => ({ ...prev, [stepId]: { ...prev[stepId], [fieldId]: value } }))
     setFieldError(null)
   }, [])
@@ -287,6 +312,7 @@ export function useWizard(config: WizardConfig, options?: UseWizardOptions): Use
   const reset = useCallback(() => {
     setCurrentScreenIndex(0)
     setAnswers({})
+    setTouchedFieldPaths({})
     setFieldError(null)
   }, [])
 

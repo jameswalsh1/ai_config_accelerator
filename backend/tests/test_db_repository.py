@@ -209,6 +209,27 @@ class TestDatabaseConfigReadRepository:
         config = await repo.load_resolved_config("claude", "unknown_lang")
         assert "steps" in config
 
+    async def test_language_selector_options_are_built_from_language_table(self, repo):
+        config = await repo.load_resolved_config("claude", "python")
+        steps_by_id = {s["id"]: s for s in config["steps"]}
+        main_step = steps_by_id["main_step"]
+        fields_by_id = {f["id"]: f for f in main_step["fields"]}
+
+        # Seed schema has static "ts" option; resolver should replace with active languages.
+        options = fields_by_id["language"].get("options") or []
+        assert any(opt.get("value") == "python" for opt in options)
+        assert all(opt.get("value") != "ts" for opt in options)
+
+    async def test_language_label_style_value_resolves_to_language_layer(self, repo):
+        # Simulates values like "Python (FastAPI, Django, data science)" from legacy labels.
+        config = await repo.load_resolved_config("claude", "Python (FastAPI, Django, data science)")
+        steps_by_id = {s["id"]: s for s in config["steps"]}
+        fields_by_id = {f["id"]: f for f in steps_by_id["main_step"]["fields"]}
+        lang_field = fields_by_id["language"]
+
+        # Language layer default should still apply even when query value is a label-like string.
+        assert lang_field["default"] == "python"
+
     async def test_no_active_schema_raises(self):
         """When no active schema exists, load_resolved_config raises RuntimeError."""
         # Create an isolated DB with no schema

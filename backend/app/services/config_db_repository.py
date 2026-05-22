@@ -14,9 +14,10 @@ Override attribution is tracked via ``override_source``.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.language import Language
@@ -87,6 +88,98 @@ async def _get_layer(
         stmt = stmt.where(ConfigLayer.language_id == language_id)
     res = await session.execute(stmt.limit(1))
     return res.scalar_one_or_none()
+
+
+def _slugify_language_token(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
+
+
+async def _resolve_language_row(
+    session: AsyncSession,
+    language_id: str,
+) -> Language | None:
+    """Resolve language id robustly across key/title/label variants.
+
+    Accepts canonical keys ("python"), titles ("Python"), and
+    label-like values such as "Python (FastAPI, Django, data science)".
+    """
+    raw = (language_id or "").strip()
+    if not raw:
+        return None
+
+    # Fast path: direct key match (case-insensitive)
+    direct_res = await session.execute(
+        select(Language).where(func.lower(Language.language_key) == raw.lower()).limit(1)
+    )
+    direct = direct_res.scalar_one_or_none()
+    if direct is not None:
+        return direct
+
+    # Title/label fallback
+    all_langs_res = await session.execute(select(Language))
+    all_langs = list(all_langs_res.scalars().all())
+    if not all_langs:
+        return None
+
+    lowered = raw.lower()
+    title_candidate = raw.split("(", 1)[0].strip()
+    title_lower = title_candidate.lower()
+    slug = _slugify_language_token(title_candidate)
+    slug_alt = slug.replace("-", "_")
+
+    for lang in all_langs:
+        key = (lang.language_key or "").strip().lower()
+        title = (lang.title or "").strip().lower()
+        if lowered in {key, title}:
+            return lang
+        if title_lower and title_lower in {key, title}:
+            return lang
+        if slug and slug in {key, title}:
+            return lang
+        if slug_alt and slug_alt in {key, title}:
+            return lang
+
+    return None
+
+
+async def _get_dynamic_language_options(session: AsyncSession) -> list[dict[str, Any]]:
+    """Build wizard language selector options from active language records."""
+    res = await session.execute(
+        select(Language)
+        .where(Language.is_active.is_(True))
+        .order_by(Language.language_key)
+    )
+    languages = list(res.scalars().all())
+    return [
+        {
+            "value": la.language_key,
+            "label": la.title,
+        }
+        for la in languages
+    ]
+
+
+def _inject_dynamic_language_options(
+    serialised_steps: list[dict[str, Any]],
+    options: list[dict[str, Any]],
+) -> None:
+    """Replace language selector field options with dynamic DB-backed options."""
+    if not options:
+        return
+
+    def _visit_fields(fields: list[dict[str, Any]]) -> None:
+        for field in fields:
+            field_id = field.get("id")
+            if field_id in {"language", "primary_language"}:
+                field["options"] = options
+            child_fields = field.get("fields")
+            if isinstance(child_fields, list) and child_fields:
+                _visit_fields(child_fields)
+
+    for step in serialised_steps:
+        step_fields = step.get("fields")
+        if isinstance(step_fields, list):
+            _visit_fields(step_fields)
 
 
 async def _get_step_overrides(
@@ -227,10 +320,7 @@ class DatabaseConfigReadRepository:
             select(AITool).where(AITool.tool_key == tool_id)
         )
         tool_row = tool_res.scalar_one_or_none()
-        lang_res = await session.execute(
-            select(Language).where(Language.language_key == language_id)
-        )
-        lang_row = lang_res.scalar_one_or_none()
+        lang_row = await _resolve_language_row(session, language_id)
 
         tool_layer = (
             await _get_layer(session, "tool", tool_id=tool_row.id)
@@ -311,6 +401,10 @@ class DatabaseConfigReadRepository:
                 step_dict = apply_step_overrides_to_dict(step_dict, step_override_list)
 
             serialised_steps.append(step_dict)
+
+        # Keep wizard language selectors aligned with active language records.
+        dynamic_language_options = await _get_dynamic_language_options(session)
+        _inject_dynamic_language_options(serialised_steps, dynamic_language_options)
 
         return {
             "schema_version": schema.schema_version,
