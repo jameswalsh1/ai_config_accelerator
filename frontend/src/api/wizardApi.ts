@@ -1,4 +1,4 @@
-import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep, Preset, PresetAssignment } from '@/types/wizard'
+import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep, Preset, PresetAssignment, VisibilityRule, VisibilityResult, WizardFlow } from '@/types/wizard'
 
 const BASE: string = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000'
 
@@ -136,12 +136,8 @@ export async function createLanguageConfig(payload: CreateLanguagePayload): Prom
     body: JSON.stringify(payload),
   })
   await throwIfNotOk(res, 'Failed to create language')
-  const data = await res.json() as { language_id: string; metadata?: { title?: string; description?: string } }
-  return {
-    id: data.language_id,
-    title: data.metadata?.title ?? data.language_id,
-    description: data.metadata?.description ?? '',
-  }
+  const data = await res.json() as { language_key: string; title: string; description: string }
+  return { id: data.language_key, title: data.title, description: data.description }
 }
 
 export async function fetchLanguageTags(languageId: string): Promise<string[]> {
@@ -539,4 +535,141 @@ export async function fetchVersionDiff(
   const res = await fetchWithTimeout(`${BASE}/config/history/diff?${params}`)
   await throwIfNotOk(res, 'Failed to load version diff')
   return res.json() as Promise<VersionDiff>
+}
+
+
+// ---------------------------------------------------------------------------
+// Phase 5A — Visibility rules
+// ---------------------------------------------------------------------------
+
+export async function fetchVisibilityRules(tool?: string, language?: string): Promise<VisibilityRule[]> {
+  const params = new URLSearchParams()
+  if (tool) params.set('tool', tool)
+  if (language) params.set('language', language)
+  const query = params.toString()
+  const url = `${BASE}/api/wizard/visibility/rules${query ? `?${query}` : ''}`
+  const res = await fetchWithTimeout(url)
+  await throwIfNotOk(res, 'Failed to load visibility rules')
+  return res.json() as Promise<VisibilityRule[]>
+}
+
+export async function evaluateVisibility(
+  answers: Record<string, Record<string, unknown>>,
+  toolKey?: string,
+  languageKey?: string,
+): Promise<VisibilityResult> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/visibility/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      answers,
+      tool_key: toolKey ?? null,
+      language_key: languageKey ?? null,
+    }),
+  })
+  await throwIfNotOk(res, 'Failed to evaluate visibility')
+  return res.json() as Promise<VisibilityResult>
+}
+
+export async function createVisibilityRule(rule: {
+  target_type: string
+  target_step_key: string
+  target_field_path?: string
+  depends_on_field_path: string
+  operator?: string
+  value?: unknown
+  action?: string
+  priority?: number
+}): Promise<VisibilityRule> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/visibility/rules`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rule),
+  })
+  await throwIfNotOk(res, 'Failed to create visibility rule')
+  return res.json() as Promise<VisibilityRule>
+}
+
+export async function deleteVisibilityRule(ruleId: number): Promise<void> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/visibility/rules/${ruleId}`, {
+    method: 'DELETE',
+  })
+  await throwIfNotOk(res, 'Failed to delete visibility rule')
+}
+
+
+// ---------------------------------------------------------------------------
+// Phase 5B — Wizard flows
+// ---------------------------------------------------------------------------
+
+export async function fetchFlows(includeArchived = false): Promise<WizardFlow[]> {
+  const params = new URLSearchParams()
+  if (includeArchived) params.set('include_archived', 'true')
+  const query = params.toString()
+  const url = `${BASE}/api/wizard/flows${query ? `?${query}` : ''}`
+  const res = await fetchWithTimeout(url)
+  await throwIfNotOk(res, 'Failed to load flows')
+  return res.json() as Promise<WizardFlow[]>
+}
+
+export async function fetchFlow(flowId: number): Promise<WizardFlow> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/flows/${flowId}`)
+  await throwIfNotOk(res, 'Failed to load flow')
+  return res.json() as Promise<WizardFlow>
+}
+
+export async function fetchDefaultFlow(): Promise<WizardFlow> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/flows/default`)
+  await throwIfNotOk(res, 'Failed to load default flow')
+  return res.json() as Promise<WizardFlow>
+}
+
+export async function createFlow(payload: {
+  name: string
+  description?: string
+  tool_key?: string
+  step_keys?: string[]
+}): Promise<WizardFlow> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/flows`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  await throwIfNotOk(res, 'Failed to create flow')
+  return res.json() as Promise<WizardFlow>
+}
+
+export async function updateFlow(flowId: number, payload: {
+  name?: string
+  description?: string
+  steps?: Array<{
+    step_key: string
+    is_enabled: boolean
+    custom_title?: string | null
+    custom_description?: string | null
+  }>
+}): Promise<WizardFlow> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/flows/${flowId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  await throwIfNotOk(res, 'Failed to update flow')
+  return res.json() as Promise<WizardFlow>
+}
+
+export async function setDefaultFlow(flowId: number): Promise<WizardFlow> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/flows/${flowId}/set-default`, {
+    method: 'POST',
+  })
+  await throwIfNotOk(res, 'Failed to set default flow')
+  return res.json() as Promise<WizardFlow>
+}
+
+export async function archiveFlow(flowId: number): Promise<WizardFlow> {
+  const res = await fetchWithTimeout(`${BASE}/api/wizard/flows/${flowId}/archive`, {
+    method: 'POST',
+  })
+  await throwIfNotOk(res, 'Failed to archive flow')
+  return res.json() as Promise<WizardFlow>
 }

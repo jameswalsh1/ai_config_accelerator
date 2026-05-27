@@ -11,8 +11,9 @@
 **/node_modules/
 frontend/dist/
 
-# Tests
+# Tests (exclude test code but include seed data)
 backend/tests/
+!backend/tests/wizard_configs/
 
 # Dev / editor
 .DS_Store

@@ -1,27 +1,38 @@
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
-    POETRY_VIRTUALENVS_CREATE=false
+    PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
-    build-essential \
+    curl \
   && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir \
-    fastapi==0.115.12 \
+COPY backend/pyproject.toml /app/pyproject.toml
+# Install a placeholder package so pip resolves dependencies from pyproject.toml
+RUN pip install --no-cache-dir --no-build-isolation \
+    "fastapi==0.115.12" \
     "uvicorn[standard]==0.34.0" \
-    pydantic==2.12.5 \
-    python-multipart==0.0.20
+    "pydantic==2.12.5" \
+    "pydantic-settings==2.7.0" \
+    "python-multipart==0.0.20" \
+    "sqlalchemy[asyncio]==2.0.41" \
+    "alembic==1.14.1" \
+    "asyncmy==0.2.10" \
+    "cryptography>=48.0.0"
 
 COPY backend /app
 
-RUN useradd --no-create-home --shell /bin/false appuser \
+RUN chmod +x /app/entrypoint.sh \
+  && useradd --no-create-home --shell /bin/false appuser \
   && chown -R appuser /app
 USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+ENTRYPOINT ["/app/entrypoint.sh"]

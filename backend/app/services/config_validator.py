@@ -7,7 +7,9 @@ Provides clear error messages for validation failures.
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
+
+DATA_DIR = Path(__file__).parent.parent.parent / "tests" / "wizard_configs"
 
 
 class SchemaValidationError(Exception):
@@ -83,6 +85,17 @@ def _validate_array_items(items: Any, item_schema: dict[str, Any], path: str, re
             )
 
 
+def _validate_override_arrays(data: dict[str, Any]) -> None:
+    """Validate the three standard override arrays shared by all override file types."""
+    for key, required_key in [
+        ("metadata_overrides", "field_id"),
+        ("field_overrides", "field_id"),
+        ("step_overrides", "step_id"),
+    ]:
+        if key in data:
+            _validate_array_items(data[key], {}, key, required_key)
+
+
 def validate_wizard_schema(data: dict[str, Any]) -> None:
     """
     Validate base wizard schema (schema.json).
@@ -126,35 +139,8 @@ def validate_tool_override(data: dict[str, Any]) -> None:
     Raises:
         SchemaValidationError: If validation fails
     """
-    # Check required fields
     _validate_required_fields(data, ["tool_id"])
-    
-    # Validate metadata_overrides if present
-    if "metadata_overrides" in data:
-        _validate_array_items(
-            data["metadata_overrides"], 
-            {},
-            "metadata_overrides",
-            "field_id"
-        )
-    
-    # Validate field_overrides if present
-    if "field_overrides" in data:
-        _validate_array_items(
-            data["field_overrides"],
-            {},
-            "field_overrides",
-            "field_id"
-        )
-    
-    # Validate step_overrides if present
-    if "step_overrides" in data:
-        _validate_array_items(
-            data["step_overrides"],
-            {},
-            "step_overrides",
-            "step_id"
-        )
+    _validate_override_arrays(data)
 
 
 def validate_language_override(data: dict[str, Any]) -> None:
@@ -167,35 +153,8 @@ def validate_language_override(data: dict[str, Any]) -> None:
     Raises:
         SchemaValidationError: If validation fails
     """
-    # Check required fields
     _validate_required_fields(data, ["language_id"])
-    
-    # Validate metadata_overrides if present
-    if "metadata_overrides" in data:
-        _validate_array_items(
-            data["metadata_overrides"],
-            {},
-            "metadata_overrides",
-            "field_id"
-        )
-    
-    # Validate field_overrides if present
-    if "field_overrides" in data:
-        _validate_array_items(
-            data["field_overrides"],
-            {},
-            "field_overrides",
-            "field_id"
-        )
-    
-    # Validate step_overrides if present
-    if "step_overrides" in data:
-        _validate_array_items(
-            data["step_overrides"],
-            {},
-            "step_overrides",
-            "step_id"
-        )
+    _validate_override_arrays(data)
 
 
 def validate_combo_override(data: dict[str, Any]) -> None:
@@ -208,32 +167,7 @@ def validate_combo_override(data: dict[str, Any]) -> None:
     Raises:
         SchemaValidationError: If validation fails
     """
-    # Validate metadata_overrides if present
-    if "metadata_overrides" in data:
-        _validate_array_items(
-            data["metadata_overrides"],
-            {},
-            "metadata_overrides",
-            "field_id"
-        )
-    
-    # Validate field_overrides if present
-    if "field_overrides" in data:
-        _validate_array_items(
-            data["field_overrides"],
-            {},
-            "field_overrides",
-            "field_id"
-        )
-    
-    # Validate step_overrides if present
-    if "step_overrides" in data:
-        _validate_array_items(
-            data["step_overrides"],
-            {},
-            "step_overrides",
-            "step_id"
-        )
+    _validate_override_arrays(data)
 
 
 def validate_config_file(file_path: Path, data: dict[str, Any]) -> None:
@@ -356,4 +290,77 @@ def _collect_field_paths(prefix: str, field: dict[str, Any], paths: set[str]) ->
         paths.add(path)
         for nested in field.get("fields", []):
             _collect_field_paths(path, nested, paths)
+
+
+def _load_schema_steps() -> list[dict[str, Any]]:
+    """Load steps from schema.json for reference validation."""
+    schema_file = DATA_DIR / "schema.json"
+    if not schema_file.exists():
+        return []
+    with schema_file.open(encoding="utf-8") as f:
+        schema = json.load(f)
+    return cast(list[dict[str, Any]], schema.get("steps", []))
+
+
+def _build_valid_step_ids(steps: list[dict[str, Any]]) -> set[str]:
+    return {step["id"] for step in steps if "id" in step}
+
+
+def _build_valid_field_paths(steps: list[dict[str, Any]]) -> set[str]:
+    paths: set[str] = set()
+    for step in steps:
+        step_id = step.get("id", "")
+        if step_id:
+            for field in step.get("fields", []):
+                _collect_field_paths(step_id, field, paths)
+    return paths
+
+
+def validate_step_id_exists(step_id: str) -> None:
+    """
+    Raise SchemaValidationError if step_id does not exist in schema.json.
+
+    Args:
+        step_id: The step ID to check.
+
+    Raises:
+        SchemaValidationError: When step_id is not found.
+    """
+    steps = _load_schema_steps()
+    valid = _build_valid_step_ids(steps)
+    if step_id not in valid:
+        raise SchemaValidationError(
+            f"step_id '{step_id}' does not exist in schema. "
+            f"Valid step IDs: {sorted(valid)}"
+        )
+
+
+def validate_field_id_exists(step_id: str, field_id: str) -> None:
+    """
+    Raise SchemaValidationError if the field path (step_id.field_id) does not
+    exist in schema.json.
+
+    Args:
+        step_id: The step containing the field.
+        field_id: The field ID within the step (may be nested with dots).
+
+    Raises:
+        SchemaValidationError: When the field path is not found.
+    """
+    steps = _load_schema_steps()
+    valid_steps = _build_valid_step_ids(steps)
+
+    if step_id not in valid_steps:
+        raise SchemaValidationError(
+            f"step_id '{step_id}' does not exist in schema. "
+            f"Valid step IDs: {sorted(valid_steps)}"
+        )
+
+    valid_fields = _build_valid_field_paths(steps)
+    full_path = f"{step_id}.{field_id}"
+    if full_path not in valid_fields:
+        raise SchemaValidationError(
+            f"field_id '{field_id}' does not exist in step '{step_id}'. "
+            f"Valid field paths: {sorted(p for p in valid_fields if p.startswith(step_id + '.'))}"
+        )
 

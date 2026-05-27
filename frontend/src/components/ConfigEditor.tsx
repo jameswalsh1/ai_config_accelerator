@@ -10,6 +10,10 @@ interface ConfigEditorProps {
   language: string
 }
 
+// Fields that identify the user's language choice — redundant in the editor
+// because the language has already been selected via the language picker.
+const LANGUAGE_SELECTOR_FIELD_IDS = new Set(['language', 'primary_language'])
+
 export function ConfigEditor({
   editableStep,
   onFieldChange,
@@ -44,6 +48,7 @@ export function ConfigEditor({
         onFieldSave={handleFieldSave}
         tool={tool}
         language={language}
+        hiddenFieldIds={LANGUAGE_SELECTOR_FIELD_IDS}
       />
     </div>
   )

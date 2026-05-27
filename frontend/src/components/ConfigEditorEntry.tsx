@@ -54,7 +54,7 @@ export function ConfigEditorEntry({ onConfigSelected, initialTool, initialLangua
     }
 
     void loadInitialData()
-  }, [])
+  }, [initialTool, initialLanguage])
 
   const loadStep = useCallback(async (stepId: string, tool = selectedTool, language = selectedLanguage) => {
     if (!tool || !language || !stepId) return

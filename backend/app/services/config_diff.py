@@ -11,7 +11,7 @@ with support for:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 
 class ChangeType(Enum):
@@ -661,9 +661,9 @@ def _extract_presets_from_override(override: dict[str, Any]) -> list[dict[str, A
         return None
     # replace_presets_with takes precedence over merge_presets
     if "replace_presets_with" in override:
-        return override["replace_presets_with"]
+        return cast(list[dict[str, Any]], override["replace_presets_with"])
     if "merge_presets" in override:
-        return override["merge_presets"]
+        return cast(list[dict[str, Any]], override["merge_presets"])
     return None
 
 

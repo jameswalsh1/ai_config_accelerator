@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react'
-import { generateFiles, previewFiles, fetchWizardConfig } from '@/api/wizardApi'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { generateFiles, previewFiles, fetchWizardConfig, fetchVisibilityRules, fetchFlows, fetchFlow } from '@/api/wizardApi'
 import type { PreviewFile } from '@/api/wizardApi'
-import type { WizardConfig } from '@/types/wizard'
+import type { VisibilityRule, WizardConfig, WizardFlow } from '@/types/wizard'
 import { useWizard } from '@/hooks/useWizard'
 import { WizardComplete } from './WizardComplete'
 import { WizardFieldScreen } from './WizardFieldScreen'
 import { WizardNavigation } from './WizardNavigation'
 import { WizardProgress } from './WizardProgress'
 import { GeneratePreview } from './GeneratePreview'
+import { FlowSelector } from './FlowSelector'
+
+const FlowManager = lazy(() => import('./FlowManager').then(m => ({ default: m.FlowManager })))
 
 interface WizardProps {
   config: WizardConfig
@@ -16,8 +19,15 @@ interface WizardProps {
 
 export function Wizard({ config, onBack }: WizardProps) {
   const [currentConfig, setCurrentConfig] = useState<WizardConfig>(config)
-  const [languageLoaded, setLanguageLoaded] = useState(false)
-  
+  const [resolvedLanguage, setResolvedLanguage] = useState<string | null>(null)
+  // Tracks a fetch that has been initiated but not yet resolved, to prevent duplicate requests.
+  const pendingLanguageRef = useRef<string | null>(null)
+  const [visibilityRules, setVisibilityRules] = useState<VisibilityRule[]>([])
+  const [flows, setFlows] = useState<WizardFlow[]>([])
+  const [activeFlow, setActiveFlow] = useState<WizardFlow | null>(null)
+  const [showFlowSelector, setShowFlowSelector] = useState(false)
+  const [showFlowManager, setShowFlowManager] = useState(false)
+
   const {
     screens,
     currentScreenIndex,
@@ -27,23 +37,43 @@ export function Wizard({ config, onBack }: WizardProps) {
     fieldError,
     isFirstScreen,
     isLastScreen,
+    visibleFields,
     setFieldValue,
     nextScreen,
     prevScreen,
     reset,
-  } = useWizard(currentConfig)
+  } = useWizard(currentConfig, {
+    visibilityRules,
+    flowSteps: activeFlow?.steps,
+  })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isDone, setIsDone] = useState(false)
-  // Preview state — set when user reaches the last step and clicks "Preview & Download"
   const [previewFiles_, setPreviewFiles] = useState<PreviewFile[] | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
 
-  // Detect when language is selected and refetch config with language filter
+  // Load visibility rules and flows on mount
   useEffect(() => {
-    if (languageLoaded) return
+    fetchVisibilityRules(currentConfig.target)
+      .then(setVisibilityRules)
+      .catch(() => {}) // Graceful: no rules = no dynamic visibility
+    fetchFlows()
+      .then(loadedFlows => {
+        setFlows(loadedFlows)
+        const defaultFlow = loadedFlows.find(f => f.is_default)
+        if (defaultFlow?.id) {
+          fetchFlow(defaultFlow.id)
+            .then(setActiveFlow)
+            .catch(() => {})
+        }
+      })
+      .catch(() => {}) // Graceful: no flows = default step order
+  }, [currentConfig.target])
 
+  // Refetch config whenever the selected language answer changes.
+  // This keeps the wizard aligned with per-language editor overrides.
+  useEffect(() => {
     // Look for language selection in any step containing primary_language or language field
     let selectedLanguage: string | undefined
     for (const step of currentConfig.steps) {
@@ -58,20 +88,38 @@ export function Wizard({ config, onBack }: WizardProps) {
     }
 
     if (!selectedLanguage) return
+    if (selectedLanguage === resolvedLanguage) return
+    if (selectedLanguage === pendingLanguageRef.current) return
 
-    // Language selected - refetch config with language filter
-    setLanguageLoaded(true)
+    pendingLanguageRef.current = selectedLanguage
+    let cancelled = false
     fetchWizardConfig(currentConfig.id, selectedLanguage)
       .then(filteredConfig => {
-        setCurrentConfig(filteredConfig)
+        if (!cancelled) {
+          pendingLanguageRef.current = null
+          setCurrentConfig(filteredConfig)
+          setResolvedLanguage(selectedLanguage)
+        }
       })
       .catch(err => {
         console.error('Failed to fetch language-filtered config:', err)
-        // Continue with unfiltered config if fetch fails
+        if (!cancelled) {
+          pendingLanguageRef.current = null
+          setResolvedLanguage(null)
+        }
       })
-  }, [answers, currentConfig.id, currentConfig.steps, languageLoaded])
 
-  const stepsFieldCounts = currentConfig.steps.map(s => s.fields.length)
+    return () => {
+      cancelled = true
+      pendingLanguageRef.current = null
+    }
+  }, [answers, currentConfig.id, currentConfig.steps, resolvedLanguage])
+
+  // Group screens by step to get per-step field counts (flow-aware)
+  const stepsFieldCounts = screens.reduce<number[]>((acc, screen) => {
+    acc[screen.stepIndex] = (acc[screen.stepIndex] ?? 0) + 1
+    return acc
+  }, [])
 
   const handleSubmit = async () => {
     const canProceed = nextScreen()
@@ -127,13 +175,37 @@ export function Wizard({ config, onBack }: WizardProps) {
       </div>
 
       {!isDone && !previewFiles_ && (
-        <WizardProgress
-          currentScreenIndex={currentScreenIndex}
-          totalScreens={screens.length}
-          currentStepIndex={currentScreen.stepIndex}
-          currentStepTitle={currentScreen.step.title}
-          stepsFieldCounts={stepsFieldCounts}
-        />
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <WizardProgress
+              currentScreenIndex={currentScreenIndex}
+              totalScreens={screens.length}
+              currentStepIndex={currentScreen.stepIndex}
+              currentStepTitle={currentScreen.step.title}
+              stepsFieldCounts={stepsFieldCounts}
+            />
+          </div>
+          {flows.length > 0 && (
+            <FlowSelector
+              flows={flows}
+              activeFlow={activeFlow}
+              isOpen={showFlowSelector}
+              onToggle={() => setShowFlowSelector(v => !v)}
+              onSelectFlow={(flow) => {
+                void (async () => {
+                  if (flow) {
+                    const full = await fetchFlow(flow.id)
+                    setActiveFlow(full)
+                  } else {
+                    setActiveFlow(null)
+                  }
+                  setShowFlowSelector(false)
+                })()
+              }}
+              onManageFlows={() => setShowFlowManager(true)}
+            />
+          )}
+        </div>
       )}
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -170,6 +242,7 @@ export function Wizard({ config, onBack }: WizardProps) {
               activeTags={activeTags}
               targetTag={currentConfig.target}
               fieldError={fieldError}
+              visibleFields={visibleFields}
               onFieldChange={(fieldId, value) =>
                 setFieldValue(currentScreen.step.id, fieldId, value)
               }
@@ -194,6 +267,18 @@ export function Wizard({ config, onBack }: WizardProps) {
           </>
         )}
       </div>
+
+      {showFlowManager && (
+        <Suspense fallback={null}>
+          <FlowManager
+            onClose={() => setShowFlowManager(false)}
+            onFlowActivated={(flow) => {
+              setActiveFlow(flow)
+              setShowFlowManager(false)
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -5,7 +5,7 @@ FRONTEND_DIR := frontend
 # Prevent any active venv in the shell from conflicting with uv's project venv
 unexport VIRTUAL_ENV
 
-.PHONY: help install install-backend install-frontend dev backend frontend build lint lint-backend lint-frontend typecheck-frontend mypy test clean check-ts-deprecations fix-ts-deprecations
+.PHONY: help install install-backend install-frontend dev dev-db-stop backend frontend build lint lint-backend lint-frontend typecheck-frontend mypy test clean check-ts-deprecations fix-ts-deprecations db-import db-import-dry-run db-readiness verify-phase2
 
 help:
 	@echo "Usage: make <target>"
@@ -13,7 +13,8 @@ help:
 	@echo "  install           Install all backend and frontend dependencies"
 	@echo "  install-backend   Install Python dependencies"
 	@echo "  install-frontend  Install Node dependencies"
-	@echo "  dev               Start both backend and frontend (foreground, Ctrl+C to stop both)"
+	@echo "  dev               Start DB (Docker), backend, and frontend (Ctrl+C to stop all)"
+	@echo "  dev-db-stop       Stop the dev MySQL container started by 'make dev'"
 	@echo "  backend           Start the FastAPI backend only  (http://localhost:8000)"
 	@echo "  frontend          Start the Vite dev server only  (http://localhost:5173)"
 	@echo "  build             Production build of the frontend"
@@ -26,6 +27,9 @@ help:
 	@echo "  clean             Remove frontend build artefacts and Python caches"
 	@echo "  check-ts-deprecations  Report deprecated baseUrl usage in tsconfig files"
 	@echo "  fix-ts-deprecations    Remove deprecated baseUrl (when paths is set) and verify"
+	@echo "  db-upgrade        Apply all pending Alembic migrations (requires DB)"
+	@echo "  db-downgrade      Roll back one Alembic migration step (requires DB)"
+	@echo "  db-revision       Create a new Alembic revision (pass message= arg)"
 
 # ── Dependencies ─────────────────────────────────────────────────────────────
 
@@ -40,12 +44,24 @@ install-frontend:
 # ── Development ───────────────────────────────────────────────────────────────
 
 dev:
-	@echo "Starting backend on http://localhost:8000 and frontend on http://localhost:5173"
-	@echo "Press Ctrl+C to stop both."
-	@trap 'kill 0' INT; \
+	@echo "Starting database (Docker), backend on http://localhost:8000, and frontend on http://localhost:5173"
+	@echo "Press Ctrl+C to stop all."
+	@command -v docker > /dev/null 2>&1 || { echo "ERROR: docker is not installed or not on PATH."; exit 1; }
+	@docker info > /dev/null 2>&1 || { echo "ERROR: Docker daemon is not running."; exit 1; }
+	docker compose up -d mysql
+	@echo "Waiting for MySQL to be healthy..."
+	@until docker compose exec mysql mysqladmin ping -h localhost -u root \
+		--password="$${MYSQL_ROOT_PASSWORD:-ai_config_root_password}" --silent 2>/dev/null; \
+		do sleep 2; done
+	@echo "Database is ready."
+	@trap 'kill 0; docker compose stop mysql' INT; \
 		cd $(BACKEND_DIR) && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 & \
 		cd $(FRONTEND_DIR) && npm run dev -- --host 0.0.0.0; \
 		wait
+
+dev-db-stop:
+	@echo "Stopping the dev database container..."
+	docker compose stop mysql
 
 backend:
 	cd $(BACKEND_DIR) && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -82,6 +98,40 @@ typecheck-frontend:
 
 test:
 	cd $(BACKEND_DIR) && uv run pytest tests/ -v
+
+# ── Database import (Phase 2) ─────────────────────────────────────────────────
+.PHONY: db-import db-import-dry-run db-readiness verify-phase2
+
+db-import:
+	@echo "Importing JSON wizard configs into the database..."
+	cd $(BACKEND_DIR) && uv run python -m app.commands.import_json_to_db
+
+db-import-dry-run:
+	@echo "Dry-run: computing changes without writing to the database..."
+	cd $(BACKEND_DIR) && uv run python -m app.commands.import_json_to_db --dry-run
+
+db-readiness:
+	@echo "Checking database import status..."
+	@curl -s http://localhost:8000/health/config-db | python3 -m json.tool || echo "(server not running)"
+
+verify-phase2:
+	@echo "Running Phase 2 verification tests..."
+	cd $(BACKEND_DIR) && uv run pytest tests/test_phase2_models.py tests/test_config_db_serialiser.py tests/test_import_services.py tests/test_db_repository.py tests/test_db_parity.py tests/test_phase2_feature_flag.py -v
+
+
+.PHONY: db-upgrade db-downgrade db-revision
+
+db-upgrade:
+	@echo "Applying all pending Alembic migrations..."
+	cd $(BACKEND_DIR) && uv run alembic upgrade head
+
+db-downgrade:
+	@echo "Rolling back one Alembic migration step..."
+	cd $(BACKEND_DIR) && uv run alembic downgrade -1
+
+db-revision:
+	@echo "Creating new Alembic revision: $(message)"
+	cd $(BACKEND_DIR) && uv run alembic revision --autogenerate -m "$(message)"
 
 # ── TypeScript deprecation helpers ───────────────────────────────────────────
 

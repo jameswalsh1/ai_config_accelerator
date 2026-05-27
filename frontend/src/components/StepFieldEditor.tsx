@@ -12,6 +12,7 @@ interface StepFieldEditorProps {
   onFieldSave?: (fieldId: string, value: unknown) => Promise<void>
   tool: string
   language: string
+  hiddenFieldIds?: Set<string>
 }
 
 const EDITABILITY_COLORS: Record<Editability, { bg: string; border: string; text: string }> = {
@@ -100,6 +101,7 @@ export function StepFieldEditor({
   onFieldSave,
   tool,
   language,
+  hiddenFieldIds,
 }: StepFieldEditorProps) {
   const { step, source_tracking } = editableStep
   const [expandedGroups, setExpandedGroups] = useState<Record<FieldGroupKey, boolean>>({
@@ -127,7 +129,7 @@ export function StepFieldEditor({
     setFieldValues(Object.fromEntries(step.fields.map(f => [f.id, f.current_value ?? f.default ?? ''])))
     setInlineEdits({})
     setFieldErrors({})
-  }, [step.id])
+  }, [step.id, step.fields])
 
   const toggleGroup = (group: FieldGroupKey) => {
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }))
@@ -185,8 +187,11 @@ export function StepFieldEditor({
     }
   }
 
-  // Group fields by status for clear organization
-  const groupedFields = groupFieldsByStatus(step.fields)
+  // Group fields by status for clear organization (filter hidden fields first)
+  const visibleFields = hiddenFieldIds && hiddenFieldIds.size > 0
+    ? step.fields.filter(f => !hiddenFieldIds.has(f.id))
+    : step.fields
+  const groupedFields = groupFieldsByStatus(visibleFields)
 
   const handleMetadataUpdate = async (fieldId: string, changes: Record<string, unknown>) => {
     const field = step.fields.find(f => f.id === fieldId)
@@ -322,9 +327,6 @@ export function StepFieldEditor({
       return field.override_source
     }
     
-    // Fallback to source_file parsing
-    if (field.source_file?.includes('tool')) return 'tool'
-    if (field.source_file?.includes('language')) return 'language'
     return 'base'
   }
 

@@ -271,8 +271,8 @@ function App() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">AI Config Accelerator</h1>
           <p className="text-sm text-gray-500 max-w-sm">
-            Pick a configuration wizard below. Answer a few questions and download a ready-to-use
-            config ZIP for your AI coding assistant.
+            Stop wrestling with config files. Answer a few questions and get a tailored,
+            team-ready setup for your AI coding assistant — downloaded as a ZIP in seconds.
           </p>
         </div>
 

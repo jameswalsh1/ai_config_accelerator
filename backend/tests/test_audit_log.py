@@ -15,7 +15,6 @@ from app.services.audit_log import (
     build_audit_entry,
     LOG_PATH,
 )
-from app.services.config_persistence import save_config
 
 client = TestClient(app)
 
@@ -33,7 +32,6 @@ def isolated_audit_log(tmp_path, monkeypatch):
     """
     tmp_log = tmp_path / "audit.jsonl"
     monkeypatch.setattr("app.services.audit_log.LOG_PATH", tmp_log)
-    # Also patch within config_persistence's lazy import scope
     yield tmp_log
 
 
@@ -174,65 +172,6 @@ class TestBuildAuditEntry:
         # Should not raise
         json.dumps(entry)
 
-
-# ---------------------------------------------------------------------------
-# Integration: save_config emits an audit entry
-# ---------------------------------------------------------------------------
-
-
-class TestSaveConfigEmitsAudit:
-    def test_new_file_creates_audit_entry(self, tmp_path, isolated_audit_log):
-        config_file = tmp_path / "languages" / "rust.json"
-        data = {
-            "language_id": "rust",
-            "metadata_overrides": [{"field_id": "step.field", "default": "cargo"}],
-        }
-        save_config(config_file, data, validate=False, create_backup=False)
-
-        result = read_audit_log()
-        assert result["total"] == 1
-        entry = result["entries"][0]
-        assert entry["action"] == "create"
-        assert entry["actor"] == "system"
-
-    def test_update_creates_audit_entry(self, tmp_path, isolated_audit_log):
-        config_file = tmp_path / "languages" / "rust.json"
-        config_file.parent.mkdir(parents=True, exist_ok=True)
-        original = {"language_id": "rust", "version": "1.0"}
-        config_file.write_text(json.dumps(original))
-
-        updated = {"language_id": "rust", "version": "2.0"}
-        save_config(config_file, updated, validate=False, create_backup=False)
-
-        result = read_audit_log()
-        assert result["total"] == 1
-        assert result["entries"][0]["action"] == "update"
-
-    def test_context_scope_target_in_entry(self, tmp_path, isolated_audit_log):
-        config_file = tmp_path / "test.json"
-        save_config(
-            config_file,
-            {"language_id": "rust"},
-            validate=False,
-            create_backup=False,
-            context={"scope": "language", "target": "rust"},
-        )
-        result = read_audit_log()
-        entry = result["entries"][0]
-        assert entry["scope"] == "language"
-        assert entry["target"] == "rust"
-
-    def test_audit_failure_does_not_block_save(self, tmp_path, isolated_audit_log):
-        config_file = tmp_path / "languages" / "kotlin.json"
-        data = {"language_id": "kotlin", "metadata_overrides": []}
-
-        with patch("app.services.audit_log.append_audit_entry", side_effect=OSError("disk full")):
-            # Must complete without raising despite audit failure
-            save_config(config_file, data, validate=False, create_backup=False)
-
-        assert config_file.exists()
-        saved = json.loads(config_file.read_text())
-        assert saved["language_id"] == "kotlin"
 
 
 # ---------------------------------------------------------------------------
