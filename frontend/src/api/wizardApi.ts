@@ -1,6 +1,8 @@
 import type { WizardAnswers, WizardConfig, WizardConfigSummary, EditableStep, Preset, PresetAssignment, VisibilityRule, VisibilityResult, WizardFlow } from '@/types/wizard'
 
-const BASE: string = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000'
+const configuredBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
+const defaultBase = window.location.origin
+const BASE: string = configuredBase && configuredBase.length > 0 ? configuredBase : defaultBase
 
 const DEFAULT_TIMEOUT_MS = 30_000
 

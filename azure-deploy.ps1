@@ -27,7 +27,8 @@ $ErrorActionPreference = "Stop"
 
 $APP_URL     = "http://$ACI_DNS_LABEL.$LOCATION.azurecontainer.io"
 $BACKEND_URL = "$APP_URL`:8000"
-$IMAGE_TAG   = (git rev-parse --short HEAD 2>$null) ?? "latest"
+$IMAGE_TAG   = git rev-parse --short HEAD 2>$null
+if (-not $IMAGE_TAG) { $IMAGE_TAG = "latest" }
 
 Write-Host "=================================================="
 Write-Host "  Deploying AI Accelerator to Azure"
@@ -44,8 +45,8 @@ $STORAGE_KEY    = az storage account keys list --account-name $STORAGE_ACCOUNT -
 Write-Host "`n── Building backend image in ACR..."
 az acr build --registry $ACR_NAME --image "backend:$IMAGE_TAG" --image "backend:latest" --file "backend/Dockerfile" .
 
-Write-Host "`n── Building frontend image in ACR (backend URL baked in at build time)..."
-az acr build --registry $ACR_NAME --image "frontend:$IMAGE_TAG" --image "frontend:latest" --build-arg "VITE_API_BASE_URL=$BACKEND_URL" --file "frontend/Dockerfile" .
+Write-Host "`n── Building frontend image in ACR (API calls proxied via nginx)..."
+az acr build --registry $ACR_NAME --image "frontend:$IMAGE_TAG" --image "frontend:latest" --file "frontend/Dockerfile" .
 
 # ── Patch the ACI YAML with real credentials then deploy ────────────────────
 Write-Host "`n── Deploying ACI container group..."
@@ -62,6 +63,25 @@ Start-Sleep -Seconds 5
 
 az container create --resource-group $RESOURCE_GROUP --file $tempYaml
 Remove-Item $tempYaml
+
+# ── Wait for backend to be healthy then seed the database ────────────────────
+Write-Host "`n── Waiting for backend to become healthy..."
+$maxWait = 120
+$waited  = 0
+do {
+    Start-Sleep -Seconds 5
+    $waited += 5
+    $health = try { (Invoke-WebRequest -Uri "$BACKEND_URL/health" -UseBasicParsing -TimeoutSec 5).StatusCode } catch { 0 }
+} while ($health -ne 200 -and $waited -lt $maxWait)
+
+if ($health -eq 200) {
+    Write-Host "── Backend healthy. Seeding database..."
+    az container exec --resource-group $RESOURCE_GROUP --name $ACI_GROUP_NAME --container-name backend --exec-command "python -m app.commands.import_json_to_db"
+    Write-Host "── Database seeded."
+} else {
+    Write-Host "WARNING: Backend did not become healthy within ${maxWait}s. Run the seed manually:"
+    Write-Host "  az container exec --resource-group $RESOURCE_GROUP --name $ACI_GROUP_NAME --container-name backend --exec-command 'python -m app.commands.import_json_to_db'"
+}
 
 Write-Host "`n=================================================="
 Write-Host "  Deployment complete!"

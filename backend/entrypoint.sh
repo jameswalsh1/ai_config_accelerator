@@ -17,5 +17,9 @@ while [ "$i" -le 30 ]; do
   i=$((i + 1))
 done
 
+echo "Seeding database from wizard configs..."
+python -m app.commands.import_json_to_db
+echo "Seeding complete."
+
 echo "Starting server..."
 exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
