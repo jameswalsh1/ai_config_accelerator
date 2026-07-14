@@ -210,15 +210,22 @@ def _render_group_entry(fields: list[WizardField], entry: dict[str, Any], title:
                 continue
         filtered_fields.append(f)
 
-    temp_step = _RenderStep(title=title, fields=filtered_fields, output_format=output_format)
-    
+    # If any field declares frontmatter=True the entry needs YAML front-matter
+    # regardless of the step-level output_format (e.g. SKILL.md steps are
+    # stored as 'text' but must emit ---\nname: ...\n--- + body).
+    effective_format = output_format
+    if any(getattr(f, "frontmatter", False) for f in filtered_fields):
+        effective_format = OutputFormat.markdown_frontmatter
+
+    temp_step = _RenderStep(title=title, fields=filtered_fields, output_format=effective_format)
+
     step = cast(WizardStep, temp_step)
 
-    if output_format == OutputFormat.markdown:
+    if effective_format == OutputFormat.markdown:
         return _render_markdown(step, entry)
-    if output_format == OutputFormat.markdown_frontmatter:
+    if effective_format == OutputFormat.markdown_frontmatter:
         return _render_markdown_frontmatter(step, entry)
-    if output_format == OutputFormat.verbatim:
+    if effective_format == OutputFormat.verbatim:
         return _render_verbatim(step, entry)
     return _render_text(step, entry)
 
@@ -329,6 +336,18 @@ def _resolve_directory_output_for_entry(step: WizardStep, entry: dict[str, Any])
             except ValueError:
                 continue
             return f"{step.output_file}{safe}"
+
+    # Skill steps use directory_name (Copilot agent_skills) or skill_name
+    # (Claude skill_definitions) as the sub-directory; the fixed filename is
+    # always SKILL.md — e.g. .github/skills/{directory_name}/SKILL.md
+    for key in ("directory_name", "skill_name"):
+        value = entry.get(key)
+        if isinstance(value, str) and value.strip():
+            try:
+                safe = _sanitize_output_filename(value)
+            except ValueError:
+                continue
+            return f"{step.output_file}{safe}/SKILL.md"
 
     return None
 
