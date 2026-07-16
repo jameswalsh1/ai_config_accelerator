@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field as dc_field
+from pathlib import PurePosixPath
 from typing import Any, cast
 
 from app.enums import FieldType, OutputFormat
@@ -209,17 +210,61 @@ def _render_group_entry(fields: list[WizardField], entry: dict[str, Any], title:
                 continue
         filtered_fields.append(f)
 
-    temp_step = _RenderStep(title=title, fields=filtered_fields, output_format=output_format)
-    
+    # If any field declares frontmatter=True the entry needs YAML front-matter
+    # regardless of the step-level output_format (e.g. SKILL.md steps are
+    # stored as 'text' but must emit ---\nname: ...\n--- + body).
+    effective_format = output_format
+    if any(getattr(f, "frontmatter", False) for f in filtered_fields):
+        effective_format = OutputFormat.markdown_frontmatter
+
+    temp_step = _RenderStep(title=title, fields=filtered_fields, output_format=effective_format)
+
     step = cast(WizardStep, temp_step)
 
-    if output_format == OutputFormat.markdown:
+    if effective_format == OutputFormat.markdown:
         return _render_markdown(step, entry)
-    if output_format == OutputFormat.markdown_frontmatter:
+    if effective_format == OutputFormat.markdown_frontmatter:
         return _render_markdown_frontmatter(step, entry)
-    if output_format == OutputFormat.verbatim:
+    if effective_format == OutputFormat.verbatim:
         return _render_verbatim(step, entry)
     return _render_text(step, entry)
+
+
+def _sanitize_output_filename(name: str) -> str:
+    """
+    Reject or clean a user-supplied output filename to prevent path traversal.
+
+    Rules:
+    - Must not be empty after stripping.
+    - Must not be an absolute path (starts with / or contains a drive letter like C:).
+    - Must not contain '..' path segments.
+    - Must not contain null bytes.
+    - Forward slashes within the name are rejected (filenames only, not dirs).
+
+    Raises:
+        ValueError: If the name is unsafe.
+
+    Returns:
+        The stripped filename if safe.
+    """
+    stripped = name.strip()
+    if not stripped:
+        raise ValueError("Output filename must not be empty")
+    if "\x00" in stripped:
+        raise ValueError("Output filename must not contain null bytes")
+    if stripped.startswith("/"):
+        raise ValueError(f"Output filename must not be an absolute path: {stripped!r}")
+    # Windows drive prefix e.g. C:
+    if len(stripped) >= 2 and stripped[1] == ":" and stripped[0].isalpha():
+        raise ValueError(f"Output filename must not contain a drive prefix: {stripped!r}")
+    # Reject '..' anywhere in path segments
+    parts = stripped.replace("\\", "/").split("/")
+    if ".." in parts:
+        raise ValueError(f"Output filename must not contain '..' segments: {stripped!r}")
+    # Reject sub-directory separators in bare filenames
+    if "/" in stripped or "\\" in stripped:
+        raise ValueError(f"Output filename must not contain directory separators: {stripped!r}")
+    return stripped
 
 
 def _resolve_directory_output(step: WizardStep, step_answers: dict[str, Any]) -> str | None:
@@ -237,13 +282,21 @@ def _resolve_directory_output(step: WizardStep, step_answers: dict[str, Any]) ->
     for key in candidate_keys:
         value = step_answers.get(key)
         if isinstance(value, str) and value.strip():
-            return f"{step.output_file}{value.strip()}"
+            try:
+                safe = _sanitize_output_filename(value)
+            except ValueError:
+                continue
+            return f"{step.output_file}{safe}"
 
     for field in step.fields:
         if field.id in candidate_keys:
             value = step_answers.get(field.id)
             if isinstance(value, str) and value.strip():
-                return f"{step.output_file}{value.strip()}"
+                try:
+                    safe = _sanitize_output_filename(value)
+                except ValueError:
+                    continue
+                return f"{step.output_file}{safe}"
 
     default_file_name = step.id.replace("_", "-")
     if step.id == "path_instructions":
@@ -278,7 +331,23 @@ def _resolve_directory_output_for_entry(step: WizardStep, entry: dict[str, Any])
     for key in candidate_keys:
         value = entry.get(key)
         if isinstance(value, str) and value.strip():
-            return f"{step.output_file}{value.strip()}"
+            try:
+                safe = _sanitize_output_filename(value)
+            except ValueError:
+                continue
+            return f"{step.output_file}{safe}"
+
+    # Skill steps use directory_name (Copilot agent_skills) or skill_name
+    # (Claude skill_definitions) as the sub-directory; the fixed filename is
+    # always SKILL.md — e.g. .github/skills/{directory_name}/SKILL.md
+    for key in ("directory_name", "skill_name"):
+        value = entry.get(key)
+        if isinstance(value, str) and value.strip():
+            try:
+                safe = _sanitize_output_filename(value)
+            except ValueError:
+                continue
+            return f"{step.output_file}{safe}/SKILL.md"
 
     return None
 

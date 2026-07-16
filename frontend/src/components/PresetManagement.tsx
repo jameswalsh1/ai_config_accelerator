@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -165,11 +165,7 @@ export function PresetManagement({
     })
   )
 
-  useEffect(() => {
-    void loadData()
-  }, [tool, language, fieldId])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -185,7 +181,11 @@ export function PresetManagement({
     } finally {
       setLoading(false)
     }
-  }
+  }, [tool, language, fieldId, onAssignmentsChange])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event

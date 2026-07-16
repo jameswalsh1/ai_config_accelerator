@@ -1,0 +1,84 @@
+apiVersion: "2021-10-01"
+location: uksouth
+name: ai-accel-app
+properties:
+  # All three containers share the same network - mysql is internal only.
+  containers:
+    - name: mysql
+      properties:
+        image: mysql:8.4
+        resources:
+          requests:
+            cpu: 0.5
+            memoryInGb: 0.5
+        environmentVariables:
+          - name: MYSQL_DATABASE
+            value: ai_config_wizard
+          - name: MYSQL_USER
+            value: aiadmin
+          - name: MYSQL_PASSWORD
+            secureValue: AiAccel2026xPwd99
+          - name: MYSQL_ROOT_PASSWORD
+            secureValue: AiAccel2026xPwd99
+        volumeMounts:
+          - name: mysql-data
+            mountPath: /var/lib/mysql
+
+    - name: backend
+      properties:
+        image: aiaccelacr.azurecr.io/backend:latest
+        resources:
+          requests:
+            cpu: 1.0
+            memoryInGb: 1.5
+        ports:
+          - port: 8000
+            protocol: TCP
+        environmentVariables:
+          - name: AUTH_ENABLED
+            value: "false"
+          - name: LOG_LEVEL
+            value: INFO
+          - name: DB_SSL_MODE
+            value: DISABLED
+          - name: ALLOWED_ORIGINS
+            value: http://ai-accel-app.uksouth.azurecontainer.io
+          - name: DATABASE_URL
+            # mysql is reachable as localhost within the container group
+            secureValue: mysql+asyncmy://aiadmin:AiAccel2026xPwd99@localhost:3306/ai_config_wizard
+
+    - name: frontend
+      properties:
+        image: aiaccelacr.azurecr.io/frontend:latest
+        resources:
+          requests:
+            cpu: 0.5
+            memoryInGb: 0.5
+        ports:
+          - port: 80
+            protocol: TCP
+
+  imageRegistryCredentials:
+    - server: aiaccelacr.azurecr.io
+      username: aiaccelacr
+      # Replace <ACR_PASSWORD> with the actual ACR admin password before deploying.
+      # Retrieve it with: az acr credential show --name aiaccelacr --query "passwords[0].value" -o tsv
+      password: "<ACR_PASSWORD>"
+
+  volumes:
+    - name: mysql-data
+      emptyDir: {}
+
+  ipAddress:
+    type: Public
+    dnsNameLabel: ai-accel-app
+    ports:
+      - protocol: TCP
+        port: 80
+      - protocol: TCP
+        port: 8000
+
+  osType: Linux
+  restartPolicy: Always
+
+type: Microsoft.ContainerInstance/containerGroups

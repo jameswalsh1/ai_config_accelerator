@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.enums import FieldType, OutputFormat, PresetMode
 
@@ -21,6 +21,13 @@ class Preset(BaseModel):
     value: Any
     mode: PresetMode = PresetMode.append
     tags: list[str] | None = None
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _normalise_legacy_mode(cls, v: Any) -> Any:
+        if v == "replace":
+            return PresetMode.overwrite
+        return v
 
 
 class PreviewTarget(BaseModel):

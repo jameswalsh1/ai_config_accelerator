@@ -34,12 +34,19 @@ export function PresetBar({ presets, fieldType, currentValue, activeTags, target
   const visiblePresets = presets.filter(preset => {
     if (!preset.tags?.length) return true
 
+    // Active language match takes priority: show language-specific presets when their
+    // language is selected, regardless of which tool is active.
+    if (activeTags?.length && preset.tags.some(tag => activeTags.includes(tag))) {
+      return true
+    }
+
+    // No language match: apply the tool filter to hide presets for other tools.
     if (targetTag && !preset.tags.includes(targetTag)) {
       return false
     }
 
-    if (!activeTags?.length) return true
-    return preset.tags.some(tag => activeTags.includes(tag))
+    // Tool matched but no active language yet: show tool-tagged presets freely.
+    return !activeTags?.length
   })
 
   const applyPreset = (preset: Preset) => {

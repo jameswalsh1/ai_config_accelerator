@@ -1,11 +1,13 @@
 import io
 from pathlib import PurePosixPath
+from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.services.config_loader_composable import get_config
+from app.db.deps import require_db_session as _require_db_session
+from app.models.wizard import WizardConfig
 from app.services.file_generator import generate_files
 from app.services.zip_service import create_zip
 
@@ -52,12 +54,36 @@ class PreviewResponse(BaseModel):
     files: list[PreviewFile]
 
 
+async def _load_config_from_db(db: Any, config_id: str) -> WizardConfig:
+    """Load a WizardConfig from the database for the given tool ID."""
+    from sqlalchemy import select
+    from app.db.models.tool import AITool
+    from app.services.config_db_repository import DatabaseConfigReadRepository
+
+    tool_res = await db.execute(select(AITool).where(AITool.tool_key == config_id))
+    tool_row = tool_res.scalar_one_or_none()
+    if tool_row is None:
+        raise HTTPException(status_code=404, detail=f"Config '{config_id}' not found")
+
+    repo = DatabaseConfigReadRepository(db)
+    resolved = await repo.load_resolved_config(config_id, "")
+
+    config_dict: dict[str, Any] = {
+        "id": tool_row.tool_key,
+        "title": tool_row.title,
+        "description": tool_row.description or "",
+        "target": tool_row.tool_key,
+        "schema_version": resolved.get("schema_version"),
+        "steps": resolved.get("steps", []),
+    }
+    config = WizardConfig.model_validate(config_dict)
+    return config.model_copy(update={"steps": [s for s in config.steps if not s.hidden]})
+
+
 @router.post("/generate/preview", response_model=PreviewResponse)
-def preview(request: GenerateRequest) -> PreviewResponse:
+async def preview(request: GenerateRequest, db: Any = Depends(_require_db_session)) -> PreviewResponse:
     """Return the generated file contents without packaging into a ZIP."""
-    config = get_config(request.config_id)
-    if config is None:
-        raise HTTPException(status_code=404, detail=f"Config '{request.config_id}' not found")
+    config = await _load_config_from_db(db, request.config_id)
 
     raw_files = generate_files(config, request.answers)
     files = [
@@ -75,10 +101,8 @@ def preview(request: GenerateRequest) -> PreviewResponse:
 
 
 @router.post("/generate")
-def generate(request: GenerateRequest) -> StreamingResponse:
-    config = get_config(request.config_id)
-    if config is None:
-        raise HTTPException(status_code=404, detail=f"Config '{request.config_id}' not found")
+async def generate(request: GenerateRequest, db: Any = Depends(_require_db_session)) -> StreamingResponse:
+    config = await _load_config_from_db(db, request.config_id)
 
     files = generate_files(config, request.answers)
     zip_bytes = create_zip(files)

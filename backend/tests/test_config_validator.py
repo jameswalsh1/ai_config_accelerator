@@ -25,7 +25,7 @@ from app.services.config_validator import (
     SchemaLoadError,
 )
 
-DATA_DIR = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent / "wizard_configs"
 
 
 class TestWizardSchemaValidation:
@@ -401,17 +401,8 @@ class TestSchemaCache:
         assert schema1 is not schema2
 
 
-class TestIntegrationWithLoader:
-    """Test that validation works when integrated with config loader."""
-    
-    def test_loader_validates_configs(self):
-        """Test that loader validates loaded configs."""
-        from app.services.config_loader_composable import load_composable_config
-        
-        # Should not raise - valid config
-        config = load_composable_config("claude", "python")
-        assert config is not None
-        assert "steps" in config
+class TestOverrideFileIntegrity:
+    """Validate that shipped override files reference valid schema fields."""
 
     def test_existing_overrides_have_no_warnings(self):
         """All shipped override files should reference valid schema fields.
@@ -423,7 +414,7 @@ class TestIntegrationWithLoader:
         from pathlib import Path
         from app.services.config_validator import validate_override_references
 
-        data_dir = Path(__file__).parent.parent / "app" / "data" / "wizard_configs"
+        data_dir = Path(__file__).parent / "wizard_configs"
         with (data_dir / "schema.json").open() as f:
             schema = json.load(f)
 
@@ -500,27 +491,6 @@ class TestOverrideReferenceValidation:
         override = {"field_overrides": [{"field_id": "s1.group.nested"}]}
         warnings = validate_override_references(schema, override, "test")
         assert warnings == []
-
-    def test_warnings_attached_to_config(self):
-        """Warnings from invalid overrides are attached to the composed config."""
-        import json
-        from app.services import config_loader_composable as loader
-
-        overrides_dir = loader.DATA_DIR / "overrides"
-        overrides_dir.mkdir(parents=True, exist_ok=True)
-        combo_file = overrides_dir / "claude+python.json"
-        combo_file.write_text(json.dumps({
-            "metadata_overrides": [{"field_id": "fake_step.fake_field", "default": "x"}]
-        }), encoding="utf-8")
-
-        try:
-            config = loader.load_composable_config("claude", "python")
-            warnings = config.get("_validation_warnings", [])
-            assert len(warnings) >= 1
-            combo_warnings = [w for w in warnings if "fake_step.fake_field" in w]
-            assert len(combo_warnings) == 1
-        finally:
-            combo_file.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

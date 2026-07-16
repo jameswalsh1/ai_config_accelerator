@@ -229,6 +229,6 @@ def _fake_request():
             self.headers = headers or {}
 
     def _factory(headers: dict[str, str] | None = None) -> FakeRequest:
-        return FakeRequest(headers=headers)  # type: ignore[return-value]
+        return FakeRequest(headers=headers)
 
     return _factory

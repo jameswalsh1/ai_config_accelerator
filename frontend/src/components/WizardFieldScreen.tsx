@@ -16,6 +16,7 @@ interface WizardFieldScreenProps {
   activeTags: string[]
   targetTag: string
   fieldError: string | null
+  visibleFields?: Record<string, boolean>
   onFieldChange: (fieldId: string, value: unknown) => void
 }
 
@@ -123,9 +124,18 @@ function renderSingleField(
   )
 }
 
-export function WizardFieldScreen({ screen, answers, activeTags, targetTag, fieldError, onFieldChange }: WizardFieldScreenProps) {
+export function WizardFieldScreen({ screen, answers, activeTags, targetTag, fieldError, visibleFields, onFieldChange }: WizardFieldScreenProps) {
   const { step, fields, stepIndex } = screen
   const stepAnswers = answers[step.id] ?? {}
+
+  // Filter fields based on visibility rules
+  const visibleFieldList = fields.filter(field => {
+    const fieldPath = `${step.id}.${field.id}`
+    if (visibleFields && fieldPath in visibleFields) {
+      return visibleFields[fieldPath]
+    }
+    return true // visible by default
+  })
 
   return (
     <div className="flex flex-col gap-5">
@@ -148,9 +158,9 @@ export function WizardFieldScreen({ screen, answers, activeTags, targetTag, fiel
         )}
       </div>
 
-      {/* All fields for this step */}
+      {/* All visible fields for this step */}
       <div className="flex flex-col gap-5">
-        {fields.map(field => renderSingleField(field, stepAnswers, onFieldChange, activeTags, targetTag, fieldError))}
+        {visibleFieldList.map(field => renderSingleField(field, stepAnswers, onFieldChange, activeTags, targetTag, fieldError))}
       </div>
     </div>
   )

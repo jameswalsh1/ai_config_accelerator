@@ -9,12 +9,13 @@ Implements ID-based targeted updates to configuration files with:
 """
 
 import json
+import os
 import time
 from pathlib import Path
 from typing import Any, Literal, cast
 from copy import deepcopy
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "wizard_configs"
+DATA_DIR = Path(__file__).parent.parent.parent / "tests" / "wizard_configs"
 
 # Scope types
 PatchScope = Literal["tool", "language", "override"]
@@ -185,20 +186,22 @@ def _write_json_file(
     """
     Write a JSON file atomically, emitting an audit log entry.
 
-    Routes through save_config so every patch write is atomic and audited.
-    validate=False because the patcher works on raw override files that may
-    not pass the full wizard schema (they're partial by design).
+    Routes through atomic file write so every patch write is safe.
     """
-    from app.services.config_persistence import save_config
+    import json
+    import tempfile
 
-    save_config(
-        file_path,
-        data,
-        validate=False,
-        create_backup=True,
-        verify_reloadable=False,
-        context=context,
-    )
+    content = json.dumps(data, indent=indent, ensure_ascii=False) + "\n"
+    dir_path = file_path.parent
+    dir_path.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(dir_path), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp, str(file_path))
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 
 def update_field_metadata(
@@ -207,6 +210,7 @@ def update_field_metadata(
     step_id: str,
     field_id: str,
     changes: dict[str, Any],
+    actor: str = "system",
 ) -> dict[str, Any]:
     """
     Update metadata for a specific field in an override file.
@@ -263,7 +267,7 @@ def update_field_metadata(
                 raise PatchError(f"Unknown metadata field: {key}. Use: default, editability, required, hidden, lock_reason")
         
         # Write back
-        _write_json_file(target_file, config, context={"scope": scope, "target": target})
+        _write_json_file(target_file, config, context={"scope": scope, "target": target, "actor": actor})
         
         return config
         
@@ -515,6 +519,7 @@ def remove_field_override(
     step_id: str,
     field_id: str,
     override_type: Literal["metadata", "structure"] = "metadata",
+    actor: str = "system",
 ) -> dict[str, Any]:
     """
     Remove an override entry for a field.
@@ -560,7 +565,7 @@ def remove_field_override(
                 ]
         
         # Write back
-        _write_json_file(target_file, config, context={"scope": scope, "target": target})
+        _write_json_file(target_file, config, context={"scope": scope, "target": target, "actor": actor})
         
         return config
         
@@ -575,6 +580,7 @@ def add_preset_to_field(
     field_id: str,
     preset: dict[str, Any],
     position: int | None = None,
+    actor: str = "system",
 ) -> dict[str, Any]:
     """
     Add a preset to a field's presets list at the specified position.
@@ -634,7 +640,7 @@ def add_preset_to_field(
         override["replace_presets_with"] = current_presets
         
         # Write back
-        _write_json_file(target_file, config, context={"scope": scope, "target": target})
+        _write_json_file(target_file, config, context={"scope": scope, "target": target, "actor": actor})
         
         return config
         
@@ -649,6 +655,7 @@ def remove_preset_from_field(
     field_id: str,
     preset_label: str | None = None,
     position: int | None = None,
+    actor: str = "system",
 ) -> dict[str, Any]:
     """
     Remove a preset from a field's presets list.
@@ -717,7 +724,7 @@ def remove_preset_from_field(
         override["replace_presets_with"] = current_presets
         
         # Write back
-        _write_json_file(target_file, config, context={"scope": scope, "target": target})
+        _write_json_file(target_file, config, context={"scope": scope, "target": target, "actor": actor})
         
         return config
         
