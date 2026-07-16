@@ -6,13 +6,12 @@ properties:
   containers:
     - name: mysql
       properties:
-        image: mysql:8.4
-        # Azure Files (SMB) mounts as root; MySQL must also run as root.
+        image: mariadb:11.4
+        # MariaDB has better Azure Files (SMB) compatibility than MySQL 8.x.
         # --innodb-use-native-aio=0 and --innodb-flush-method=fsync disable
         # O_DIRECT / native AIO which are not supported on Azure Files.
         command:
-          - "mysqld"
-          - "--user=root"
+          - "mariadbd"
           - "--innodb-use-native-aio=0"
           - "--innodb-flush-method=fsync"
         resources:
@@ -20,13 +19,13 @@ properties:
             cpu: 0.5
             memoryInGb: 0.5
         environmentVariables:
-          - name: MYSQL_DATABASE
+          - name: MARIADB_DATABASE
             value: ai_config_wizard
-          - name: MYSQL_USER
+          - name: MARIADB_USER
             value: aiadmin
-          - name: MYSQL_PASSWORD
+          - name: MARIADB_PASSWORD
             secureValue: AiAccel2026xPwd99
-          - name: MYSQL_ROOT_PASSWORD
+          - name: MARIADB_ROOT_PASSWORD
             secureValue: AiAccel2026xPwd99
         volumeMounts:
           - name: mysql-data-2
