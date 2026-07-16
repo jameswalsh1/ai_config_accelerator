@@ -6,29 +6,22 @@ properties:
   containers:
     - name: mysql
       properties:
-        image: mariadb:11.4
-        # MariaDB has better Azure Files (SMB) compatibility than MySQL 8.x.
-        # --innodb-use-native-aio=0 and --innodb-flush-method=fsync disable
-        # O_DIRECT / native AIO which are not supported on Azure Files.
-        command:
-          - "mariadbd"
-          - "--innodb-use-native-aio=0"
-          - "--innodb-flush-method=fsync"
+        image: mysql:8.4
         resources:
           requests:
             cpu: 0.5
             memoryInGb: 0.5
         environmentVariables:
-          - name: MARIADB_DATABASE
+          - name: MYSQL_DATABASE
             value: ai_config_wizard
-          - name: MARIADB_USER
+          - name: MYSQL_USER
             value: aiadmin
-          - name: MARIADB_PASSWORD
+          - name: MYSQL_PASSWORD
             secureValue: AiAccel2026xPwd99
-          - name: MARIADB_ROOT_PASSWORD
+          - name: MYSQL_ROOT_PASSWORD
             secureValue: AiAccel2026xPwd99
         volumeMounts:
-          - name: mysql-data-2
+          - name: mysql-data
             mountPath: /var/lib/mysql
 
     - name: backend
@@ -73,11 +66,8 @@ properties:
       password: "<ACR_PASSWORD>"
 
   volumes:
-    - name: mysql-data-2
-      azureFile:
-        shareName: mysql-data-2
-        storageAccountName: aiaccelstore
-        storageAccountKey: "<STORAGE_KEY>"
+    - name: mysql-data
+      emptyDir: {}
 
   ipAddress:
     type: Public
