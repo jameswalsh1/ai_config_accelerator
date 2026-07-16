@@ -49,9 +49,9 @@ Write-Host "`n── Building frontend image in ACR (API calls proxied via nginx
 az acr build --registry $ACR_NAME --image "frontend:$IMAGE_TAG" --image "frontend:latest" --file "frontend/Dockerfile" .
 
 # ── Ensure Azure Files share exists for persistent MySQL storage ─────────────
-Write-Host "`n── Ensuring Azure Files share 'mysql-data' exists..."
+Write-Host "`n── Ensuring Azure Files share 'mysql-data-2' exists..."
 az acr credential show --name $ACR_NAME 2>$null | Out-Null  # warm up az
-az.cmd storage share create --name mysql-data --account-name $STORAGE_ACCOUNT --account-key $STORAGE_KEY --output none 2>$null
+az.cmd storage share create --name mysql-data-2 --account-name $STORAGE_ACCOUNT --account-key $STORAGE_KEY --output none 2>$null
 Write-Host "── Azure Files share ready."
 
 # ── Patch the ACI YAML with real credentials then deploy ────────────────────

@@ -29,7 +29,7 @@ properties:
           - name: MYSQL_ROOT_PASSWORD
             secureValue: AiAccel2026xPwd99
         volumeMounts:
-          - name: mysql-data
+          - name: mysql-data-2
             mountPath: /var/lib/mysql
 
     - name: backend
@@ -74,9 +74,9 @@ properties:
       password: "<ACR_PASSWORD>"
 
   volumes:
-    - name: mysql-data
+    - name: mysql-data-2
       azureFile:
-        shareName: mysql-data
+        shareName: mysql-data-2
         storageAccountName: aiaccelstore
         storageAccountKey: "<STORAGE_KEY>"
 
