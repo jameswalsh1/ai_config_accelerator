@@ -7,6 +7,12 @@ properties:
     - name: mysql
       properties:
         image: mysql:8.4
+        # Azure Files (SMB) does not support native AIO or O_DIRECT.
+        # These flags make InnoDB use fsync-based I/O instead.
+        command:
+          - "mysqld"
+          - "--innodb-use-native-aio=0"
+          - "--innodb-flush-method=fsync"
         resources:
           requests:
             cpu: 0.5
