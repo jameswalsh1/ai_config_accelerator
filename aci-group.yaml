@@ -67,7 +67,10 @@ properties:
 
   volumes:
     - name: mysql-data
-      emptyDir: {}
+      azureFile:
+        shareName: mysql-data
+        storageAccountName: aiaccelstore
+        storageAccountKey: "<STORAGE_KEY>"
 
   ipAddress:
     type: Public
